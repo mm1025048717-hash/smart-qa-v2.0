@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production
+dist/
+build/
+out/
+.next/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Debug logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Build artifacts
+*.zip
+*.tar.gz
+*.rar
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Package manager locks (keep package-lock.json for npm)
+yarn.lock
+pnpm-lock.yaml
+
+# Vercel
+.vercel
+
+# Cursor
+.cursor/
+
+# Temporary documentation files (deployment notes)
+紧急修复*.md
+*修复*.md
+*部署*.md
+*清理*.md
+解决*.md
+UPDATE_*.md
+宝塔*.md
+快速*.md
+
+# Server files (if not needed in repo)
+# server.js

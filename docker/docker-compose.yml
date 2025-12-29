@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  smart-qa:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: smart-qa-web
+    ports:
+      - "80:80"  # 左边80是服务器端口，右边80是容器端口
+    restart: unless-stopped
+    networks:
+      - smart-qa-network
+
+networks:
+  smart-qa-network:
+    driver: bridge
+
+
+
+
+
+
+
+
+
+
+
+

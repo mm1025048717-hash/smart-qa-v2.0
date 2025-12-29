@@ -1,0 +1,554 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   火山引擎 (Volcengine) 设计系统 - 蓝白专业风格
+   ======================================== */
+
+@layer base {
+  :root {
+    /* 火山引擎品牌色 */
+    --color-primary: 22 100 255;        /* Volc Blue #1664FF */
+    --color-primary-hover: 0 73 255;    /* #0049FF */
+    --color-primary-light: 232 240 255; /* #E8F0FF */
+    
+    /* 文字色彩 - 火山标准 */
+    --color-text: 29 33 41;            /* #1D2129 */
+    --color-text-secondary: 78 89 105; /* #4E5969 */
+    --color-text-muted: 134 144 156;   /* #86909C */
+    
+    /* 背景 - 蓝白配色 */
+    --color-bg: 255 255 255;           /* 纯白 */
+    --color-bg-secondary: 250 252 255; /* #FAFCFF 极淡蓝白 */
+    --color-bg-tertiary: 245 249 255;  /* #F5F9FF 浅蓝白 */
+    
+    /* 边框 - 蓝白配色 */
+    --color-border: 232 240 255;       /* #E8F0FF 淡蓝色边框 */
+    --color-border-light: 245 249 255; /* #F5F9FF 浅蓝白 */
+    
+    /* 功能色 */
+    --color-success: 0 180 42;         /* #00B42A */
+    --color-warning: 255 125 0;        /* #FF7D00 */
+    --color-danger: 245 63 63;         /* #F53F3F */
+  }
+  
+  html {
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background-color: rgb(var(--color-bg-secondary));
+    color: rgb(var(--color-text));
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+  
+  /* 精致滚动条 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--color-border));
+    border-radius: 100px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--color-text-secondary));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  /* 选中文本样式 - 蓝色 */
+  ::selection {
+    background: rgb(var(--color-primary) / 0.15);
+  }
+}
+
+@layer components {
+  /* ========================================
+     消息气泡 - 蓝白风格
+     ======================================== */
+  
+  /* 用户消息 - 火山蓝色气泡 */
+  .message-user {
+    @apply bg-[#1664FF] text-white;
+    @apply px-5 py-3.5 rounded-2xl rounded-br-md;
+    @apply text-[15px] leading-relaxed;
+    @apply max-w-[80%];
+    @apply shadow-sm;
+  }
+  
+  /* 系统消息容器 - 白色卡片 */
+  .message-system {
+    @apply bg-white;
+    @apply rounded-2xl;
+    @apply border border-[#E8F0FF];
+    @apply shadow-[0_2px_12px_rgba(0,0,0,0.03)];
+    @apply p-6;
+  }
+  
+  /* Agent 头像区 */
+  .agent-avatar {
+    @apply w-9 h-9 rounded-full;
+    @apply bg-gradient-to-br from-[#1664FF] to-[#4E8CFF];
+    @apply text-white;
+    @apply flex items-center justify-center;
+    @apply text-sm font-semibold;
+    @apply shadow-sm;
+  }
+  
+  .agent-name {
+    @apply text-[14px] font-semibold text-[#1D2129];
+  }
+  
+  .agent-title {
+    @apply text-[12px] text-[#1664FF];
+  }
+
+  /* ========================================
+     文本排版 - 层次分明
+     ======================================== */
+  
+  .text-display {
+    @apply text-[32px] font-semibold tracking-tight text-[#1d1d1f];
+    @apply leading-[1.2];
+  }
+  
+  .text-title {
+    @apply text-[20px] font-semibold text-[#1d1d1f];
+    @apply leading-[1.3] tracking-[-0.02em];
+  }
+  
+  .text-heading {
+    @apply text-[16px] font-semibold text-[#1d1d1f];
+    @apply leading-[1.4];
+  }
+  
+  .text-body {
+    @apply text-[15px] text-[#1d1d1f];
+    @apply leading-[1.7];
+  }
+  
+  .text-body-secondary {
+    @apply text-[14px] text-[#4E5969];
+    @apply leading-[1.6];
+  }
+  
+  .text-caption {
+    @apply text-[12px] text-[#86909C];
+    @apply leading-[1.5] tracking-[0.01em];
+  }
+
+  /* ========================================
+     KPI 卡片 - 火山蓝白风格
+     ======================================== */
+  
+  .kpi-card {
+    @apply bg-gradient-to-br from-[#F5F9FF] to-[#FFFFFF] rounded-xl p-5;
+    @apply border border-[#E8F0FF];
+  }
+  
+  .kpi-value {
+    @apply text-[28px] font-semibold text-[#1D2129];
+    @apply tracking-[-0.02em];
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .kpi-label {
+    @apply text-[13px] text-[#4E5969] font-medium;
+    @apply mb-1;
+  }
+  
+  .kpi-trend {
+    @apply text-[13px] font-medium;
+    @apply flex items-center gap-1;
+  }
+  
+  .kpi-trend-up {
+    @apply text-[#00B42A];
+  }
+  
+  .kpi-trend-down {
+    @apply text-[#F53F3F];
+  }
+
+  /* ========================================
+     洞察卡片 - 火山引擎风格
+     ======================================== */
+  
+  .insight-card {
+    @apply rounded-xl p-4;
+    @apply border-l-[4px];
+  }
+  
+  .insight-card-info {
+    @apply bg-[#F5F9FF] border-l-[#1664FF];
+  }
+  
+  .insight-card-success {
+    @apply bg-[#E8FFEA] border-l-[#00B42A];
+  }
+  
+  .insight-card-warning {
+    @apply bg-[#FFF7E8] border-l-[#FF7D00];
+  }
+  
+  .insight-title {
+    @apply text-[14px] font-semibold mb-2;
+  }
+  
+  .insight-content {
+    @apply text-[14px] text-[#1d1d1f] leading-relaxed;
+  }
+
+  /* ========================================
+     列表样式 - 蓝色点缀
+     ======================================== */
+  
+  .list-item {
+    @apply flex items-start gap-3 py-2;
+  }
+  
+  .list-bullet {
+    @apply w-1.5 h-1.5 rounded-full bg-[#1664FF];
+    @apply mt-2 flex-shrink-0;
+  }
+  
+  .list-number {
+    @apply w-5 h-5 rounded-md bg-[#E8F0FF];
+    @apply text-[11px] font-semibold text-[#1664FF];
+    @apply flex items-center justify-center flex-shrink-0;
+  }
+
+  /* ========================================
+     按钮系统 - 火山主题
+     ======================================== */
+  
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg;
+    @apply bg-[#1664FF] text-white;
+    @apply text-[14px] font-medium;
+    @apply hover:bg-[#0E52D9];
+    @apply transition-colors duration-150;
+    @apply shadow-sm;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg;
+    @apply bg-[#F5F9FF] text-[#1D2129];
+    @apply text-[14px] font-medium;
+    @apply hover:bg-[#E8F0FF];
+    @apply transition-colors duration-150;
+  }
+  
+  .btn-ghost {
+    @apply px-3 py-1.5 rounded-md;
+    @apply text-[#4E5969];
+    @apply text-[13px] font-medium;
+    @apply hover:bg-[#1664FF]/10 hover:text-[#1664FF];
+    @apply transition-colors duration-150;
+  }
+  
+  /* 选择按钮组 - 火山蓝悬停 */
+  .choice-button {
+    @apply px-4 py-2.5 rounded-xl;
+    @apply bg-white border border-[#E8F0FF];
+    @apply text-[14px] text-[#1D2129];
+    @apply hover:border-[#1664FF] hover:text-[#1664FF];
+    @apply transition-all duration-150;
+    @apply cursor-pointer;
+  }
+  
+  .choice-button-active {
+    @apply bg-[#1664FF] text-white border-[#1664FF];
+  }
+  
+  /* 输入框 - 火山风格 */
+  .input-chat {
+    @apply w-full px-5 py-4;
+    @apply bg-white border border-[#E8F0FF] rounded-2xl;
+    @apply text-[15px] text-[#1D2129];
+    @apply placeholder:text-[#86909C];
+    @apply focus:outline-none focus:border-[#1664FF];
+    @apply focus:ring-4 focus:ring-[#1664FF]/10;
+    @apply transition-all duration-150;
+  }
+
+  /* ========================================
+     图表容器
+     ======================================== */
+  
+  .chart-container {
+    @apply bg-white rounded-xl p-5;
+    @apply border border-[#E8F0FF];
+  }
+  
+  .chart-title {
+    @apply text-[14px] font-semibold text-[#1d1d1f];
+    @apply mb-4;
+  }
+
+  /* ========================================
+     表格 - 简约数据表
+     ======================================== */
+  
+  .table-minimal {
+    @apply w-full text-[14px];
+  }
+  
+  .table-minimal thead {
+    @apply border-b border-[#E8F0FF];
+  }
+  
+  .table-minimal th {
+    @apply text-left py-3 px-4;
+    @apply text-[12px] font-semibold text-[#4E5969] uppercase tracking-wider;
+  }
+  
+  .table-minimal td {
+    @apply py-3 px-4 text-[#1d1d1f];
+    @apply border-b border-[#E8F0FF];
+  }
+  
+  .table-minimal tr:last-child td {
+    @apply border-b-0;
+  }
+  
+  .table-minimal tr:hover td {
+    @apply bg-[#F5F9FF]/50;
+  }
+
+  /* ========================================
+     加载状态 - 蓝色动画
+     ======================================== */
+  
+  .loading-dots {
+    @apply flex gap-1 items-center;
+  }
+  
+  .loading-dot {
+    @apply w-2 h-2 rounded-full bg-[#1664FF];
+    animation: pulse-dot 1.4s infinite ease-in-out both;
+  }
+  
+  .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+  .loading-dot:nth-child(2) { animation-delay: -0.16s; opacity: 0.6; }
+  .loading-dot:nth-child(3) { animation-delay: 0s; opacity: 0.3; }
+  
+  @keyframes pulse-dot {
+    0%, 80%, 100% { 
+      opacity: 0.3;
+      transform: scale(0.8);
+    }
+    40% { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* ========================================
+     分割线
+     ======================================== */
+  
+  .divider {
+    @apply h-px bg-[#E8F0FF] my-6;
+  }
+  
+  .divider-dashed {
+    @apply border-t border-dashed border-[#E8F0FF] my-4;
+  }
+
+  /* ========================================
+     卡片阴影系统
+     ======================================== */
+  
+  .shadow-subtle {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  
+  .shadow-card {
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.04),
+      0 1px 2px rgba(0, 0, 0, 0.02);
+  }
+  
+  .shadow-elevated {
+    box-shadow: 
+      0 8px 24px rgba(0, 0, 0, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+}
+
+@layer utilities {
+  /* 文字渐变 - 火山蓝色 */
+  .text-gradient-blue {
+    @apply bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-[#1664FF] to-[#4E8CFF];
+  }
+  
+  /* 玻璃效果 */
+  .glass {
+    @apply backdrop-blur-xl bg-white/90;
+    @apply border border-[#E8F0FF];
+  }
+  
+  /* 数字等宽 */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* 隐藏滚动条但保持滚动功能 */
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ========================================
+   React Grid Layout 自定义样式 - 火山引擎蓝白风格
+   ======================================== */
+
+.react-grid-layout {
+  position: relative;
+  transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.react-grid-item {
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition-property: left, top, width, height;
+}
+
+.react-grid-item.resizing {
+  z-index: 100;
+  will-change: width, height;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 1000;
+  will-change: transform;
+}
+
+/* 占位符 - 极致轻量 */
+.react-grid-item.react-grid-placeholder {
+  background: rgba(22, 100, 255, 0.03);
+  border: 1px dashed rgba(22, 100, 255, 0.2);
+  border-radius: 24px;
+  opacity: 1;
+  transition-duration: 150ms;
+  z-index: 2;
+}
+
+/* 调整大小手柄 - 隐藏在边缘 */
+.react-resizable-handle {
+  position: absolute;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.react-grid-item:hover .react-resizable-handle,
+.react-grid-item.resizing .react-resizable-handle {
+  opacity: 1;
+}
+
+/* 角落手柄 - 微型圆点 */
+.react-resizable-handle-se,
+.react-resizable-handle-sw,
+.react-resizable-handle-ne,
+.react-resizable-handle-nw {
+  width: 20px;
+  height: 20px;
+}
+
+.react-resizable-handle-se::after,
+.react-resizable-handle-sw::after,
+.react-resizable-handle-ne::after,
+.react-resizable-handle-nw::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1664FF;
+  transition: transform 0.2s ease;
+}
+
+.react-resizable-handle-se:hover::after,
+.react-resizable-handle-sw:hover::after,
+.react-resizable-handle-ne:hover::after,
+.react-resizable-handle-nw:hover::after {
+  transform: scale(1.5);
+}
+
+.react-resizable-handle-se { bottom: 8px; right: 8px; cursor: se-resize; }
+.react-resizable-handle-se::after { bottom: 0; right: 0; }
+
+.react-resizable-handle-sw { bottom: 8px; left: 8px; cursor: sw-resize; }
+.react-resizable-handle-sw::after { bottom: 0; left: 0; }
+
+.react-resizable-handle-ne { top: 8px; right: 8px; cursor: ne-resize; }
+.react-resizable-handle-ne::after { top: 0; right: 0; }
+
+.react-resizable-handle-nw { top: 8px; left: 8px; cursor: nw-resize; }
+.react-resizable-handle-nw::after { top: 0; left: 0; }
+
+/* 边缘手柄 - 极细线条 */
+.react-resizable-handle-e,
+.react-resizable-handle-w {
+  width: 10px;
+  height: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.react-resizable-handle-n,
+.react-resizable-handle-s {
+  width: 40px;
+  height: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.react-resizable-handle-e::after,
+.react-resizable-handle-w::after {
+  content: "";
+  position: absolute;
+  width: 2px;
+  height: 20px;
+  background: rgba(22, 100, 255, 0.2);
+  border-radius: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 4px;
+}
+
+.react-resizable-handle-n::after,
+.react-resizable-handle-s::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 2px;
+  background: rgba(22, 100, 255, 0.2);
+  border-radius: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 4px;
+}
