@@ -2,7 +2,7 @@
 
 ## 🚨 问题说明
 
-你的代码已经准备好推送，但 GitHub 上还没有创建仓库 `smart-qa-v1.3`。
+你的代码已经准备好推送，但 GitHub 上还没有创建仓库 `smart-qa-v2.0`。
 
 ## 📋 解决步骤
 
@@ -13,7 +13,7 @@
    - 或者点击 GitHub 右上角的 `+` 号 → `New repository`
 
 2. **填写仓库信息**
-   - **Repository name**: `smart-qa-v1.3`
+   - **Repository name**: `smart-qa-v2.0`
    - **Description**: `智能数据问答界面 - 动态分析叙事系统`
    - **Visibility**: 选择 `Public`（公开）或 `Private`（私有）
    - **⚠️ 重要**：**不要**勾选以下选项：
@@ -34,7 +34,7 @@
 如果你安装了 GitHub CLI，可以直接在命令行创建：
 
 ```powershell
-gh repo create smart-qa-v1.3 --public --source=. --remote=origin --push
+gh repo create smart-qa-v2.0 --public --source=. --remote=origin --push
 ```
 
 ## ✅ 推送代码
@@ -87,7 +87,7 @@ git push -u origin main
 
 3. **更改远程仓库 URL 为 SSH**：
    ```powershell
-   git remote set-url origin git@github.com:mm1025048717-hash/smart-qa-v1.3.git
+   git remote set-url origin git@github.com:mm1025048717-hash/smart-qa-v2.0.git
    git push -u origin main
    ```
 
@@ -95,7 +95,7 @@ git push -u origin main
 
 代码推送成功后：
 
-1. **访问仓库**：https://github.com/mm1025048717-hash/smart-qa-v1.3
+1. **访问仓库**：https://github.com/mm1025048717-hash/smart-qa-v2.0
 2. **启用 GitHub Pages**：
    - 进入仓库 Settings → Pages
    - Source 选择：**GitHub Actions**
@@ -103,13 +103,13 @@ git push -u origin main
 3. **查看自动部署**：
    - 进入 Actions 标签页
    - 查看部署进度
-   - 部署成功后访问：https://mm1025048717-hash.github.io/smart-qa-v1.3/
+   - 部署成功后访问：https://mm1025048717-hash.github.io/smart-qa-v2.0/
 
 ## ❓ 需要帮助？
 
 如果遇到问题，请检查：
 - [ ] GitHub 账户是否已登录
-- [ ] 仓库名称是否正确：`smart-qa-v1.3`
+- [ ] 仓库名称是否正确：`smart-qa-v2.0`
 - [ ] 是否有权限创建仓库
 - [ ] 网络连接是否正常
 

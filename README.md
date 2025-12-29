@@ -94,7 +94,7 @@ npm run build
 
 **详细说明**：请查看 [`.github/DEPLOYMENT_SETUP.md`](.github/DEPLOYMENT_SETUP.md)
 
-**部署地址**：`https://mm1025048717-hash.github.io/smart-qa-v1.3/`
+**部署地址**：`https://mm1025048717-hash.github.io/smart-qa-v2.0/`
 
 ## 📁 项目结构
 

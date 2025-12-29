@@ -8,7 +8,7 @@
 
 ### 1. 启用 GitHub Pages
 
-1. 访问你的 GitHub 仓库：`https://github.com/mm1025048717-hash/smart-qa-v1.3`
+1. 访问你的 GitHub 仓库：`https://github.com/mm1025048717-hash/smart-qa-v2.0`
 2. 点击 **Settings**（设置）
 3. 在左侧菜单中找到 **Pages**（页面）
 4. 在 **Source**（源）部分：
@@ -54,7 +54,7 @@
 部署成功后，你的网站将可以通过以下 URL 访问：
 
 ```
-https://mm1025048717-hash.github.io/smart-qa-v1.3/
+https://mm1025048717-hash.github.io/smart-qa-v2.0/
 ```
 
 > **注意**：首次部署可能需要几分钟时间。GitHub Pages 的 URL 格式为：`https://[用户名].github.io/[仓库名]/`
