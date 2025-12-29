@@ -83,6 +83,19 @@ npm run dev
 npm run build
 ```
 
+### 🚀 自动部署到 GitHub Pages
+
+项目已配置 GitHub Actions 自动部署工作流。当你推送代码到 `main` 分支时，会自动构建并部署到 GitHub Pages。
+
+**首次设置**：
+1. 访问仓库 Settings → Pages
+2. 选择 **GitHub Actions** 作为部署源
+3. 推送代码到 `main` 分支即可自动部署
+
+**详细说明**：请查看 [`.github/DEPLOYMENT_SETUP.md`](.github/DEPLOYMENT_SETUP.md)
+
+**部署地址**：`https://mm1025048717-hash.github.io/smart-qa-v1.3/`
+
 ## 📁 项目结构
 
 ```
