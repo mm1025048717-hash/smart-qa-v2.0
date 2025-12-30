@@ -1,4 +1,5 @@
 // Vercel Serverless Function for DeepSeek API Proxy
+// 注意：Vercel 使用 Node.js 格式的 handler，但流式响应需要使用特殊处理
 export default async function handler(req, res) {
   // 设置 CORS 头
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,28 +37,38 @@ export default async function handler(req, res) {
     }
 
     // 设置响应头（保持流式传输）
-    res.setHeader('Content-Type', response.headers.get('Content-Type') || 'text/event-stream');
+    const contentType = response.headers.get('Content-Type') || 'text/event-stream';
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.status(response.status);
 
-    // 流式传输响应
+    // 流式传输响应 - 使用 Node.js 流式 API
     if (response.body) {
+      // 将 ReadableStream 转换为 Node.js 流
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          res.write(chunk);
+      const pump = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              res.end();
+              break;
+            }
+            
+            const chunk = decoder.decode(value, { stream: true });
+            res.write(chunk);
+          }
+        } catch (error) {
+          console.error('Stream error:', error);
+          res.end();
         }
-        res.end();
-      } catch (streamError) {
-        console.error('Stream error:', streamError);
-        res.end();
-      }
+      };
+
+      // 开始流式传输
+      pump();
     } else {
       // 如果没有 body，直接返回
       const data = await response.text();
