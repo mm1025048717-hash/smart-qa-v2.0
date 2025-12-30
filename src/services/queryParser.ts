@@ -227,6 +227,24 @@ export function parseQueryDimensions(query: string): QueryDimensions {
  * 只在模糊问题中触发，不污染其他问题的问答交互
  */
 export function needsConfirmation(query: string): boolean {
+  // 排除简单问候语，让它们直接调用大模型进行自然对话
+  const greetingPatterns = [
+    /^你好$/,
+    /^hello$/i,
+    /^hi$/i,
+    /^嗨$/,
+    /^在吗$/,
+    /^在$/,
+    /^你是谁$/,
+    /^介绍一下$/,
+    /^介绍一下自己$/,
+  ];
+  
+  const isGreeting = greetingPatterns.some(pattern => pattern.test(query.trim()));
+  if (isGreeting) {
+    return false; // 问候语不触发确认，直接走大模型
+  }
+
   // 只在模糊问题中触发多度确认
   // 模糊问题的特征：简短、缺少具体维度信息
   const vaguePatterns = [
@@ -246,6 +264,7 @@ export function needsConfirmation(query: string): boolean {
   const isVague = vaguePatterns.some(pattern => pattern.test(query.trim()));
   
   // 如果查询很短（少于5个字）且不包含明确的维度关键词，也可能是模糊问题
+  // 但排除问候语（已经在上面处理了）
   const isShortAndVague = query.trim().length < 5 && 
     !STORE_PATTERNS.some(p => p.pattern.test(query)) &&
     !TIME_PATTERNS.some(p => p.pattern.test(query)) &&
