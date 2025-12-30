@@ -316,8 +316,11 @@ function App() {
     setMessages(prev => [...prev, userMessage]);
 
     // 检查是否需要多度确认（如果 sessionStorage 中有 skipQueryConfirmation 标记，则跳过）
+    // 或者如果是简单问候语，直接跳过确认
     const skipConfirmation = sessionStorage.getItem('skipQueryConfirmation') === 'true';
-    if (!skipConfirmation) {
+    const isSimpleGreeting = /^(你好|hello|hi|嗨|在吗|在|你是谁|介绍一下|介绍一下自己)$/i.test(query.trim());
+    
+    if (!skipConfirmation && !isSimpleGreeting) {
       try {
         const { 
           parseQueryDimensions, 
