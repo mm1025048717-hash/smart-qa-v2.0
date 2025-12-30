@@ -3,12 +3,11 @@
  * 支持空状态和数据量判断
  */
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { KPIData, ContentBlock } from '../types';
 import clsx from 'clsx';
 import { Info, AlertTriangle, AlertCircle, Lock } from 'lucide-react';
 import { determineEmptyStateReason, EmptyStateConfig } from '../services/emptyStateEngine';
-import { useState } from 'react';
 
 interface KPICardProps {
   data: KPIData;
@@ -45,84 +44,7 @@ const formatValue = (value: number | string): string => {
   return value.toString();
 };
 
-// 归因分析触发组件
-const AttributionTrigger = ({
-  trend,
-  label,
-  onAttributionClick
-}: {
-  trend: { value: number; direction: 'up' | 'down' | 'neutral' | 'flat'; label?: string };
-  label: string;
-  onAttributionClick?: (data: { metric: string; changeValue: number; changeDirection: 'up' | 'down'; changeType: '同比' | '环比'; triggerRect?: DOMRect }) => void;
-}) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (!onAttributionClick) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    
-    const metric = label.replace(/年度|季度|月度|本月|今年|去年/g, '').trim();
-    const changeType = trend.label?.includes('同比') ? '同比' as const : 
-                       trend.label?.includes('环比') ? '环比' as const : '同比' as const;
-    
-    onAttributionClick({
-      metric: metric || label,
-      changeValue: trend.value,
-      changeDirection: trend.direction === 'up' ? 'up' : 'down',
-      changeType,
-      triggerRect: rect
-    });
-  };
-  
-  return (
-    <div className="relative group">
-      <button
-        onClick={handleClick}
-        onMouseEnter={() => {
-          setTimeout(() => setShowTooltip(true), 200);
-        }}
-        onMouseLeave={() => {
-          setShowTooltip(false);
-        }}
-        className={clsx(
-          'relative inline-flex items-center justify-center h-7 px-2.5 rounded-full transition-all duration-200',
-          'text-[#007AFF] hover:text-white',
-          'bg-transparent hover:bg-[#007AFF]',
-          'border border-[#007AFF]/30 hover:border-[#007AFF]',
-          'active:scale-95',
-          'cursor-pointer shadow-sm hover:shadow-md',
-          'text-[12px] font-medium'
-        )}
-        aria-label="归因分析"
-      >
-        归因
-        
-        {/* 悬停提示 */}
-        <AnimatePresence>
-          {showTooltip && (
-            <motion.div
-              initial={{ opacity: 0, y: 4, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 whitespace-nowrap pointer-events-none"
-            >
-              <div className="bg-[#1d1d1f] text-white text-[12px] px-3 py-2 rounded-lg shadow-xl">
-                <div className="font-medium">
-                  想知道为何{trend.direction === 'up' ? '涨了' : '降了'}{trend.value}%？点击进行归因
-                </div>
-                {/* 小箭头 */}
-                <div className="absolute left-full top-1/2 -translate-y-1/2 w-0 h-0 border-l-[6px] border-l-[#1d1d1f] border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent"></div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </button>
-    </div>
-  );
-};
+// 归因分析触发组件（已移除，功能已集成到按钮中）
 
 // 空状态KPI卡片
 const EmptyStateCard = ({ 
@@ -455,6 +377,8 @@ interface KPIGroupProps {
   items: KPIData[];
   delay?: number;
   onAttributionClick?: (data: { metric: string; changeValue: number; changeDirection: 'up' | 'down'; changeType: '同比' | '环比'; triggerRect?: DOMRect }) => void;
+  blockData?: ContentBlock;
+  onAddToDashboard?: (block: ContentBlock) => void;
 }
 
 export const KPIGroup = ({ items, delay = 0, onAttributionClick, blockData, onAddToDashboard }: KPIGroupProps) => {

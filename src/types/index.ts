@@ -112,7 +112,11 @@ export type ComponentType =
   | 'navigation-bar' // 导航栏
   | 'navigation-button' // 导航按钮
   | 'command-card' // 指令卡片
-  | 'rich-text'; // 富文本
+  | 'rich-text' // 富文本
+  | 'qna' // 问答卡片
+  | 'iframe' // iframe 嵌入
+  | 'web' // 网页卡片
+  | 'empty'; // 空白卡片
 
 // 组件样式配置
 export interface BlockStyle {

@@ -7,14 +7,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 8080;
+const PORT = process.env.PORT || 8888;
 const HOST = '0.0.0.0';
 const DIST_DIR = path.join(__dirname, 'dist');
 
 // DeepSeek API 配置
 const DEEPSEEK_API_URL = 'https://api.deepseek.com';
 // 优先使用环境变量，如果没有则使用默认值（用于开发环境）
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-6e48c170ae03465ba5748768215bb3ba';
+// 最新 API Key 参考: https://api-docs.deepseek.com/zh-cn/
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-b1551c8a25d042a7ae8b0166820249a8';
 
 // MIME类型映射
 const mimeTypes = {
@@ -223,7 +224,7 @@ server.listen(PORT, HOST, () => {
   console.log('========================================');
   console.log(`服务器已启动: http://${HOST}:${PORT}`);
   console.log(`本地访问: http://localhost:${PORT}`);
-  console.log(`局域网访问: http://192.200.238.15:${PORT}`);
+  console.log(`外部访问: http://47.94.146.148:${PORT}`);
   console.log('========================================');
   console.log('按 Ctrl+C 停止服务器');
   console.log('========================================');

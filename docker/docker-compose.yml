@@ -7,7 +7,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: smart-qa-web
     ports:
-      - "80:80"  # 左边80是服务器端口，右边80是容器端口
+      - "8888:80"  # 左边8888是服务器端口，右边80是容器端口
     restart: unless-stopped
     networks:
       - smart-qa-network

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Folder, Calendar, BarChart3, LineChart, Check, ChevronDown } from 'lucide-react';
+import { X, Folder, Calendar, BarChart3, LineChart, Check } from 'lucide-react';
 import clsx from 'clsx';
 
 export interface QueryDimensions {
@@ -38,7 +38,6 @@ export const QueryConfirmationDialog: React.FC<QueryConfirmationDialogProps> = (
   onCancel,
 }) => {
   const [localDimensions, setLocalDimensions] = useState<QueryDimensions>(dimensions);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   const handleStoreToggle = (store: string) => {
     setLocalDimensions(prev => {
@@ -289,4 +288,6 @@ export const QueryConfirmationDialog: React.FC<QueryConfirmationDialogProps> = (
     </AnimatePresence>
   );
 };
+
+
 

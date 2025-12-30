@@ -1594,27 +1594,8 @@ const AIDashboard = () => {
                           item={filteredItem} 
                           onRemove={handleRemove}
                           onEditBlock={handleEditBlock}
-                          onEditTitle={(itemId, title) => setEditingTitle({ itemId, title })}
+                          onEditTitle={(itemId: string, title: string) => setEditingTitle({ itemId, title })}
                           onAddToDashboard={undefined}
-                          onViewSQL={(itemId) => {
-                            const mockSQL = `SELECT 
-  region,
-  SUM(sales_amount) as total_sales,
-  COUNT(DISTINCT order_id) as order_count
-FROM sales_data
-WHERE date >= '2024-01-01' AND date <= '2024-12-31'
-GROUP BY region
-ORDER BY total_sales DESC;`;
-                            const mockLogicForm = JSON.stringify({
-                              metric: 'sales_amount',
-                              dimensions: ['region'],
-                              filters: {
-                                date: { from: '2024-01-01', to: '2024-12-31' }
-                              }
-                            }, null, 2);
-                            const mockTokens = ['2024年', 'P001', '分省市', '总销售额'];
-                            setViewingSQL({ itemId, sql: mockSQL, logicForm: mockLogicForm, tokens: mockTokens });
-                          }}
                           onExplore={(it) => { 
                             setInputValue(`深度洞察：${it.title}`); 
                             setActiveSidePanel('chat');

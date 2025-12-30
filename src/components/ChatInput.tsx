@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Send, Mic, Paperclip, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

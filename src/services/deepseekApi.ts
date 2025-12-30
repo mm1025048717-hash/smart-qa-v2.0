@@ -734,8 +734,12 @@ The Team：
 - 地址：上海市浦东新区张江高科
 `;
 
-// 使用 Vite 代理绕过 CORS 限制
-const DEEPSEEK_BASE_URL = '/api/deepseek';
+// API 基础 URL
+// 生产环境：优先使用代理服务（Cloudflare Worker），如果没有配置则直接调用（可能遇到 CORS）
+// 开发环境：使用 Vite 代理
+const DEEPSEEK_BASE_URL = import.meta.env.PROD 
+  ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || 'https://api.deepseek.com')  // 生产环境：优先使用代理，否则直接调用
+  : '/api/deepseek';  // 开发环境使用 Vite 代理
 
 // ==========================================
 // API 稳定性配置

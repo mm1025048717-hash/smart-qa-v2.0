@@ -19,7 +19,7 @@ interface AmbiguousSelectionBubbleProps {
 
 export const AmbiguousSelectionBubble: React.FC<AmbiguousSelectionBubbleProps> = ({
   type,
-  originalQuery,
+  originalQuery: _originalQuery, // 保留参数以符合接口，但标记为未使用
   options,
   promptText,
   onConfirm,
@@ -95,4 +95,6 @@ export const AmbiguousSelectionBubble: React.FC<AmbiguousSelectionBubbleProps> =
     </div>
   );
 };
+
+
 

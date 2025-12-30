@@ -67,12 +67,10 @@ pnpm-lock.yaml
 # Temporary documentation files (deployment notes)
 紧急修复*.md
 *修复*.md
-*部署*.md
 *清理*.md
 解决*.md
 UPDATE_*.md
-宝塔*.md
-快速*.md
+# 保留部署文档：部署说明.md, 快速部署指南.md, 快速部署CloudflareWorker.md, README_DEPLOYMENT.md
 
 # Server files (if not needed in repo)
 # server.js

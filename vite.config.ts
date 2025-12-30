@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  // GitHub Pages 部署需要设置 base 路径
-  base: process.env.NODE_ENV === 'production' ? '/smart-qa-v2.0/' : '/',
+  // 部署到自定义服务器使用根路径
+  base: '/',
   server: {
     port: 3000,
     host: '0.0.0.0',
@@ -17,6 +17,10 @@ export default defineConfig({
         secure: true,
       }
     }
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   }
 })
 

@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Send, Globe, Terminal, Plus, MessageSquare, ExternalLink, Command, MoreHorizontal, Layout, Type } from 'lucide-react';
-import clsx from 'clsx';
+import { useState } from 'react';
+import { Send, Globe, Terminal, Plus, MessageSquare, ExternalLink, MoreHorizontal, Layout, Type } from 'lucide-react';
 
 // --- 1. 问答卡片 (Q&A Card) ---
 interface QnACardProps {

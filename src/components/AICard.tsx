@@ -1,5 +1,5 @@
 import { DashboardItem } from '../services/dashboardService';
-import { ContentBlock } from '../types';
+import { ContentBlock, ComponentType } from '../types';
 import { PrimaryKPICard, KPIGroup } from './KPICard';
 import { SmartChart } from './Charts';
 import { 
@@ -14,7 +14,7 @@ import {
   TextCard, 
   EmptyCard 
 } from './FunctionalCards';
-import { Trash2, Maximize2, GripVertical, Edit2, Code, AlertCircle } from 'lucide-react';
+import { Trash2, Maximize2, Edit2 } from 'lucide-react';
 import clsx from 'clsx';
 
 interface AICardProps {
@@ -23,7 +23,6 @@ interface AICardProps {
   onExplore: (item: DashboardItem) => void;
   onEditBlock?: (itemId: string, blockId: string, block: ContentBlock) => void;
   onEditTitle?: (itemId: string, title: string) => void;
-  onViewSQL?: (itemId: string) => void;
   onAddToDashboard?: (block: ContentBlock) => void;
   isEditMode?: boolean;
   viewPreferences?: {
@@ -38,7 +37,6 @@ export const AICard = ({
   onExplore, 
   onEditBlock, 
   onEditTitle, 
-  onViewSQL,
   onAddToDashboard,
   isEditMode = false, 
   viewPreferences = { showTitle: true, showDataSource: false } 
@@ -61,7 +59,8 @@ export const AICard = ({
     }
 
     try {
-      switch (block.type) {
+      const blockType = block.type as ComponentType;
+      switch (blockType) {
         case 'kpi':
           if (!block.data) return null;
           return <div className="h-full flex items-center"><div className="w-full"><PrimaryKPICard data={block.data as any} blockData={block} onAddToDashboard={onAddToDashboard} /></div></div>;
@@ -107,27 +106,11 @@ export const AICard = ({
         case 'empty':
           return <EmptyCard />;
         
-        case 'rich-text':
+        case 'rich-text': {
           // 暂时使用 TextCard 兼容
-          return <TextCard data={typeof block.data === 'string' ? block.data : JSON.stringify(block.data)} />;
-          return (
-            <div 
-              className="text-sm leading-relaxed p-4 rounded-lg border prose prose-sm max-w-none"
-              style={{
-                backgroundColor: block.style?.backgroundColor || '#FFFFFF',
-                borderColor: block.style?.borderColor || '#E5E7EB',
-                color: block.style?.textColor || '#111827',
-                fontSize: block.style?.fontSize || '14px',
-                padding: block.style?.padding || '16px',
-                borderRadius: block.style?.borderRadius || '12px',
-                lineHeight: block.style?.lineHeight || '1.7',
-              }}
-            >
-              {content.split('\n').map((line: string, i: number) => (
-                <p key={i} className="mb-2 last:mb-0">{line || '\u00A0'}</p>
-              ))}
-            </div>
-          );
+          const textContent = typeof block.data === 'string' ? block.data : JSON.stringify(block.data);
+          return <TextCard data={textContent} />;
+        }
         
         default:
           // 未知类型 - 显示调试信息

@@ -152,10 +152,9 @@ export function parseQueryDimensions(query: string): QueryDimensions {
   // 解析门店范围
   const selectedStores: string[] = [];
   
-  STORE_PATTERNS.forEach(({ pattern, value, label }) => {
+  STORE_PATTERNS.forEach(({ pattern, label }) => {
     const match = query.match(pattern);
     if (match) {
-      const storeValue = typeof value === 'function' ? value(match[0]) : value;
       const storeLabel = typeof label === 'function' ? label(match[0]) : label;
       if (!selectedStores.includes(storeLabel) && dynamicOptions.storeOptions.includes(storeLabel)) {
         selectedStores.push(storeLabel);
@@ -171,7 +170,7 @@ export function parseQueryDimensions(query: string): QueryDimensions {
   // 解析时间范围
   let selectedTime = dynamicOptions.timeOptions[0];
   
-  TIME_PATTERNS.forEach(({ pattern, value, label }) => {
+  TIME_PATTERNS.forEach(({ pattern, label }) => {
     if (pattern.test(query) && dynamicOptions.timeOptions.includes(label)) {
       selectedTime = label;
     }
@@ -180,7 +179,7 @@ export function parseQueryDimensions(query: string): QueryDimensions {
   // 解析指标
   const selectedMetrics: string[] = [];
   
-  METRIC_PATTERNS.forEach(({ pattern, value, label }) => {
+  METRIC_PATTERNS.forEach(({ pattern, label }) => {
     if (pattern.test(query) && dynamicOptions.metricOptions.includes(label)) {
       if (!selectedMetrics.includes(label)) {
         selectedMetrics.push(label);
@@ -196,7 +195,7 @@ export function parseQueryDimensions(query: string): QueryDimensions {
   // 解析展示方式
   let selectedDisplay = dynamicOptions.displayOptions[1]; // 默认第二个选项
   
-  DISPLAY_PATTERNS.forEach(({ pattern, value, label }) => {
+  DISPLAY_PATTERNS.forEach(({ pattern, label }) => {
     if (pattern.test(query) && dynamicOptions.displayOptions.includes(label)) {
       selectedDisplay = label;
     }
@@ -738,7 +737,6 @@ export function generateAmbiguousFixedResponse(
   } else if (type === 'employee') {
     // 同名员工场景 - 根据原始查询生成不同的回复
     const selectedEmployee = selectedValues[0];
-    const employeeName = selectedEmployee.split('-')[0]; // 提取姓名部分
     
     // 从原始查询中提取时间信息
     let employeeTimeText = '';

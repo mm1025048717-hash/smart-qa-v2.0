@@ -38,9 +38,16 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # 如果需要在构建时使用环境变量，可以在这里设置
-          # VITE_DEEPSEEK_API_KEY: ${{ secrets.VITE_DEEPSEEK_API_KEY }}
+          # 在构建时注入 API Key（从 GitHub Secrets 读取）
+          VITE_DEEPSEEK_API_KEY: ${{ secrets.VITE_DEEPSEEK_API_KEY }}
+          # 可选：如果配置了 Cloudflare Worker 代理，使用代理 URL
+          # 如果未配置此 Secret，构建仍会成功（前端会使用直接调用方式）
+          VITE_DEEPSEEK_PROXY_URL: ${{ secrets.VITE_DEEPSEEK_PROXY_URL }}
           NODE_ENV: production
+          # 注意：vite.config.ts 中 base 已设置为 '/'，适用于：
+          # 1. 自定义域名部署（推荐）
+          # 2. 自定义服务器部署（如 http://47.94.146.148:8888/）
+          # 如果部署到 GitHub Pages 子路径，需要修改 vite.config.ts 中的 base
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
