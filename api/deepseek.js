@@ -14,11 +14,18 @@ export default async function handler(req, res) {
   const DEEPSEEK_API_URL = 'https://api.deepseek.com';
 
   try {
-    // 获取请求路径，去掉 /api/deepseek 前缀
-    const path = req.url.replace(/^\/api\/deepseek/, '') || '/v1/chat/completions';
+    // 获取请求路径
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const path = url.pathname.replace(/^\/api\/deepseek/, '') || '/v1/chat/completions';
     
     // 构建目标 URL
     const targetUrl = `${DEEPSEEK_API_URL}${path}`;
+
+    // 获取请求体
+    let body = null;
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      body = JSON.stringify(req.body || {});
+    }
 
     // 转发请求到 DeepSeek API
     const response = await fetch(targetUrl, {
@@ -26,9 +33,8 @@ export default async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-        ...req.headers
       },
-      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined
+      body: body
     });
 
     // 获取响应数据
