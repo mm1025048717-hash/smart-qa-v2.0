@@ -11,8 +11,31 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // 优先使用环境变量，确保 API Key 正确
   const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || 'sk-b1551c8a25d042a7ae8b0166820249a8';
   const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+  // 调试：检查 API Key（不输出完整 key，只输出前4位和后4位）
+  const keyPrefix = DEEPSEEK_API_KEY ? DEEPSEEK_API_KEY.substring(0, 7) : 'missing';
+  const keySuffix = DEEPSEEK_API_KEY ? DEEPSEEK_API_KEY.substring(DEEPSEEK_API_KEY.length - 6) : '';
+  console.log('API Key check:', {
+    hasEnvVar: !!process.env.DEEPSEEK_API_KEY,
+    hasViteVar: !!process.env.VITE_DEEPSEEK_API_KEY,
+    keyPrefix,
+    keySuffix,
+    keyLength: DEEPSEEK_API_KEY ? DEEPSEEK_API_KEY.length : 0
+  });
+
+  // 验证 API Key 格式
+  if (!DEEPSEEK_API_KEY || !DEEPSEEK_API_KEY.startsWith('sk-') || DEEPSEEK_API_KEY.length < 20) {
+    console.error('Invalid API Key format!');
+    res.status(500);
+    res.setHeader('Content-Type', 'application/json');
+    return res.json({ 
+      error: 'API Key not configured correctly',
+      message: 'Please set DEEPSEEK_API_KEY environment variable in Vercel'
+    });
+  }
 
   try {
     // 获取请求体（Vercel 会自动解析 JSON）
