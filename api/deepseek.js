@@ -59,25 +59,22 @@ export default async function handler(req, res) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
-      const pump = async () => {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              res.end();
-              break;
-            }
-            
-            const chunk = decoder.decode(value, { stream: true });
-            res.write(chunk);
+      // 修复：使用 await 等待流式传输完成
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            res.end();
+            break;
           }
-        } catch (error) {
-          console.error('Stream error:', error);
-          res.end();
+          
+          const chunk = decoder.decode(value, { stream: true });
+          res.write(chunk);
         }
-      };
-
-      pump();
+      } catch (error) {
+        console.error('Stream error:', error);
+        res.end();
+      }
     } else {
       const data = await response.text();
       res.send(data);
