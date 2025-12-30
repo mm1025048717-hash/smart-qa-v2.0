@@ -315,12 +315,11 @@ function App() {
     const userMessage = createUserMessage(query, currentAgentId);
     setMessages(prev => [...prev, userMessage]);
 
-    // 检查是否需要多度确认（如果 sessionStorage 中有 skipQueryConfirmation 标记，则跳过）
-    // 或者如果是简单问候语，直接跳过确认
-    const skipConfirmation = sessionStorage.getItem('skipQueryConfirmation') === 'true';
-    const isSimpleGreeting = /^(你好|hello|hi|嗨|在吗|在|你是谁|介绍一下|介绍一下自己)$/i.test(query.trim());
+    // 完全禁用查询确认对话框，所有对话直接调用大模型
+    // 用户明确要求使用大模型进行自然对话，不再显示确认对话框
+    const skipConfirmation = true; // 强制跳过所有确认对话框
     
-    if (!skipConfirmation && !isSimpleGreeting) {
+    if (false) { // 禁用整个确认逻辑块
       try {
         const { 
           parseQueryDimensions, 
