@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   // 部署到自定义服务器使用根路径
-  base: '/',
+  // Vercel 部署时确保使用根路径
+  base: process.env.VERCEL ? '/' : '/',
   server: {
     port: 3000,
     host: '0.0.0.0',
