@@ -108,7 +108,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange }: Simp
             欢迎来到
           </h1>
           <h2 className="text-5xl sm:text-6xl md:text-7xl font-semibold text-[#007AFF] tracking-[-0.02em] leading-[1.05]">
-            亿问 dataagent
+            亿问 Data Agent
           </h2>
         </motion.div>
 
