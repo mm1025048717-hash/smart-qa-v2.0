@@ -55,7 +55,7 @@ function App() {
   // 业务场景相关状态
   const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false);
   const [, setActiveScenario] = useState<BusinessScenario | null>(null);
-  const [currentPage] = useState<'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list'>(() => {
+  const [currentPage, setCurrentPage] = useState<'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list'>(() => {
     // 初始化时检查URL参数
     const params = new URLSearchParams(window.location.search);
     const page = params.get('page');
@@ -72,6 +72,47 @@ function App() {
     }
     return 'main';
   });
+
+  // 监听 URL 变化，更新 currentPage
+  useEffect(() => {
+    const updatePageFromURL = () => {
+      const params = new URLSearchParams(window.location.search);
+      const page = params.get('page');
+      const dashboardId = params.get('id');
+      const addAction = params.get('add');
+      
+      let newPage: 'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' = 'main';
+      
+      if (page === 'mobile') newPage = 'mobile';
+      else if (page === 'gesture') newPage = 'gesture';
+      else if (page === 'attribution') newPage = 'attribution';
+      else if (page === 'dashboard-list') newPage = 'dashboard-list';
+      else if (page === 'dashboard') {
+        newPage = (dashboardId || addAction) ? 'dashboard' : 'dashboard-list';
+      }
+      
+      setCurrentPage(prevPage => {
+        if (prevPage !== newPage) {
+          return newPage;
+        }
+        return prevPage;
+      });
+    };
+
+    // 初始检查
+    updatePageFromURL();
+
+    // 监听 popstate 事件（浏览器前进/后退）
+    window.addEventListener('popstate', updatePageFromURL);
+    
+    // 监听 hashchange 事件（如果使用 hash 路由）
+    window.addEventListener('hashchange', updatePageFromURL);
+
+    return () => {
+      window.removeEventListener('popstate', updatePageFromURL);
+      window.removeEventListener('hashchange', updatePageFromURL);
+    };
+  }, [currentPage]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentAgentId, setCurrentAgentId] = useState<string>(AGENTS[0].id);
   const currentAgent = getAgentById(currentAgentId);

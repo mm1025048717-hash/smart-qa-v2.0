@@ -207,12 +207,17 @@ const DashboardList = () => {
         <div className="max-w-[1600px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold text-[#111827]">看板管理</h1>
-            <a
-              href="?page=main"
-              className="text-sm text-gray-600 hover:text-[#0055FF] transition-colors"
+            <button
+              onClick={() => {
+                // 使用 pushState 更新 URL，不刷新页面
+                window.history.pushState({}, '', '?page=main');
+                // 手动触发 popstate 事件，让 App.tsx 监听到 URL 变化
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="text-sm text-gray-600 hover:text-[#0055FF] transition-colors cursor-pointer"
             >
               返回 SmartQA
-            </a>
+            </button>
           </div>
         </div>
       </header>
