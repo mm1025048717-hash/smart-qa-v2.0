@@ -2377,8 +2377,12 @@ export async function chatCompletion(
       stream: false,
       temperature: 0.6,  // 降低温度，加快生成速度
       // 不限制token输出，让模型完整输出
-      // 启用联网搜索功能
-      ...(ENABLE_WEB_SEARCH ? { enable_search: true } : {}),
+      // ⚠️ DeepSeek API 不支持 web_search 工具类型
+      // API 错误: unknown variant 'web_search', expected 'function'
+      // 如果确实需要联网搜索，需要：
+      // 1. 使用支持联网搜索的其他 API（如 OpenAI、Claude）
+      // 2. 或者在前端/后端集成第三方搜索 API（如 Google Search API）
+      // 3. 或者使用其他方式实现联网搜索功能
     }),
   });
 
@@ -2476,8 +2480,12 @@ export async function chatCompletionStream(
             temperature: 0.8,  // 提高温度，增加回复多样性，避免每次都使用相同模板
             // 不限制token输出，让模型完整输出
             top_p: 0.8,  // 降低top_p，加快采样速度
-            // 启用联网搜索功能
-            ...(shouldEnableSearch ? { enable_search: true } : {}),
+            // ⚠️ DeepSeek API 不支持 web_search 工具类型
+            // API 错误: unknown variant 'web_search', expected 'function'
+            // 如果确实需要联网搜索，需要：
+            // 1. 使用支持联网搜索的其他 API（如 OpenAI、Claude）
+            // 2. 或者在前端/后端集成第三方搜索 API（如 Google Search API）
+            // 3. 或者使用其他方式实现联网搜索功能
           }),
           signal: finalSignal,
         });

@@ -8,8 +8,6 @@
 |------|------|------|
 | `立即修复API密钥.bat` | 修复后端 server.js 中的 API Key | 根目录 |
 | `修复前端API密钥.bat` | 修复前端环境变量配置 | 根目录 |
-| `自动修复API密钥.bat` | 自动提取并配置 API Key（调用 Python 脚本） | 根目录 |
-| `自动修复API密钥.py` | Python 自动化脚本，提取并配置 API Key | 根目录 |
 | `验证API配置.bat` | 验证 API Key 配置是否正确 | 根目录 |
 | `打开获取API密钥.bat` | 打开 API Key 获取页面 | 根目录 |
 
@@ -27,8 +25,8 @@
 |------|------|------|
 | `修复WebSocket连接.bat` | 修复 WebSocket 连接问题 | 根目录 |
 | `诊断语音服务.bat` | 诊断语音服务问题 | 根目录 |
-| `voice-backend/启动服务.bat` | 启动语音服务（带端口检查） | voice-backend/ |
 | `voice-backend/start.bat` | 标准启动脚本 | voice-backend/ |
+| `voice-backend/start.ps1` | PowerShell 启动脚本 | voice-backend/ |
 | `voice-backend/完成所有配置.bat` | 全自动配置（推荐首次使用） | voice-backend/ |
 
 ### 部署脚本
@@ -93,7 +91,7 @@
 
 - **立即修复API密钥.bat**: 更新 `server.js` 中的 API Key（用于后端代理）
 - **修复前端API密钥.bat**: 创建/更新 `.env.local` 文件（用于前端直接调用）
-- **自动修复API密钥.bat**: 自动从 `server.js` 提取 API Key 并配置到前端和后端
+- **验证API配置.bat**: 验证 API Key 配置是否正确
 
 ### 启动脚本
 

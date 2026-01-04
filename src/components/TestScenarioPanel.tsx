@@ -9,7 +9,7 @@ import {
 import clsx from 'clsx';
 
 interface TestScenarioPanelProps {
-  onQuestionSelect: (question: string) => void;
+  onQuestionSelect: (question: string, options?: { forceWebSearch?: boolean }) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
@@ -221,6 +221,21 @@ const TEST_QUESTIONS: QuestionCategory[] = [
     ]
   },
   {
+    id: 'web-search',
+    name: '🌐 联网搜索测试',
+    description: '需要联网搜索的问题',
+    questions: [
+      { id: 'web-01', text: '搜索最新的AI行业报告', desc: '行业报告搜索' },
+      { id: 'web-02', text: '查找一下ChatGPT的最新动态', desc: '最新资讯搜索' },
+      { id: 'web-03', text: '帮我搜索2024年电商市场分析', desc: '市场分析搜索' },
+      { id: 'web-04', text: '找一下Python的最新教程', desc: '技术文档搜索' },
+      { id: 'web-05', text: '搜索一下竞争对手的定价策略', desc: '竞品分析搜索' },
+      { id: 'web-06', text: '查找最新的政策法规', desc: '政策法规搜索' },
+      { id: 'web-07', text: '搜索实时股票行情', desc: '实时数据搜索' },
+      { id: 'web-08', text: '帮我找一下行业趋势报告', desc: '趋势报告搜索' },
+    ]
+  },
+  {
     id: 'l2-attr',
     name: '🔍 归因分析专区',
     description: '定制化预设答案（不走大模型）',
@@ -306,37 +321,37 @@ const CategoryItem = ({
       <button
         onClick={onToggle}
         className={clsx(
-          'w-full flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all duration-300 group',
+          'w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 group',
           isExpanded 
             ? 'bg-[#F0F7FF] shadow-sm border border-[#007AFF]/10' 
             : 'bg-white hover:bg-[#F8FAFC] border border-transparent shadow-sm'
         )}
       >
-        <div className="flex-1 text-left">
+        <div className="flex-1 text-left min-w-0">
           <div className={clsx(
-            "text-[15px] transition-colors duration-300",
+            "text-[13px] transition-colors duration-300 truncate",
             isExpanded ? "text-[#007AFF] font-semibold" : "text-[#1d1d1f] font-medium"
           )}>
             {category.name}
           </div>
           <div className={clsx(
-            "text-[12px] mt-0.5 transition-colors duration-300",
+            "text-[11px] mt-0.5 transition-colors duration-300 truncate",
             isExpanded ? "text-[#007AFF]/70" : "text-[#86868b]"
           )}>
             {category.description}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {!isExpanded && (
-            <span className="text-[11px] text-[#007AFF] bg-[#007AFF]/5 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-[10px] text-[#007AFF] bg-[#007AFF]/5 px-1.5 py-0.5 rounded-full font-medium">
               {category.questions.length}
             </span>
           )}
           <div className={clsx(
-            "w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300",
+            "w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300",
             isExpanded ? "bg-[#007AFF] text-white rotate-180" : "bg-[#F5F5F7] text-[#86868b] group-hover:bg-[#007AFF]/10 group-hover:text-[#007AFF]"
           )}>
-            <ChevronDown className="w-3.5 h-3.5" />
+            <ChevronDown className="w-3 h-3" />
           </div>
         </div>
       </button>
@@ -349,33 +364,41 @@ const CategoryItem = ({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="pt-2 pb-2 px-1 space-y-1">
-              {category.questions.map((q) => (
-                <button
-                  key={q.id}
-                  onClick={() => onSelect(q.text)}
-                  className={clsx(
-                    "w-full text-left px-4 py-3 rounded-xl transition-all group relative",
-                    "hover:bg-[#007AFF]/5 hover:shadow-sm border border-transparent hover:border-[#007AFF]/5",
-                    "flex items-start gap-3"
-                  )}
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#007AFF]/20 group-hover:bg-[#007AFF] transition-colors mt-2" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] text-[#1d1d1f] group-hover:text-[#007AFF] transition-colors font-medium truncate">
-                      {q.text}
+            <div className="pt-1.5 pb-1.5 px-0.5 space-y-0.5">
+              {category.questions.map((q) => {
+                const isWebSearch = category.id === 'web-search';
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => onSelect(q.text, { forceWebSearch: isWebSearch })}
+                    className={clsx(
+                      "w-full text-left px-3 py-2 rounded-lg transition-all group relative",
+                      "hover:bg-[#007AFF]/5 hover:shadow-sm border border-transparent hover:border-[#007AFF]/5",
+                      "flex items-start gap-2"
+                    )}
+                  >
+                    <div className={clsx(
+                      "w-1 h-1 rounded-full transition-colors mt-1.5 flex-shrink-0",
+                      isWebSearch ? "bg-[#34C759]/30 group-hover:bg-[#34C759]" : "bg-[#007AFF]/20 group-hover:bg-[#007AFF]"
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] text-[#1d1d1f] group-hover:text-[#007AFF] transition-colors font-medium leading-relaxed">
+                        {q.text}
+                      </div>
+                      {q.desc && (
+                        <div className="text-[10px] text-[#86868b] group-hover:text-[#007AFF]/60 transition-colors mt-0.5">
+                          {q.desc}
+                        </div>
+                      )}
                     </div>
-                    {q.desc && (
-                      <div className="text-[11px] text-[#86868b] group-hover:text-[#007AFF]/60 transition-colors mt-0.5 truncate">
-                        {q.desc}
+                    {isWebSearch && (
+                      <div className="opacity-60 group-hover:opacity-100 transition-opacity text-[#34C759] flex-shrink-0 mt-0.5">
+                        <Search className="w-3 h-3" />
                       </div>
                     )}
-                  </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[#007AFF]">
-                    <Search className="w-3 h-3" />
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -406,63 +429,63 @@ export const TestScenarioPanel = ({ onQuestionSelect, isOpen, onToggle }: TestSc
   return (
     <motion.div
       initial={{ width: 0, opacity: 0 }}
-      animate={{ width: 340, opacity: 1 }}
+      animate={{ width: 260, opacity: 1 }}
       exit={{ width: 0, opacity: 0 }}
       className="h-full bg-white shadow-2xl border-l border-[#007AFF]/5 flex flex-col flex-shrink-0 z-50 relative"
     >
       {/* 头部 - 纯白通透 */}
-      <div className="px-6 py-5 flex items-center justify-between bg-white sticky top-0 z-20">
+      <div className="px-4 py-3.5 flex items-center justify-between bg-white sticky top-0 z-20 border-b border-[#E5E5EA]/30">
         <div>
-          <h3 className="font-bold text-[#1d1d1f] text-[18px] tracking-tight flex items-center gap-2">
-            <span className="w-1 h-4 bg-[#007AFF] rounded-full"></span>
+          <h3 className="font-bold text-[#1d1d1f] text-[15px] tracking-tight flex items-center gap-1.5">
+            <span className="w-0.5 h-3.5 bg-[#007AFF] rounded-full"></span>
             测试用例
           </h3>
-          <p className="text-[11px] text-[#86868b] font-medium mt-1 pl-3">
+          <p className="text-[10px] text-[#86868b] font-medium mt-0.5 pl-2.5">
             全量覆盖 <span className="text-[#d2d2d7] mx-1">|</span> 精确匹配
           </p>
         </div>
         <button
           onClick={onToggle}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F7] text-[#86868b] transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F5F5F7] text-[#86868b] transition-colors"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* 搜索框 - 悬浮质感 */}
-      <div className="px-5 pb-4">
+      <div className="px-4 pb-3">
         <div className="relative group">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b] group-focus-within:text-[#007AFF] transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#86868b] group-focus-within:text-[#007AFF] transition-colors" />
           <input
             type="text"
             placeholder="搜索测试场景..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-[#F5F5F7] rounded-xl border border-transparent focus:bg-white focus:border-[#007AFF]/20 focus:ring-4 focus:ring-[#007AFF]/5 transition-all outline-none placeholder:text-[#86868b]"
+            className="w-full pl-9 pr-3 py-2 text-[12px] bg-[#F5F5F7] rounded-lg border border-transparent focus:bg-white focus:border-[#007AFF]/20 focus:ring-2 focus:ring-[#007AFF]/5 transition-all outline-none placeholder:text-[#86868b]"
           />
         </div>
       </div>
 
       {/* 统计 - 蓝白胶囊 */}
-      <div className="px-5 pb-2">
-        <div className="flex items-center justify-between bg-[#F0F7FF] rounded-xl p-3 border border-[#007AFF]/5">
+      <div className="px-4 pb-2">
+        <div className="flex items-center justify-between bg-[#F0F7FF] rounded-lg p-2 border border-[#007AFF]/5">
           <div className="flex flex-col items-center flex-1 border-r border-[#007AFF]/10">
-            <span className="text-[16px] font-bold text-[#007AFF]">{totalQuestions}</span>
-            <span className="text-[10px] text-[#007AFF]/60 font-medium">测试点</span>
+            <span className="text-[14px] font-bold text-[#007AFF]">{totalQuestions}</span>
+            <span className="text-[9px] text-[#007AFF]/60 font-medium">测试点</span>
           </div>
           <div className="flex flex-col items-center flex-1 border-r border-[#007AFF]/10">
-            <span className="text-[16px] font-bold text-[#1d1d1f]">{TEST_QUESTIONS.length}</span>
-            <span className="text-[10px] text-[#86868b] font-medium">场景分类</span>
+            <span className="text-[14px] font-bold text-[#1d1d1f]">{TEST_QUESTIONS.length}</span>
+            <span className="text-[9px] text-[#86868b] font-medium">场景分类</span>
           </div>
           <div className="flex flex-col items-center flex-1">
-            <span className="text-[16px] font-bold text-[#34C759]">100%</span>
-            <span className="text-[10px] text-[#34C759]/80 font-medium">覆盖率</span>
+            <span className="text-[14px] font-bold text-[#34C759]">100%</span>
+            <span className="text-[9px] text-[#34C759]/80 font-medium">覆盖率</span>
           </div>
         </div>
       </div>
 
       {/* 列表区域 - 纯净背景 */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1 scrollbar-hide bg-white">
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 scrollbar-hide bg-white">
         {TEST_QUESTIONS
           .filter(category => {
             if (!searchQuery) return true;
@@ -505,7 +528,7 @@ export const TestScenarioPanel = ({ onQuestionSelect, isOpen, onToggle }: TestSc
             );
           })}
         
-        <div className="h-8" />
+        <div className="h-4" />
       </div>
     </motion.div>
   );

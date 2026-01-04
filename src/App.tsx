@@ -350,7 +350,7 @@ function App() {
   };
 
   // 处理发送消息
-  const handleSend = async (query: string, forceWebSearch?: boolean) => {
+  const handleSend = async (query: string, forceWebSearch?: boolean, skipPresetResponse?: boolean) => {
     if (!query.trim() || isLoading) return;
 
     // 先添加用户消息
@@ -534,11 +534,11 @@ function App() {
     }
 
     // 继续原有的发送逻辑
-    await handleSendInternal(query, forceWebSearch);
+    await handleSendInternal(query, forceWebSearch, skipPresetResponse);
   };
 
   // 内部发送消息处理（原有逻辑）
-  const handleSendInternal = async (query: string, forceWebSearch?: boolean) => {
+  const handleSendInternal = async (query: string, forceWebSearch?: boolean, skipPresetResponse?: boolean) => {
     if (!query.trim() || isLoading) return;
 
     // 🔥 优先检测切换 Agent 意图（使用增强版意图识别引擎）
@@ -848,9 +848,9 @@ function App() {
     }
 
     // 【测试用例精确匹配】其次检查是否为旧版测试用例
-    // 这样可以确保测试用例的响应是确定性的，不依赖大模型，符合"精确匹配模式"
+    // 如果 skipPresetResponse 为 true（从测试用例面板点击），强制走大模型
     // ⚠️ 但是知识库查询和模糊意图必须走大模型或反问，不能使用预设响应
-    if (hasMatchedScenario(query) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isVague) {
+    if (!skipPresetResponse && hasMatchedScenario(query) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isVague) {
       console.log('📋 匹配到测试用例，使用预设响应', { query, intentType: intentResult.type });
       await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
       const narrativePresetResponse = generateNarrativeResponse(query);
@@ -861,6 +861,8 @@ function App() {
       return;
     } else if (hasMatchedScenario(query) && intentResult.type === 'knowledge_query') {
       console.log('📚 知识库查询跳过测试用例匹配，强制走大模型', { query });
+    } else if (skipPresetResponse) {
+      console.log('🤖 测试用例面板点击，强制调用大模型', { query });
     }
 
     // 【已禁用】不再自动触发工作流，所有问题都先经过大模型理解
@@ -2262,7 +2264,7 @@ function App() {
               <TestScenarioPanel
                 isOpen={testPanelOpen}
                 onToggle={() => setTestPanelOpen(!testPanelOpen)}
-                onQuestionSelect={handleSend}
+                onQuestionSelect={(question, options) => handleSend(question, options?.forceWebSearch, true)}
               />
             </div>
           </main>
