@@ -1,0 +1,6 @@
+pipecat-ai[websocket]
+python-dotenv
+loguru
+websockets
+
+

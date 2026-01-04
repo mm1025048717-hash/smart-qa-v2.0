@@ -63,7 +63,12 @@ const DashboardList = () => {
 
   // 过滤看板
   const filteredDashboards = useMemo(() => {
-    let result = dashboards;
+    // 先去除重复的看板（基于 ID）
+    const uniqueDashboards = Array.from(
+      new Map(dashboards.map(d => [d.id, d])).values()
+    );
+    
+    let result = uniqueDashboards;
     
     // 搜索过滤
     if (searchQuery.trim()) {

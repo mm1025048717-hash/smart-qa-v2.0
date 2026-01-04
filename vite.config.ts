@@ -7,7 +7,7 @@ export default defineConfig({
   // Vercel 部署时确保使用根路径
   base: process.env.VERCEL ? '/' : '/',
   server: {
-    port: 3000,
+    port: 5173, // 使用 Vite 默认端口，与启动脚本一致
     host: '0.0.0.0',
     open: true,
     proxy: {

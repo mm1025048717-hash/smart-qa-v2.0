@@ -4,6 +4,7 @@ import { Send, Mic, Paperclip, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { AgentProfile } from '../types';
+import { VoiceInput } from './VoiceInput';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -37,6 +38,7 @@ export const ChatInput = ({
   });
   const [hoveredAlisa, setHoveredAlisa] = useState<string | null>(null);
   const [alisaButtonRect, setAlisaButtonRect] = useState<DOMRect | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -294,10 +296,18 @@ export const ChatInput = ({
 
       {/* 输入区域 */}
       <div className="relative flex items-end gap-2 px-4 py-3">
-        {/* 左侧工具栏 */}
+        {/* 左侧工具栏 - 只保留语音对话按钮 */}
         <div className="flex items-center gap-1 pb-1">
-          <button className="p-2 text-[#86909C] hover:text-[#1664FF] hover:bg-[#E8F0FF] rounded-lg transition-colors">
-            <Paperclip className="w-5 h-5" />
+          {/* 语音对话界面按钮 - 唯一入口 */}
+          <button
+            onClick={() => {
+              window.history.pushState({}, '', '?page=voice-chat');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+            className="p-2 rounded-lg transition-all duration-200 text-[#007AFF] bg-[#F0F7FF] hover:bg-[#E0EFFF] active:scale-95"
+            title="打开语音对话界面"
+          >
+            <Mic className="w-5 h-5" />
           </button>
         </div>
 
@@ -354,9 +364,44 @@ export const ChatInput = ({
         </div>
       </div>
 
+      {/* 语音输入区域 */}
+      <AnimatePresence>
+        {voiceEnabled && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-4 py-2 border-t border-[#E8F0FF]"
+          >
+            <VoiceInput
+              agentId={currentAgent?.id}
+              onTranscript={(text) => {
+                setMessage(text);
+                // 自动发送（可选）
+                // if (text.trim()) {
+                //   onSend(text.trim());
+                // }
+              }}
+              onError={(error) => {
+                // 静默处理语音服务错误，避免控制台噪音
+                // 连接状态会通过 UI 显示（连接状态指示器）
+                // 只在开发环境记录详细错误
+                if (import.meta.env.DEV) {
+                  console.warn('[ChatInput] Voice service unavailable:', error.message);
+                }
+              }}
+              disabled={disabled}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 底部提示 */}
       <div className="px-4 pb-2 flex items-center justify-between text-xs text-[#6B7280]">
         <span>Enter 发送 · Shift+Enter 换行</span>
+        {voiceEnabled && (
+          <span className="text-[#1664FF]">🎤 语音输入已开启</span>
+        )}
       </div>
 
       {/* Alisa 技术说明 Portal - 使用 fixed 定位避免被裁剪 */}

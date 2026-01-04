@@ -72,5 +72,5 @@ pnpm-lock.yaml
 UPDATE_*.md
 # 保留部署文档：部署说明.md, 快速部署指南.md, 快速部署CloudflareWorker.md, README_DEPLOYMENT.md
 
-# Server files (if not needed in repo)
-# server.js
+# Other projects (should not be in this repo)
+pipecat-main/

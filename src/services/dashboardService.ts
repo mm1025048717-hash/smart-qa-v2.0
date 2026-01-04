@@ -220,8 +220,14 @@ export const dashboardService = {
   // 创建新看板
   createDashboard(name: string, shortName?: string, tags?: string[]): Dashboard {
     const dashboards = this.getDashboards();
+    // 确保 ID 唯一性：使用时间戳 + 随机数
+    let newId: string;
+    do {
+      newId = `dashboard_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    } while (dashboards.some(d => d.id === newId));
+    
     const newDashboard: Dashboard = {
-      id: `dashboard_${Date.now()}`,
+      id: newId,
       name,
       shortName,
       tags: tags || [],
@@ -290,9 +296,15 @@ export const dashboardService = {
     const source = dashboards.find(d => d.id === dashboardId);
     if (!source) throw new Error('Dashboard not found');
     
+    // 确保 ID 唯一性：使用时间戳 + 随机数
+    let newId: string;
+    do {
+      newId = `dashboard_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    } while (dashboards.some(d => d.id === newId));
+    
     const newDashboard: Dashboard = {
       ...source,
-      id: `dashboard_${Date.now()}`,
+      id: newId,
       name: newName,
       createdAt: Date.now(),
       updatedAt: Date.now(),
