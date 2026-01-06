@@ -1013,7 +1013,7 @@ function App() {
         fullContent += chunk;
         
         // 使用稳定的时间节流：每300ms最多更新一次（加快更新频率，提高响应速度）
-        const shouldUpdate = stableUpdate(fullContent.length);
+        let shouldUpdate = stableUpdate(fullContent.length);
         
         // 优化：检测choices格式，如果检测到choices立即更新（确保choices完整渲染）
         const hasChoices = fullContent.includes('[choices:') || 
