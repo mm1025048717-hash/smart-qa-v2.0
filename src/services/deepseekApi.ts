@@ -5,13 +5,20 @@
 // ⚠️ 警告：生产环境必须使用环境变量配置 API Key，不要硬编码！
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
 
-// 开发环境调试：检查 API Key 是否被正确读取
-if (import.meta.env.DEV) {
+// 开发环境和生产环境都检查 API Key 状态（用于调试）
+if (import.meta.env.DEV || !DEEPSEEK_API_KEY) {
   console.log('[DeepSeek API] 🔑 API Key 状态:', {
     hasKey: !!DEEPSEEK_API_KEY,
     keyPrefix: DEEPSEEK_API_KEY ? `${DEEPSEEK_API_KEY.slice(0, 8)}...${DEEPSEEK_API_KEY.slice(-4)}` : '未设置',
     envVar: import.meta.env.VITE_DEEPSEEK_API_KEY ? '已读取' : '未读取',
+    env: import.meta.env.MODE,
+    prod: import.meta.env.PROD,
   });
+  
+  // 生产环境如果没有 API Key，给出明确提示
+  if (import.meta.env.PROD && !DEEPSEEK_API_KEY) {
+    console.error('[DeepSeek API] ❌ 生产环境 API Key 未配置！请在 Vercel 中配置 VITE_DEEPSEEK_API_KEY 环境变量并重新部署。');
+  }
 }
 
 // ==========================================
