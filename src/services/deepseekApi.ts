@@ -5,20 +5,13 @@
 // ⚠️ 警告：生产环境必须使用环境变量配置 API Key，不要硬编码！
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
 
-// 开发环境和生产环境都检查 API Key 状态（用于调试）
-if (import.meta.env.DEV || !DEEPSEEK_API_KEY) {
+// 开发环境调试：检查 API Key 是否被正确读取
+if (import.meta.env.DEV) {
   console.log('[DeepSeek API] 🔑 API Key 状态:', {
     hasKey: !!DEEPSEEK_API_KEY,
     keyPrefix: DEEPSEEK_API_KEY ? `${DEEPSEEK_API_KEY.slice(0, 8)}...${DEEPSEEK_API_KEY.slice(-4)}` : '未设置',
     envVar: import.meta.env.VITE_DEEPSEEK_API_KEY ? '已读取' : '未读取',
-    env: import.meta.env.MODE,
-    prod: import.meta.env.PROD,
   });
-  
-  // 生产环境如果没有 API Key，给出明确提示
-  if (import.meta.env.PROD && !DEEPSEEK_API_KEY) {
-    console.error('[DeepSeek API] ❌ 生产环境 API Key 未配置！请在 Vercel 中配置 VITE_DEEPSEEK_API_KEY 环境变量并重新部署。');
-  }
 }
 
 // ==========================================
@@ -1214,11 +1207,6 @@ const INTERACTIVE_GUIDE = `
 1. 像朋友一样和用户聊天，提供情绪价值
 2. 引导用户明确业务问题，像一个贴心的数据顾问
 3. 当用户明确要求查看数据时，触发数据查询
-4. **看板生成与固定（路径一 - 看板构建模式）**：
-   - **核心功能**：当用户通过自然语言描述分析需求（如"展示上季度各区域销售额与利润率"、"生成一个销售看板"、"做个数据看板"）时，理解需求，调用可用原子指标，自动设计图表并生成可交互的看板预览
-   - **生成内容**：包含KPI卡片、趋势图表、对比图表、占比图表等多种可视化组件
-   - **固定提示**：在生成看板内容后，必须在回复末尾提示用户："💡 您可以点击右上角的⭐按钮，将这些内容固定到数据看板，方便随时查看"
-   - **与看板联动**：这是看板创建/大幅改版的起点，生成的内容可以一键固定到主看板
 
 【交互组件】让用户点击选择：
 - 选择题: [choices:选项A|选项B|选项C] 或 [选项A|选项B|选项C]
@@ -2614,12 +2602,19 @@ export async function chatCompletionStream(
       }
 
       try {
+        // 构建请求头：如果使用 Serverless Function，不需要 Authorization header（API Key 在服务端）
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        // 只有在直接调用 DeepSeek API 时才需要 Authorization header
+        if (DEEPSEEK_API_KEY && DEEPSEEK_BASE_URL.includes('api.deepseek.com')) {
+          headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
+        }
+        
         const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-          },
+          headers,
           body: JSON.stringify({
             // 如果启用联网搜索，尝试使用支持联网的模型
             model: shouldEnableSearch ? 'deepseek-reasoner' : 'deepseek-chat',
@@ -2767,4 +2762,3 @@ export async function chatCompletionStream(
   
   onError(new Error(userFriendlyMessage));
 }
-
