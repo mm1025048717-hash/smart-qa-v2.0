@@ -746,10 +746,12 @@ The Team：
 // API 基础 URL
 // 根据 DeepSeek API 文档: https://api-docs.deepseek.com/zh-cn/
 // base_url: https://api.deepseek.com
-// 生产环境：直接调用 DeepSeek API
+// 生产环境：如果有 VITE_DEEPSEEK_API_KEY 则直接调用，否则使用 Serverless Function（更安全）
 // 开发环境：使用 Vite 代理（避免 CORS 问题）
 const DEEPSEEK_BASE_URL = import.meta.env.PROD 
-  ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || 'https://api.deepseek.com')  // 生产环境：直接调用
+  ? (DEEPSEEK_API_KEY 
+      ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || 'https://api.deepseek.com')  // 有 API Key：直接调用
+      : '/api/deepseek')  // 没有 API Key：使用 Serverless Function（API Key 在服务端）
   : '/api/deepseek';  // 开发环境使用 Vite 代理
 
 // ==========================================
@@ -2602,20 +2604,12 @@ export async function chatCompletionStream(
       }
 
       try {
-        // 构建请求头：如果使用 Serverless Function（以 / 开头），不需要 Authorization header（API Key 在服务端）
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        
-        // 只有在不是 Serverless Function（不以 / 开头）且有 API Key 时才需要 Authorization header
-        // 这包括：api.deepseek.com、自定义代理 URL 等
-        if (DEEPSEEK_API_KEY && !DEEPSEEK_BASE_URL.startsWith('/')) {
-          headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
-        }
-        
         const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
           method: 'POST',
-          headers,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+          },
           body: JSON.stringify({
             // 如果启用联网搜索，尝试使用支持联网的模型
             model: shouldEnableSearch ? 'deepseek-reasoner' : 'deepseek-chat',
