@@ -2442,20 +2442,12 @@ export async function chatCompletion(
     ...messages
   ];
 
-  // 构建请求头：如果使用 Serverless Function（以 / 开头），不需要 Authorization header（API Key 在服务端）
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  
-  // 只有在不是 Serverless Function（不以 / 开头）且有 API Key 时才需要 Authorization header
-  // 这包括：api.deepseek.com、自定义代理 URL 等
-  if (DEEPSEEK_API_KEY && !DEEPSEEK_BASE_URL.startsWith('/')) {
-    headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
-  }
-
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
-    headers,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+    },
     body: JSON.stringify({
       // 如果启用联网搜索，尝试使用支持联网的模型
       model: ENABLE_WEB_SEARCH ? 'deepseek-reasoner' : 'deepseek-chat',
@@ -2610,12 +2602,20 @@ export async function chatCompletionStream(
       }
 
       try {
+        // 构建请求头：如果使用 Serverless Function（以 / 开头），不需要 Authorization header（API Key 在服务端）
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        // 只有在不是 Serverless Function（不以 / 开头）且有 API Key 时才需要 Authorization header
+        // 这包括：api.deepseek.com、自定义代理 URL 等
+        if (DEEPSEEK_API_KEY && !DEEPSEEK_BASE_URL.startsWith('/')) {
+          headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
+        }
+        
         const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-          },
+          headers,
           body: JSON.stringify({
             // 如果启用联网搜索，尝试使用支持联网的模型
             model: shouldEnableSearch ? 'deepseek-reasoner' : 'deepseek-chat',
