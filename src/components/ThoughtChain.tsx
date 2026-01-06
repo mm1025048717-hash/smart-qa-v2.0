@@ -193,8 +193,8 @@ const ThoughtChainItemComponent = ({
   // 图标
   const icon = item.icon === false ? null : (item.icon || getDefaultIcon(item.status));
   
-  // 闪动效果 - 使用更平滑的动画
-  const blinkClass = item.blink ? 'animate-[pulse_2s_ease-in-out_infinite]' : '';
+  // 闪动效果 - 使用更平滑的动画，减少闪烁感
+  const blinkClass = item.blink ? 'animate-[pulse_3s_ease-in-out_infinite]' : '';
 
   return (
     <div className="relative">

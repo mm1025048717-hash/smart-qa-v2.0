@@ -51,8 +51,16 @@ import { initializeExampleDashboard, createCompleteDashboardExample } from '../s
 import { AICard } from '../components/AICard';
 import { MessageBubble } from '../components/MessageBubble';
 import { Message, ContentBlock } from '../types';
-import { matchPresetResponse } from '../services/presetResponses';
-import { generateNarrativeResponse } from '../services/narrativeGenerator';
+// 看板编辑模式不再使用预设响应和叙事生成器，使用专门的看板AI服务
+import { 
+  handleDashboardChat, 
+  extractDashboardActions, 
+  removeDashboardActionMarkers,
+  executeDashboardAction,
+  DashboardContext 
+} from '../services/dashboardAIService';
+import { parseRealtimeContent } from '../utils/realtimeParser';
+import { ALL_AGENTS, getAgentById } from '../services/agents/index';
 import clsx from 'clsx';
 
 // --- 辅助组件：下拉菜单 ---
@@ -239,7 +247,7 @@ const AIDashboard = () => {
     const updateWidth = () => {
       if (gridContainerRef.current) {
         const containerWidth = gridContainerRef.current.offsetWidth;
-        setGridWidth(Math.max(800, containerWidth - 48)); // 确保最小宽度
+        setGridWidth(Math.max(800, containerWidth - 32)); // 确保最小宽度，减少边距
       }
     };
     updateWidth();
@@ -709,19 +717,31 @@ const AIDashboard = () => {
   }, [themeSettings]);
 
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  // 数字员工选择状态（必须在 messages 之前定义，因为 messages 的初始化依赖它）
+  const [currentAgentId, setCurrentAgentId] = useState<string>('dashboard-agent');
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const currentAgent = getAgentById(currentAgentId);
+  
+  const [messages, setMessages] = useState<Message[]>(() => {
+    return [{
       id: 'welcome',
       role: 'assistant',
-      content: [{ id: 't1', type: 'text', data: 'Analytical Agent 已连接。输入您的业务指令，秒级获取数据。' }],
+      content: [{ 
+        id: 't1', 
+        type: 'text', 
+        data: `👋 **看板编辑助手已就绪**\n\n我是您的**数字员工**，专门负责对已固定的看板进行智能编辑。\n\n## 🎯 我能帮您做什么？\n\n**📈 添加组件**\n"添加一个销售额趋势图"\n\n**🗑️ 删除组件**\n"删除第一个卡片"\n\n**✏️ 修改组件**\n"把图表标题改成..."\n\n**🔍 查询分析**\n"分析当前看板数据"\n\n**💡 智能洞察（归因分析）**\n"分析销售额下降原因"\n\n---\n\n💡 **使用说明**：\n- 这是**看板编辑模式**（路径二），与主聊天页面的**看板生成模式**（路径一）不同\n- 您可以对**已固定的看板**进行增删改查操作\n- 支持**所见即所得**的沉浸式编辑体验\n- 所有操作都会实时反映在看板上\n- 💡 **点击左上角头像可以切换不同的数字员工**` 
+      }],
       status: 'complete',
-      agentId: 'data-agent',
+      agentId: 'dashboard-agent',
       timestamp: new Date()
-    }
-  ]);
+    }];
+  });
+  
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
+  const lastContentLengthRef = useRef<number>(0);
 
   useEffect(() => {
     // 检查是否有从主页面传递过来的添加看板数据
@@ -903,36 +923,197 @@ const AIDashboard = () => {
     };
     
     setMessages(prev => [...prev, userMsg]);
+    const userInput = inputValue;
     setInputValue('');
     setIsThinking(true);
 
-    setTimeout(() => {
-      let aiContent: ContentBlock[] = [];
-      const preset = matchPresetResponse(userMsg.content as string);
-      if (preset) {
-        // 将 PresetContentBlock[] 转换为 ContentBlock[]，为每个块添加 id
-        aiContent = preset.content.map((block, index) => ({
-          id: `block_${Date.now()}_${index}`,
-          type: block.type as any,
-          data: block.data,
-          rendered: false
-        }));
-      } else {
-        aiContent = generateNarrativeResponse(userMsg.content as string);
-      }
+    // 创建AI回复消息（流式更新）
+    const aiMsgId = (Date.now() + 1).toString();
+    const aiMsg: Message = {
+      id: aiMsgId,
+      role: 'assistant',
+      content: [],
+      status: 'streaming',
+      agentId: currentAgentId,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, aiMsg]);
 
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: aiContent,
-        status: 'complete',
-        agentId: 'data-agent',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, aiMsg]);
+    // 构建看板上下文
+    const dashboardContext: DashboardContext = {
+      timeRange,
+      region,
+      items,
+      currentAgentId: currentAgentId
+    };
+
+    let fullResponse = '';
+    let parsedBlocks: ContentBlock[] = [];
+
+    try {
+      await handleDashboardChat(
+        userInput,
+        dashboardContext,
+        // onChunk: 实时更新消息内容 - 使用节流减少闪烁
+        (chunk) => {
+          fullResponse += chunk;
+          
+          // 使用节流机制，减少更新频率
+          const now = Date.now();
+          if (!lastUpdateTimeRef.current) {
+            lastUpdateTimeRef.current = now;
+          }
+          
+          const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+          const contentGrowth = fullResponse.length - (lastContentLengthRef.current || 0);
+          
+          // 最小更新间隔：500ms，避免过于频繁的更新导致闪烁
+          const UPDATE_INTERVAL = 500;
+          const shouldUpdate = timeSinceLastUpdate >= UPDATE_INTERVAL || contentGrowth >= 100;
+          
+          if (!shouldUpdate && contentGrowth < 50) {
+            return; // 跳过小更新，减少闪烁
+          }
+          
+          // 更新引用
+          lastUpdateTimeRef.current = now;
+          lastContentLengthRef.current = fullResponse.length;
+          
+          // 解析实时内容
+          const parsed = parseRealtimeContent(fullResponse);
+          // 为每个块添加 id 属性
+          parsedBlocks = parsed.blocks.map((block, idx) => ({
+            ...block,
+            id: (block as any).id || `block_${Date.now()}_${idx}`,
+          })) as ContentBlock[];
+          
+          // 移除操作标记用于显示
+          const displayContent = removeDashboardActionMarkers(fullResponse);
+          
+          // 更新消息
+          setMessages(prev => prev.map(msg => 
+            msg.id === aiMsgId 
+              ? { 
+                  ...msg, 
+                  content: parsedBlocks.length > 0 ? parsedBlocks : [
+                    { 
+                      id: `text_${Date.now()}`, 
+                      type: 'text' as const, 
+                      data: displayContent,
+                      rendered: false
+                    }
+                  ]
+                }
+              : msg
+          ));
+        },
+        // onComplete: 完成时处理看板操作
+        (blocks) => {
+          parsedBlocks = blocks;
+          
+          // 提取看板操作
+          const actions = extractDashboardActions(fullResponse);
+          console.log('[Dashboard] 提取到的操作:', actions, '完整响应:', fullResponse);
+          
+          if (actions.length > 0) {
+            // 执行看板操作
+            actions.forEach(action => {
+              console.log('[Dashboard] 执行操作:', action);
+              const result = executeDashboardAction(action, items);
+              console.log('[Dashboard] 操作结果:', result);
+              
+              if (result.success && result.updatedItems) {
+                setItems(result.updatedItems);
+                dashboardService.updateItems(result.updatedItems);
+                
+                // 显示成功提示
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-[#10B981] text-white px-6 py-3 rounded-xl z-[101] text-sm font-bold shadow-xl';
+                toast.innerText = `✓ ${result.message}`;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                  toast.style.opacity = '0';
+                  setTimeout(() => document.body.removeChild(toast), 300);
+                }, 2000);
+              } else {
+                // 显示错误提示
+                console.error('[Dashboard] 操作失败:', result.message);
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-xl z-[101] text-sm font-bold shadow-xl';
+                toast.innerText = `❌ ${result.message}`;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                  toast.style.opacity = '0';
+                  setTimeout(() => document.body.removeChild(toast), 300);
+                }, 2000);
+              }
+            });
+          } else {
+            console.warn('[Dashboard] 未找到看板操作标记，完整响应:', fullResponse);
+          }
+          
+          // 移除操作标记，更新最终消息
+          const displayContent = removeDashboardActionMarkers(fullResponse);
+          // 确保每个块都有 id
+          const finalBlocks: ContentBlock[] = parsedBlocks.length > 0 
+            ? parsedBlocks.map((block, idx) => ({
+                ...block,
+                id: block.id || `block_${Date.now()}_${idx}`,
+              }))
+            : [
+                { 
+                  id: `text_${Date.now()}`, 
+                  type: 'text' as const, 
+                  data: displayContent,
+                  rendered: false
+                }
+              ];
+          
+          setMessages(prev => prev.map(msg => 
+            msg.id === aiMsgId 
+              ? { ...msg, content: finalBlocks, status: 'complete' as const }
+              : msg
+          ));
+          setIsThinking(false);
+        },
+        // onError: 错误处理
+        (error) => {
+          console.error('Dashboard AI error:', error);
+          setMessages(prev => prev.map(msg => 
+            msg.id === aiMsgId 
+              ? { 
+                  ...msg, 
+                  content: [{ 
+                    id: `error_${Date.now()}`, 
+                    type: 'text', 
+                    data: `抱歉，出现了错误：${error.message}`,
+                    rendered: false
+                  }], 
+                  status: 'complete' 
+                }
+              : msg
+          ));
+          setIsThinking(false);
+        }
+      );
+    } catch (error) {
+      console.error('Failed to handle dashboard chat:', error);
+      setMessages(prev => prev.map(msg => 
+        msg.id === aiMsgId 
+          ? { 
+              ...msg, 
+              content: [{ 
+                id: `error_${Date.now()}`, 
+                type: 'text', 
+                data: `抱歉，出现了错误：${error instanceof Error ? error.message : String(error)}`,
+                rendered: false
+              }], 
+              status: 'complete' 
+            }
+          : msg
+      ));
       setIsThinking(false);
-    }, 1000);
+    }
   };
 
   const handleSave = () => {
@@ -1496,7 +1677,7 @@ const AIDashboard = () => {
             </div>
           </header>
 
-        <div ref={gridContainerRef} className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 relative z-10 flex flex-col min-h-full w-full box-border">
+        <div ref={gridContainerRef} className="w-full px-4 sm:px-6 py-6 relative z-10 flex flex-col min-h-full box-border">
           
           {/* 编辑模式提示栏 - Apple 简约风 */}
           {isEditMode && (
@@ -1672,17 +1853,109 @@ const AIDashboard = () => {
                 >
                   {/* 问答顶部栏 */}
                   <div className="px-5 py-3 flex items-center justify-between border-b border-gray-50 bg-white/80 backdrop-blur-sm z-10">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-100 to-blue-50 border border-blue-200 flex items-center justify-center">
-                         <div className="w-2.5 h-2.5 bg-[#0055FF] rounded-full animate-pulse shadow-[0_0_10px_rgba(0,85,255,0.5)]" />
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* 数字员工头像 */}
+                      <div className="relative">
+                        <div 
+                          className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-100 to-blue-50 border border-blue-200 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-[#0055FF]/20 transition-all"
+                          onClick={() => setShowAgentSelector(!showAgentSelector)}
+                          title="切换数字员工"
+                        >
+                          {currentAgent.avatar ? (
+                            <img src={currentAgent.avatar} alt={currentAgent.name} className="w-full h-full rounded-full object-cover" />
+                          ) : (
+                            <div className="w-2.5 h-2.5 bg-[#0055FF] rounded-full animate-pulse shadow-[0_0_10px_rgba(0,85,255,0.5)]" />
+                          )}
+                        </div>
+                        {/* 数字员工选择下拉菜单 */}
+                        <AnimatePresence>
+                          {showAgentSelector && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                              className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 max-h-[400px] overflow-y-auto"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                                选择数字员工
+                              </div>
+                              {ALL_AGENTS.map((agent) => (
+                                <button
+                                  key={agent.id}
+                                  onClick={() => {
+                                    setCurrentAgentId(agent.id);
+                                    setShowAgentSelector(false);
+                                    // 清空对话历史，重新开始
+                                    setMessages([{
+                                      id: 'welcome',
+                                      role: 'assistant',
+                                      content: [{ 
+                                        id: 't1', 
+                                        type: 'text', 
+                                        data: `👋 **${agent.name}已就绪**\n\n我是${agent.name}，${agent.title}。我可以帮您对已固定的看板进行智能编辑。\n\n## 🎯 我能帮您做什么？\n\n**📈 添加组件**\n"添加一个销售额趋势图"\n\n**🗑️ 删除组件**\n"删除第一个卡片"\n\n**✏️ 修改组件**\n"把图表标题改成..."\n\n**🔍 查询分析**\n"分析当前看板数据"\n\n**💡 智能洞察（归因分析）**\n"分析销售额下降原因"\n\n---\n\n💡 **使用说明**：\n- 这是**看板编辑模式**（路径二），与主聊天页面的**看板生成模式**（路径一）不同\n- 您可以对**已固定的看板**进行增删改查操作\n- 支持**所见即所得**的沉浸式编辑体验` 
+                                      }],
+                                      status: 'complete',
+                                      agentId: agent.id,
+                                      timestamp: new Date()
+                                    }]);
+                                  }}
+                                  className={clsx(
+                                    "w-full px-3 py-2.5 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors",
+                                    currentAgentId === agent.id && "bg-blue-50"
+                                  )}
+                                >
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-100 to-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
+                                    {agent.avatar ? (
+                                      <img src={agent.avatar} alt={agent.name} className="w-full h-full rounded-full object-cover" />
+                                    ) : (
+                                      <div className="w-2.5 h-2.5 bg-[#0055FF] rounded-full" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-[12px] font-bold text-[#111827] truncate">{agent.name}</div>
+                                    <div className="text-[10px] text-gray-400 truncate">{agent.title}</div>
+                                  </div>
+                                  {currentAgentId === agent.id && (
+                                    <div className="w-2 h-2 bg-[#0055FF] rounded-full flex-shrink-0" />
+                                  )}
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <div>
-                        <h3 className="font-black text-[13px] text-[#111827]">Data Agent</h3>
-                        <p className="text-[10px] text-gray-400">在线 • 随时响应</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-[13px] text-[#111827] truncate">{currentAgent.name} • 看板编辑</h3>
+                        <p className="text-[10px] text-gray-400 truncate">{currentAgent.title} • 编辑模式</p>
                       </div>
                     </div>
+                    {/* 点击外部关闭下拉菜单 */}
+                    {showAgentSelector && (
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowAgentSelector(false)}
+                      />
+                    )}
                     <div className="flex gap-1">
-                      <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="清空对话">
+                      <button 
+                        onClick={() => {
+                          setMessages([{
+                            id: 'welcome',
+                            role: 'assistant',
+                            content: [{ 
+                              id: 't1', 
+                              type: 'text', 
+                              data: `👋 **${currentAgent.name}已就绪**\n\n我是${currentAgent.name}，${currentAgent.title}。我可以帮您对已固定的看板进行智能编辑。` 
+                            }],
+                            status: 'complete',
+                            agentId: currentAgentId,
+                            timestamp: new Date()
+                          }]);
+                        }}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" 
+                        title="清空对话"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                       <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="帮助">
@@ -1692,9 +1965,13 @@ const AIDashboard = () => {
                   </div>
                   
                   {/* 消息列表区 */}
-                  <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#F9FAFB]/50 scrollbar-thin">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F9FAFB]/50 scrollbar-thin">
                      {messages.map((msg) => (
-                       <MessageBubble key={msg.id} message={msg} onActionSelect={setInputValue} />
+                       <MessageBubble 
+                         key={msg.id} 
+                         message={msg} 
+                         onActionSelect={setInputValue}
+                       />
                      ))}
                      {isThinking && (
                        <div className="flex items-center gap-2 text-gray-400 text-[11px] font-medium ml-10">

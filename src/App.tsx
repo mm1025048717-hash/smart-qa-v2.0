@@ -8,6 +8,7 @@ import { MessageBubble } from './components/MessageBubble';
 import { TestScenarioPanel } from './components/TestScenarioPanel';
 import { ScenarioPanel } from './components/ScenarioPanel';
 import { SimpleInputPage } from './components/SimpleInputPage';
+import { InlineGuidePanel } from './components/InlineGuidePanel';
 // 移除 QueryConfirmationDialog 导入，改为在对话中展示
 import { MobileTestPage } from './pages/MobileTestPage';
 import { GestureControlPage } from './pages/GestureControlPage';
@@ -939,16 +940,20 @@ function App() {
     let updateTimer: ReturnType<typeof setTimeout> | null = null;
     let lastContentLength = 0;
     
-    // 稳定的更新函数
+    // 稳定的更新函数 - 优化以减少闪烁
     const stableUpdate = (currentLength: number) => {
       const now = Date.now();
       const timeSinceLastUpdate = now - lastUpdateTime;
       const contentGrowth = currentLength - lastContentLength;
       
-      // 如果内容增长很小（<20字符），延长更新间隔
-      const effectiveInterval = contentGrowth < 20 ? UPDATE_INTERVAL * 2 : UPDATE_INTERVAL;
+      // 如果内容增长很小（<30字符），延长更新间隔，减少闪烁
+      const effectiveInterval = contentGrowth < 30 ? UPDATE_INTERVAL * 2.5 : UPDATE_INTERVAL;
       
-      if (timeSinceLastUpdate >= effectiveInterval) {
+      // 最小更新间隔：至少500ms，避免过于频繁的更新导致闪烁
+      const minInterval = 500;
+      const finalInterval = Math.max(effectiveInterval, minInterval);
+      
+      if (timeSinceLastUpdate >= finalInterval) {
         // 立即更新
         lastUpdateTime = now;
         lastContentLength = currentLength;
@@ -964,8 +969,8 @@ function App() {
             lastUpdateTime = Date.now();
             lastContentLength = currentLength;
             updateTimer = null;
-          }, effectiveInterval - timeSinceLastUpdate);
-    }
+          }, finalInterval - timeSinceLastUpdate);
+        }
         return false;
       }
     };
@@ -1035,7 +1040,7 @@ function App() {
         // 内容增长很小且不在更新窗口内，跳过（避免频繁小更新导致闪烁）
         // 但如果有choices，即使增长小也要更新
         const contentGrowth = fullContent.length - lastContentLength;
-        if (!shouldUpdate && contentGrowth < 30 && !hasChoices) {
+        if (!shouldUpdate && contentGrowth < 50 && !hasChoices) {
           return;
         }
         
@@ -2128,7 +2133,7 @@ function App() {
   return (
     <AnimatePresence mode="wait">
       {!hasMessages ? (
-        // 简约输入界面 - 完全独立
+        // 简约输入界面 - 完全独立（包含大输入框）
         <motion.div
           key="simple-input"
           initial={{ opacity: 0 }}
@@ -2149,6 +2154,7 @@ function App() {
             }}
             agent={currentAgent}
             onAgentChange={handleAgentChange}
+            currentAgentId={currentAgentId}
           />
         </motion.div>
       ) : (
@@ -2250,24 +2256,40 @@ function App() {
                 {/* 消息滚动区 */}
                 <div className="flex-1 overflow-y-auto scroll-smooth">
                   <div className="max-w-4xl mx-auto px-6 py-4 pb-4">
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="space-y-4"
-                    >
-                      {messages.map((message) => (
-                        <MessageBubble 
-                          key={message.id} 
-                          message={message}
-                          onActionSelect={handleActionSelect}
-                          onFilterChange={(conditions, changedType, changedValue) => handleFilterChange(message.id, conditions, changedType, changedValue)}
-                          onAgentSwitch={handleAgentSwitchByName}
-                          isSearching={isSearching && message.status === 'streaming'}
-                          onAppendContent={(blocks) => handleAppendContent(message.id, blocks)}
-                        />
-                      ))}
-                      <div ref={messagesEndRef} />
-                    </motion.div>
+                    {messages.length === 0 ? (
+                      // 没有消息时显示内联引导面板
+                      <InlineGuidePanel
+                        onQuestionSelect={(question, recommendedAgentId) => {
+                          if (recommendedAgentId && recommendedAgentId !== currentAgentId) {
+                            handleAgentChange(recommendedAgentId).then(() => {
+                              setTimeout(() => handleSend(question), 300);
+                            });
+                          } else {
+                            handleSend(question);
+                          }
+                        }}
+                        currentAgentId={currentAgentId}
+                      />
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="space-y-4"
+                      >
+                        {messages.map((message) => (
+                          <MessageBubble 
+                            key={message.id} 
+                            message={message}
+                            onActionSelect={handleActionSelect}
+                            onFilterChange={(conditions, changedType, changedValue) => handleFilterChange(message.id, conditions, changedType, changedValue)}
+                            onAgentSwitch={handleAgentSwitchByName}
+                            isSearching={isSearching && message.status === 'streaming'}
+                            onAppendContent={(blocks) => handleAppendContent(message.id, blocks)}
+                          />
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </motion.div>
+                    )}
                   </div>
                 </div>
 

@@ -13,7 +13,8 @@ export interface ParsedChunk {
   gantts: Array<{ json: string; data: any; position: number }>;
   thoughtChains: Array<{ json: string; data: any; position: number }>;
   toolCallChains: Array<{ json: string; data: any; position: number }>;
-  blocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain' | 'tool-call-chain'; position: number; data: any }>;
+  attributions: Array<{ json: string; data: any; position: number }>;
+  blocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain' | 'tool-call-chain' | 'attribution'; position: number; data: any }>;
 }
 
 /**
@@ -28,11 +29,12 @@ export function parseRealtimeContent(content: string): ParsedChunk {
     gantts: [],
     thoughtChains: [],
     toolCallChains: [],
+    attributions: [],
     blocks: [],
   };
   
   // 收集所有内容块，按位置排序
-  const allBlocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain' | 'tool-call-chain'; position: number; data: any; text?: string }> = [];
+  const allBlocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain' | 'tool-call-chain' | 'attribution'; position: number; data: any; text?: string }> = [];
 
   // 1. 提取图表 JSON [chart:{...}] - 支持嵌套对象
   // 支持多种格式：[chart:{...}] 或 [chart: {...}] 或 [chart:{...}]

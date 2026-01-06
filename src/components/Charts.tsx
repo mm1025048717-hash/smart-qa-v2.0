@@ -122,19 +122,37 @@ export function parseChartJson(jsonStr: string): any | null {
         const foundYKeys: { key: string; name: string; color?: string }[] = [];
         
         if (firstItem) {
+          const isNumeric = (value: any): boolean => {
+            if (typeof value === 'number') return true;
+            if (typeof value === 'string') {
+              const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+              const num = parseFloat(cleaned);
+              return !isNaN(num) && isFinite(num);
+            }
+            return false;
+          };
           for (const key of yKeyCandidates) {
-            if (firstItem[key] !== undefined && typeof firstItem[key] === 'number') {
+            if (firstItem[key] !== undefined && isNumeric(firstItem[key])) {
               foundYKeys.push({ 
                 key, 
                 name: key === 'value' ? '数值' : key === 'sales' ? '销售额' : key === 'amount' ? '金额' : key 
               });
             }
           }
-          // 如果没找到，查找所有数值字段（排除 xKey）
+          // 如果没找到，查找所有数值字段（排除 xKey）- 支持字符串形式的数值
           if (foundYKeys.length === 0) {
             const keys = Object.keys(firstItem);
+            const isNumeric = (value: any): boolean => {
+              if (typeof value === 'number') return true;
+              if (typeof value === 'string') {
+                const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+                const num = parseFloat(cleaned);
+                return !isNaN(num) && isFinite(num);
+              }
+              return false;
+            };
             for (const key of keys) {
-              if (key !== chartData.xKey && typeof firstItem[key] === 'number') {
+              if (key !== chartData.xKey && isNumeric(firstItem[key])) {
                 foundYKeys.push({ key, name: key });
                 break; // 只取第一个数值字段
               }
@@ -148,11 +166,20 @@ export function parseChartJson(jsonStr: string): any | null {
       }
     } else if (chartData.type === 'bar' || chartData.type === 'bar-chart') {
       if (!chartData.yKey) {
-        // 常见的 y 轴字段名
+        // 常见的 y 轴字段名 - 支持字符串形式的数值
         const yKeyCandidates = ['value', 'sales', 'amount', 'count', 'y', 'data'];
         if (firstItem) {
+          const isNumeric = (value: any): boolean => {
+            if (typeof value === 'number') return true;
+            if (typeof value === 'string') {
+              const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+              const num = parseFloat(cleaned);
+              return !isNaN(num) && isFinite(num);
+            }
+            return false;
+          };
           for (const key of yKeyCandidates) {
-            if (firstItem[key] !== undefined && typeof firstItem[key] === 'number') {
+            if (firstItem[key] !== undefined && isNumeric(firstItem[key])) {
               chartData.yKey = key;
               break;
             }
@@ -160,8 +187,17 @@ export function parseChartJson(jsonStr: string): any | null {
           // 如果没找到，查找第一个数值字段（排除 xKey）
           if (!chartData.yKey) {
             const keys = Object.keys(firstItem);
+            const isNumeric = (value: any): boolean => {
+              if (typeof value === 'number') return true;
+              if (typeof value === 'string') {
+                const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+                const num = parseFloat(cleaned);
+                return !isNaN(num) && isFinite(num);
+              }
+              return false;
+            };
             for (const key of keys) {
-              if (key !== chartData.xKey && typeof firstItem[key] === 'number') {
+              if (key !== chartData.xKey && isNumeric(firstItem[key])) {
                 chartData.yKey = key;
                 break;
               }
@@ -1062,13 +1098,22 @@ export const SmartChart = ({ chartData, delay = 0, onAttributionClick, blockData
       }
     }
 
-    // 推断 yKey/yKeys
+    // 推断 yKey/yKeys - 支持字符串形式的数值
     if (type === 'line' || type === 'line-chart') {
       if (!restProps.yKeys || !Array.isArray(restProps.yKeys) || restProps.yKeys.length === 0) {
+        const isNumeric = (value: any): boolean => {
+          if (typeof value === 'number') return true;
+          if (typeof value === 'string') {
+            const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+            const num = parseFloat(cleaned);
+            return !isNaN(num) && isFinite(num);
+          }
+          return false;
+        };
         const yKeyCandidates = ['value', 'sales', 'amount', 'count', 'y', 'data'];
         const foundYKeys: { key: string; name: string; color?: string }[] = [];
         for (const key of yKeyCandidates) {
-          if (firstItem[key] !== undefined && typeof firstItem[key] === 'number') {
+          if (firstItem[key] !== undefined && isNumeric(firstItem[key])) {
             foundYKeys.push({ 
               key, 
               name: key === 'value' ? '数值' : key === 'sales' ? '销售额' : key === 'amount' ? '金额' : key 
@@ -1078,7 +1123,7 @@ export const SmartChart = ({ chartData, delay = 0, onAttributionClick, blockData
         if (foundYKeys.length === 0) {
           const keys = Object.keys(firstItem);
           for (const key of keys) {
-            if (key !== (restProps.xKey || inferred.xKey) && typeof firstItem[key] === 'number') {
+            if (key !== (restProps.xKey || inferred.xKey) && isNumeric(firstItem[key])) {
               foundYKeys.push({ key, name: key });
               break;
             }
@@ -1090,9 +1135,18 @@ export const SmartChart = ({ chartData, delay = 0, onAttributionClick, blockData
       }
     } else if (type === 'bar' || type === 'bar-chart') {
       if (!restProps.yKey) {
+        const isNumeric = (value: any): boolean => {
+          if (typeof value === 'number') return true;
+          if (typeof value === 'string') {
+            const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+            const num = parseFloat(cleaned);
+            return !isNaN(num) && isFinite(num);
+          }
+          return false;
+        };
         const yKeyCandidates = ['value', 'sales', 'amount', 'count', 'y', 'data'];
         for (const key of yKeyCandidates) {
-          if (firstItem[key] !== undefined && typeof firstItem[key] === 'number') {
+          if (firstItem[key] !== undefined && isNumeric(firstItem[key])) {
             inferred.yKey = key;
             break;
           }
@@ -1100,7 +1154,7 @@ export const SmartChart = ({ chartData, delay = 0, onAttributionClick, blockData
         if (!inferred.yKey) {
           const keys = Object.keys(firstItem);
           for (const key of keys) {
-            if (key !== (restProps.xKey || inferred.xKey) && typeof firstItem[key] === 'number') {
+            if (key !== (restProps.xKey || inferred.xKey) && isNumeric(firstItem[key])) {
               inferred.yKey = key;
               break;
             }
@@ -1108,12 +1162,21 @@ export const SmartChart = ({ chartData, delay = 0, onAttributionClick, blockData
         }
       }
     } else if (type === 'scatter' || type === 'scatter-chart') {
-      // 散点图需要 xKey 和 yKey（都是数值字段）
+      // 散点图需要 xKey 和 yKey（都是数值字段）- 支持字符串形式的数值
       // xKey 可能是翻台率、坪效等指标
       if (!restProps.xKey) {
+        const isNumeric = (value: any): boolean => {
+          if (typeof value === 'number') return true;
+          if (typeof value === 'string') {
+            const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+            const num = parseFloat(cleaned);
+            return !isNaN(num) && isFinite(num);
+          }
+          return false;
+        };
         const xKeyCandidates = ['翻台率', 'turnoverRate', '坪效', 'salesPerSqm', '客单价', 'avgOrderValue', 'x', 'xAxis'];
         for (const key of xKeyCandidates) {
-          if (firstItem[key] !== undefined && typeof firstItem[key] === 'number') {
+          if (firstItem[key] !== undefined && isNumeric(firstItem[key])) {
             inferred.xKey = key;
             break;
           }
@@ -1130,11 +1193,20 @@ export const SmartChart = ({ chartData, delay = 0, onAttributionClick, blockData
         }
       }
       
-      // yKey 是另一个数值字段（不能和 xKey 相同）
+      // yKey 是另一个数值字段（不能和 xKey 相同）- 支持字符串形式的数值
       if (!restProps.yKey) {
+        const isNumeric = (value: any): boolean => {
+          if (typeof value === 'number') return true;
+          if (typeof value === 'string') {
+            const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+            const num = parseFloat(cleaned);
+            return !isNaN(num) && isFinite(num);
+          }
+          return false;
+        };
         const yKeyCandidates = ['客单价', 'avgOrderValue', '翻台率', 'turnoverRate', '坪效', 'salesPerSqm', 'y', 'yAxis', 'value', 'sales', 'amount'];
         for (const key of yKeyCandidates) {
-          if (firstItem[key] !== undefined && typeof firstItem[key] === 'number' && key !== (restProps.xKey || inferred.xKey)) {
+          if (firstItem[key] !== undefined && isNumeric(firstItem[key]) && key !== (restProps.xKey || inferred.xKey)) {
             inferred.yKey = key;
             break;
           }
@@ -1144,7 +1216,7 @@ export const SmartChart = ({ chartData, delay = 0, onAttributionClick, blockData
           const keys = Object.keys(firstItem);
           let foundFirst = false;
           for (const key of keys) {
-            if (typeof firstItem[key] === 'number') {
+            if (isNumeric(firstItem[key])) {
               if (!foundFirst && key === (restProps.xKey || inferred.xKey)) {
                 foundFirst = true;
                 continue;
@@ -1506,19 +1578,55 @@ const UniversalChartRenderer = ({ chartData, chartType, delay = 0, blockData, on
     }
   }
 
-  // 推断 yKey/yKeys
+  // 推断 yKey/yKeys - 增强数值字段识别，支持字符串形式的数值
   const numericKeys: string[] = [];
+  const isNumeric = (value: any): boolean => {
+    if (typeof value === 'number') return true;
+    if (typeof value === 'string') {
+      // 支持字符串形式的数值：如 "320万"、"¥320"、"320.5"、"¥320万" 等
+      const cleaned = value.replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+      const num = parseFloat(cleaned);
+      return !isNaN(num) && isFinite(num);
+    }
+    return false;
+  };
+  
   Object.keys(firstItem).forEach(key => {
-    if (key !== inferredXKey && typeof firstItem[key] === 'number') {
+    // 排除 xKey 和常见的非数值字段
+    if (key === inferredXKey || key === 'label' || key === 'name' || key === 'key') {
+      return;
+    }
+    if (isNumeric(firstItem[key])) {
       numericKeys.push(key);
     }
   });
+
+  // 如果还是没找到，尝试将 value 字段转换为数值
+  if (numericKeys.length === 0 && firstItem.value !== undefined) {
+    const valueStr = String(firstItem.value);
+    // 尝试提取数值
+    const numMatch = valueStr.match(/[\d.]+/);
+    if (numMatch) {
+      numericKeys.push('value');
+      // 转换数据中的 value 字段为数值
+      data.forEach((item: any) => {
+        if (item.value !== undefined && typeof item.value !== 'number') {
+          const cleaned = String(item.value).replace(/[¥￥,，\s]/g, '').replace(/[万千百十]/g, '');
+          const num = parseFloat(cleaned);
+          if (!isNaN(num) && isFinite(num)) {
+            item.value = num;
+          }
+        }
+      });
+    }
+  }
 
   if (numericKeys.length === 0) {
     return (
       <div className="my-4 p-4 bg-[#FFF5F5] border border-[#FFE5E5] rounded-xl">
         <p className="text-[13px] text-[#FF3B30]">无法找到数值字段</p>
         <p className="text-[11px] text-[#86868b] mt-1">数据字段: {Object.keys(firstItem).join(', ')}</p>
+        <p className="text-[11px] text-[#86868b] mt-1">提示: 请确保数据中包含数值类型的字段（如 value, sales, amount 等）</p>
       </div>
     );
   }

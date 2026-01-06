@@ -4,15 +4,17 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AgentProfile } from '../types';
 import { ALL_AGENTS as AGENTS } from '../services/agents/index';
-import { ChevronDown, Globe } from 'lucide-react';
+import { ChevronDown, Globe, Lightbulb } from 'lucide-react';
+import { EnhancedGuidePanel } from './EnhancedGuidePanel';
 
 interface SimpleInputPageProps {
   onQuestionSubmit: (question: string, options?: { agentId?: string; enableWebSearch?: boolean }) => void;
   agent: AgentProfile;
   onAgentChange?: (agentId: string) => void;
+  currentAgentId?: string;
 }
 
 // 常用场景
@@ -25,12 +27,13 @@ const COMMON_SCENARIOS = [
   { id: 'user', label: '用户分析', query: '日活还有月活数据' },
 ];
 
-export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange }: SimpleInputPageProps) => {
+export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, currentAgentId }: SimpleInputPageProps) => {
   const [inputValue, setInputValue] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState(agent.id);
   const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
   const [showWebSearchDropdown, setShowWebSearchDropdown] = useState(false);
+  const [showGuidePanel, setShowGuidePanel] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const agentDropdownRef = useRef<HTMLDivElement>(null);
   const webSearchDropdownRef = useRef<HTMLDivElement>(null);
@@ -276,7 +279,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange }: Simp
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-wrap justify-center gap-3 w-full max-w-4xl mb-20"
+          className="flex flex-wrap justify-center gap-3 w-full max-w-4xl mb-8"
         >
           {COMMON_SCENARIOS.map((scenario) => (
             <motion.button
@@ -291,8 +294,65 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange }: Simp
             </motion.button>
           ))}
         </motion.div>
+
+        {/* 查看引导按钮 */}
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+          onClick={() => setShowGuidePanel(true)}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#007AFF] bg-[#F0F7FF] hover:bg-[#E0EFFF] rounded-full transition-all duration-200 border border-[#007AFF]/20 hover:border-[#007AFF]/40 shadow-sm hover:shadow-md"
+        >
+          <Lightbulb className="w-4 h-4" />
+          <span>查看可用指标和提问方式</span>
+        </motion.button>
       </motion.div>
       </div>
+
+      {/* 增强引导面板 */}
+      <AnimatePresence>
+        {showGuidePanel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowGuidePanel(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-6xl"
+            >
+              <EnhancedGuidePanel
+                onQuestionSelect={(question, recommendedAgentId) => {
+                  // 如果推荐了AI员工，先切换员工再提问
+                  if (recommendedAgentId && recommendedAgentId !== (currentAgentId || agent.id)) {
+                    if (onAgentChange) {
+                      onAgentChange(recommendedAgentId).then(() => {
+                        setTimeout(() => {
+                          handleScenarioClick(question);
+                          setShowGuidePanel(false);
+                        }, 300);
+                      });
+                    } else {
+                      handleScenarioClick(question);
+                      setShowGuidePanel(false);
+                    }
+                  } else {
+                    handleScenarioClick(question);
+                    setShowGuidePanel(false);
+                  }
+                }}
+                onClose={() => setShowGuidePanel(false)}
+                currentAgentId={currentAgentId || agent.id}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

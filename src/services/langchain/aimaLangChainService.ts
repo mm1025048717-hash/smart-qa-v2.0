@@ -72,6 +72,9 @@ export async function streamAimaResponse(
   onComplete: () => void,
   onError: (error: Error) => void
 ): Promise<void> {
+  // agentName 和 agentTitle 保留用于日志和未来扩展
+  void agentName;
+  void agentTitle;
   try {
     // 获取系统提示词（LangChain 风格：使用模板）
     const systemPrompt = getAimaSystemPrompt(agentId);
@@ -212,7 +215,7 @@ export async function streamAimaResponse(
 
     // 处理工具调用
     if (toolCalls.length > 0) {
-      await handleToolCalls(toolCalls, allMessages, onChunk, memory);
+      await handleToolCalls(toolCalls, allMessages, onChunk, memory, agentId);
     }
 
     // 流式输出完成
@@ -229,11 +232,12 @@ export async function streamAimaResponse(
  */
 async function handleToolCalls(
   toolCalls: ToolCall[],
-  allMessages: any[],
+  _allMessages: any[], // 保留用于未来扩展
   onChunk: (chunk: string) => void,
   memory: ConversationMemory,
   agentId?: string
 ): Promise<void> {
+  void _allMessages; // 标记为已使用
   // 生成工具调用链数据
   const toolCallItems: Array<{
     id: string;
@@ -339,9 +343,6 @@ async function handleToolCalls(
 
   // 如果有工具调用结果，再次调用API获取最终回复
   if (toolResults.length > 0 && toolResults.some(r => r.result?.success !== false)) {
-    // 检查是否有PPT生成工具
-    const hasPPTGeneration = toolCalls.some(tc => tc.function.name === 'generate_ppt');
-    
     // 添加工具调用结果到消息中
     const toolMessages = toolResults.map(result => {
       let content = JSON.stringify(result.result);
@@ -361,7 +362,7 @@ PPT结构：
 # ${pptData.title}
 ${pptData.theme} | ${new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })}
 
-${pptData.slides?.map((slide: any, idx: number) => `## ${slide.title}
+${pptData.slides?.map((slide: any) => `## ${slide.title}
 
 ${slide.content || `这是${slide.title}的详细内容。`}
 
@@ -390,10 +391,10 @@ ${JSON.stringify(result.result, null, 2)}`;
       
       // 构建正确的消息序列：
       // 1. 系统消息（单独添加）
-      // 2. 历史消息（排除系统消息和最后一个assistant消息，因为我们要添加带tool_calls的assistant消息）
+      // 2. 历史消息（排除最后一个assistant消息，因为我们要添加带tool_calls的assistant消息）
       // 3. assistant 消息（包含 tool_calls）
       // 4. tool 消息（工具执行结果）
-      const historyMessages = memory.getHistory().filter(msg => msg.role !== 'system');
+      const historyMessages = memory.getHistory();
       
       // 移除最后一个assistant消息（如果有），因为我们要添加带tool_calls的版本
       const filteredHistory = historyMessages.slice(0, -1);
@@ -511,11 +512,13 @@ function getToolDisplayName(toolName: string): string {
  */
 export async function getAimaResponse(
   agentId: string,
-  agentName: string,
-  agentTitle: string,
+  _agentName: string, // 保留用于未来扩展
+  _agentTitle: string, // 保留用于未来扩展
   userQuery: string,
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<string> {
+  void _agentName;
+  void _agentTitle;
   try {
     const systemPrompt = getAimaSystemPrompt(agentId);
     const memory = getMemory(agentId);

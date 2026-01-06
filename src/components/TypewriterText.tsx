@@ -180,11 +180,13 @@ export const TypewriterText = ({
       transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
       className="relative"
     >
-      {/* 文本内容 - 精致排版，带缩进和渐变效果 */}
+      {/* 文本内容 - 精致排版，带缩进和渐变效果，苹果级设计 */}
       <div 
-        className="text-[15px] text-[#1d1d1f] leading-[1.85] tracking-[0.01em] pl-1"
+        className="text-[15px] text-[#1d1d1f] leading-[1.85] tracking-[0.01em] pl-1 break-words overflow-wrap-anywhere max-w-full"
         style={{
           textIndent: '0.5em', // 首行缩进
+          wordBreak: 'break-word', // 确保长单词也能换行
+          overflowWrap: 'break-word', // 现代浏览器支持
         }}
       >
         {attributionMatches.length > 0 && onAttributionClick ? (

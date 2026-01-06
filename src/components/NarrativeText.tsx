@@ -598,7 +598,7 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
                   key={index}
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#E8F3FF] text-[#007AFF] text-sm rounded-lg"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#007AFF] animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#007AFF] animate-[pulse_2s_ease-in-out_infinite]" />
                   <span>正在查询: {item.data.query}</span>
                 </div>
               );
@@ -741,7 +741,7 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
               // 如果有归因数据，渲染带归因按钮的文本
               if (attributionMatches.length > 0 && onAttributionClick) {
                 return (
-                  <div key={index} className="text-[15px] text-[#1d1d1f] leading-relaxed my-0">
+                  <div key={index} className="text-[15px] text-[#1d1d1f] leading-relaxed my-0 break-words overflow-wrap-anywhere max-w-full" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     <AttributedText 
                       content={textContent} 
                       matches={attributionMatches}
@@ -753,7 +753,7 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
               }
               
               return (
-                <div key={index} className="text-[15px] text-[#1d1d1f] leading-relaxed my-0">
+                <div key={index} className="text-[15px] text-[#1d1d1f] leading-relaxed my-0 break-words overflow-wrap-anywhere max-w-full" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   <MarkdownRenderer content={textContent} onAgentSwitch={onAgentSwitch} />
                 </div>
               );
@@ -784,10 +784,10 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
   // 检测文本中的归因数据
   const attributionMatches = onAttributionClick ? detectAttributionInText(processedContent) : [];
   
-  // 如果有归因数据，渲染带归因按钮的文本
+  // 如果有归因数据，渲染带归因按钮的文本，苹果级设计
   if (attributionMatches.length > 0 && onAttributionClick) {
     return (
-      <div className="relative">
+      <div className="relative max-w-full overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
         <TypewriterText
           content={processedContent}
           speed={15}

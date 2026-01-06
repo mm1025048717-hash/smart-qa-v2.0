@@ -97,6 +97,7 @@ export type ComponentType =
   | 'visualizer'   // 数据可视化筛选条件
   | 'thought-chain' // 思维链（数字员工思考过程）
   | 'tool-call-chain' // 工具调用链（LangChain工具调用）
+  | 'attribution'    // 归因分析组件
   | 'report-hero'   // 报告头部卡片
   | 'report-layer'  // 报告层级卡片
   | 'query-confirmation' // 多度确认交互

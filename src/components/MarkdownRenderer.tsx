@@ -672,7 +672,7 @@ const ListRenderer = ({ items, ordered }: { items: ListItem[]; ordered: boolean 
                 {levelCounters[level]}
               </span>
             ) : null}
-            <div className="text-[14px] text-[#1d1d1f] leading-[1.8] flex-1">
+            <div className="text-[14px] text-[#1d1d1f] leading-[1.8] flex-1 break-words overflow-wrap-anywhere max-w-full" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               {renderInlineMarkdown(itemStr)}
             </div>
           </div>
@@ -876,7 +876,7 @@ const QuoteBlock = ({ content, variant = 'info' }: { content: string; variant?: 
       style.bg,
       style.border
     )}>
-      <span className="text-[14px] text-[#1d1d1f] leading-[1.8]">
+      <span className="text-[14px] text-[#1d1d1f] leading-[1.8] break-words overflow-wrap-anywhere max-w-full" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
         {renderInlineMarkdown(content)}
       </span>
     </div>
@@ -975,7 +975,7 @@ export const MarkdownRenderer = ({ content, className, onAgentSwitch }: Markdown
               cleanedContent = cleanedContent.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '');
               if (!cleanedContent) return null;
               return (
-                <div key={index} className="text-[15px] text-[#374151] leading-[1.9] my-2 pl-1 tracking-[0.02em] whitespace-pre-wrap">
+                <div key={index} className="text-[15px] text-[#374151] leading-[1.9] my-2 pl-1 tracking-[0.02em] whitespace-pre-wrap break-words overflow-wrap-anywhere max-w-full" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   {renderInlineMarkdown(cleanedContent)}
                 </div>
               );

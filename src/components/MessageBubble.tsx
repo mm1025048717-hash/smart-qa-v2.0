@@ -829,11 +829,13 @@ const ContentBlockRenderer = memo(({
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <ToolCallChain 
-                    items={validItems} 
-                    defaultExpandedKeys={autoExpandedKeys}
-                    isStreaming={isStreaming}
-                  />
+                  <div className="relative z-0">
+                    <ToolCallChain 
+                      items={validItems} 
+                      defaultExpandedKeys={autoExpandedKeys}
+                      isStreaming={isStreaming}
+                    />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1284,22 +1286,19 @@ const SystemBubble = ({
   }, [onActionSelect]);
 
   const agent = getAgentById(agentId);
-  // contentKey 已在下方通过 useMemo 定义
-
+  
   // 流式输出时显示带内容的加载状态
   const isStreaming = status === 'streaming';
   
-  // 如果内容为空数组，直接显示加载动画（避免空白气泡）
-  if (!Array.isArray(content) || content.length === 0) {
-    if (isStreaming) {
-      return <LoadingIndicator isSearching={isSearching} />;
-    }
-    return null;
-  }
-  
+  // ⚠️ 重要：所有 hooks 必须在早期返回之前调用
   // 使用 useMemo 缓存有效内容块，避免每次渲染都重新计算
-  const validBlocks = useMemo(() => content.filter(b => {
-    if (!b || !b.data) return false;
+  // 即使 content 为空，也要调用 useMemo 以保持 hooks 顺序一致
+  const validBlocks = useMemo(() => {
+    if (!Array.isArray(content) || content.length === 0) {
+      return [];
+    }
+    return content.filter(b => {
+      if (!b || !b.data) return false;
     if (typeof b.data === 'string') {
       // 字符串类型：只要不是空字符串就认为有效（包括"正在分析您的问题，请稍候..."）
       return b.data.trim().length > 0;
@@ -1336,11 +1335,13 @@ const SystemBubble = ({
       return true;
     }
     return false;
-  }), [content]);
+    });
+  }, [content]);
   
   const hasValidContent = validBlocks.length > 0;
+  
   // 如果没有通过校验的块，但原始 content 里有文本，兜底渲染文本，避免内容被过滤掉
-  const fallbackText = React.useMemo(() => {
+  const fallbackText = useMemo(() => {
     if (hasValidContent || !Array.isArray(content)) return '';
     for (const b of content) {
       if (!b) continue;
@@ -1356,41 +1357,28 @@ const SystemBubble = ({
   }, [content, hasValidContent]);
   
   // 使用 useMemo 缓存 contentKey，避免每次渲染都重新计算
-  const contentKey = useMemo(() => content.map(b => b.id).join('-'), [content]);
-
-  // 如果是流式输出但还没有有效内容，显示加载动画（但保留"正在思考"提示）
-  // 注意：如果validBlocks为空，说明连"正在思考"提示都没有，才显示LoadingIndicator
-  if (isStreaming && !hasValidContent && content.length === 0) {
-    return <LoadingIndicator isSearching={isSearching} />;
-  }
-  
-  // 如果不在流式输出且没有有效内容，不渲染气泡（避免空白气泡）
-  if (!isStreaming && !hasValidContent) {
-    if (fallbackText) {
-      return (
-        <div className="message-system ml-12">
-          <div className="space-y-0">
-            <NarrativeText 
-              content={fallbackText} 
-              delay={0} 
-              isStreaming={false}
-            />
-          </div>
-        </div>
-      );
+  const contentKey = useMemo(() => {
+    if (!Array.isArray(content) || content.length === 0) {
+      return '';
     }
-    return null;
-  }
+    return content.map(b => b.id).join('-');
+  }, [content]);
 
+  // ⚠️ 重要：所有 hooks 必须在早期返回之前调用
   // 识别核心内容（KPI 或主要图表）- 优先显示
-  const hasCoreData = useMemo(() => content.some(block => {
-    if (block.type === 'kpi' || block.type === 'kpi-group') return true;
-    if (block.type === 'chart' && block.data && typeof block.data === 'object' && 'type' in block.data) {
-      const chartType = (block.data as any).type;
-      return ['line', 'bar', 'pie'].includes(chartType);
+  const hasCoreData = useMemo(() => {
+    if (!Array.isArray(content) || content.length === 0) {
+      return false;
     }
-    return false;
-  }), [content]);
+    return content.some(block => {
+      if (block.type === 'kpi' || block.type === 'kpi-group') return true;
+      if (block.type === 'chart' && block.data && typeof block.data === 'object' && 'type' in block.data) {
+        const chartType = (block.data as any).type;
+        return ['line', 'bar', 'pie'].includes(chartType);
+      }
+      return false;
+    });
+  }, [content]);
   
   // 预计算处理后的 blocks（将连续的 kpi 组合成组）
   const processedBlocks = useMemo(() => {
@@ -1456,28 +1444,28 @@ const SystemBubble = ({
             const isChartAfterText = isChartType(block.type) && prevBlock?.type === 'text';
             const isChartFollowedByText = isChartType(block.type) && nextBlock?.type === 'text';
             
-            // 文本和图表紧密结合，核心数据时更紧凑
+            // 文本和图表紧密结合，确保内容占满卡片，减少空白
             let spacingClass = '';
             if (isCoreData && index === 0) {
               spacingClass = ''; // 核心数据在第一位，无上间距
             } else if (isCoreData && prevBlock && prevBlock.type === 'text') {
-              spacingClass = 'mt-1'; // 核心数据紧跟文本，极小间距
+              spacingClass = 'mt-0.5'; // 核心数据紧跟文本，极小间距
             } else if (isTextFollowedByChart) {
-              spacingClass = 'mb-1'; // 文本后接图表，极小间距
+              spacingClass = 'mb-0.5'; // 文本后接图表，极小间距
             } else if (isChartAfterText) {
-              spacingClass = 'mt-1'; // 图表紧跟文本，极小间距
+              spacingClass = 'mt-0.5'; // 图表紧跟文本，极小间距
             } else if (isChartFollowedByText) {
-              spacingClass = hasCoreData ? 'mb-2' : 'mb-3'; // 图表后接文本，核心数据时更紧凑
+              spacingClass = hasCoreData ? 'mb-1' : 'mb-1.5'; // 图表后接文本，紧凑间距
             } else if (block.type === 'text' && prevBlock?.type === 'text') {
-              spacingClass = 'mt-2'; // 连续文本之间需要小间距
+              spacingClass = 'mt-1'; // 连续文本之间需要小间距
             } else if (isChartType(block.type) && prevBlock && isChartType(prevBlock.type)) {
-              spacingClass = hasCoreData ? 'mt-2' : 'mt-4'; // 图表之间，核心数据时更紧凑
+              spacingClass = hasCoreData ? 'mt-1' : 'mt-2'; // 图表之间，紧凑间距
             } else if (block.type === 'text' && !prevBlock) {
               spacingClass = ''; // 第一个文本块无上间距
             } else if (block.type === 'text' && prevBlock && isChartType(prevBlock.type)) {
-              spacingClass = hasCoreData ? 'mt-2' : 'mt-3'; // 文本在图表后，核心数据时更紧凑
+              spacingClass = hasCoreData ? 'mt-1' : 'mt-1.5'; // 文本在图表后，紧凑间距
             } else {
-              spacingClass = hasCoreData && isCoreData ? 'mt-1' : 'mt-3'; // 核心数据时更紧凑
+              spacingClass = hasCoreData && isCoreData ? 'mt-0.5' : 'mt-1.5'; // 紧凑间距，确保占满卡片
       }
       
       return {
@@ -1492,15 +1480,16 @@ const SystemBubble = ({
   
   return (
     <div
-      className={hasCoreData ? "mb-4" : "mb-6"}
+      className={hasCoreData ? "mb-2 w-full" : "mb-3 w-full"}
       data-message-id={messageId}
       style={{ 
         contain: 'layout style', // CSS containment，优化渲染性能
         position: 'relative', // 为右上角按钮提供定位上下文
+        width: '100%', // 确保占满父容器
       }}
     >
       {/* Agent 信息栏 - 蓝色主题，核心数据时更紧凑 */}
-      <div className={`flex items-center gap-3 ${hasCoreData ? 'mb-2' : 'mb-3'}`}>
+      <div className={`flex items-center gap-3 ${hasCoreData ? 'mb-1.5' : 'mb-2'}`}>
         {agent.avatar ? (
           <img 
             src={agent.avatar} 
@@ -1518,7 +1507,7 @@ const SystemBubble = ({
         </div>
         {isStreaming && (
           <div className="ml-auto flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-[#007AFF] rounded-full animate-pulse" />
+            <span className="w-1.5 h-1.5 bg-[#007AFF] rounded-full animate-[pulse_2s_ease-in-out_infinite]" />
             <span className="text-[11px] text-[#86868b]">输出中</span>
           </div>
         )}
@@ -1551,7 +1540,7 @@ const SystemBubble = ({
                 return <LoadingIndicator isSearching={isSearching} />;
               }
               return (
-                <div className="message-system ml-12">
+                <div className="message-system">
                   <div className="space-y-0">
                     <NarrativeText 
                       content={thinkingBlock.data as string} 
@@ -1569,17 +1558,22 @@ const SystemBubble = ({
             return (
               <div 
             key={contentKey}
-            className="message-system ml-12"
+            className="message-system overflow-hidden"
             style={{ 
               minHeight: '1px', // 确保有最小高度，避免布局跳动
               contain: 'layout style', // CSS containment，优化渲染性能
               position: 'relative', // 为右上角按钮提供定位上下文
+              wordBreak: 'break-word', // 确保文字不会超出
+              overflowWrap: 'break-word', // 现代浏览器支持
+              width: '100%', // 确保占满卡片
+              marginLeft: 0, // 强制移除左边距
+              marginRight: 0, // 强制移除右边距
             }}
           >
-            {/* 右上角操作按钮 - 只在消息完成时显示 */}
-            {status === 'complete' && validBlocks.length > 0 && (
-              <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-                {/* 收藏到看板 */}
+            {/* 顶部操作工具栏 - 只在消息完成时显示，不遮挡内容 */}
+            {status === 'complete' && validBlocks.length > 0 && onAddChartToDashboard && (
+              <div className="flex items-center justify-end gap-1.5 mb-3 pb-2 border-b border-[#E8F0FF]/50">
+                {/* 固定到看板按钮 - 更明显的提示 */}
                 <button
                   onClick={() => {
                     // 定义关键组件类型 - 只保留数据展示相关的组件
@@ -1675,15 +1669,18 @@ const SystemBubble = ({
                     window.dispatchEvent(event);
                   }}
                   className={clsx(
-                    'w-8 h-8 rounded-lg flex items-center justify-center',
-                    'text-[#86868b] hover:text-[#007AFF]',
-                    'hover:bg-[#007AFF]/5',
-                    'transition-colors',
-                    'border border-transparent hover:border-[#007AFF]/20'
+                    'px-3 py-1.5 rounded-lg flex items-center gap-1.5',
+                    'text-[#007AFF] hover:text-white',
+                    'bg-[#007AFF]/5 hover:bg-[#007AFF]',
+                    'transition-all',
+                    'border border-[#007AFF]/20 hover:border-[#007AFF]',
+                    'text-[12px] font-medium',
+                    'shadow-sm hover:shadow-md'
                   )}
-                  title="添加到数据看板"
+                  title="固定到数据看板"
                 >
-                  <Star className="w-4 h-4" />
+                  <Star className="w-3.5 h-3.5 fill-[#007AFF] hover:fill-white transition-colors" />
+                  <span>固定到看板</span>
                 </button>
                 
                 {(() => {
@@ -1826,7 +1823,7 @@ const SystemBubble = ({
             )}
             
             <div 
-              className="space-y-4" 
+              className="w-full" 
               style={{ 
                 contain: 'layout',
                 position: 'relative', // 使用相对定位，稳定布局
@@ -1864,7 +1861,7 @@ const SystemBubble = ({
             
             {/* 底部操作区域 - 只在消息完成时显示 */}
             {status === 'complete' && (
-              <div className="mt-4 pt-4 border-t border-[#E5E7EB] space-y-4">
+              <div className="mt-2 pt-3 border-t border-[#E5E7EB] space-y-3">
                 {/* 评分组件 */}
                 <MessageRating 
                   messageId={messageId}
@@ -1913,6 +1910,13 @@ export const MessageBubble = ({ message, onActionSelect, onFilterChange, onAgent
   const [isAttributionOpen, setIsAttributionOpen] = useState(false);
   const [isAttributionLoading, setIsAttributionLoading] = useState(false);
   const [attributionPosition, setAttributionPosition] = useState<{ top: number; left: number } | undefined>(undefined);
+  
+  // 检查是否在看板编辑模式（通过 URL 参数或路径判断）
+  const isDashboardEditMode = typeof window !== 'undefined' && (
+    window.location.pathname.includes('dashboard') || 
+    window.location.search.includes('page=dashboard') ||
+    window.location.search.includes('page=dashboard-list')
+  );
   
   // 处理单个图表添加到看板
   const handleAddChartToDashboard = (block: ContentBlock) => {
@@ -2034,7 +2038,7 @@ export const MessageBubble = ({ message, onActionSelect, onFilterChange, onAgent
         messageId={message.id}
         onAppendContent={onAppendContent}
         onAttributionClick={handleAttributionClick}
-        onAddChartToDashboard={handleAddChartToDashboard}
+        onAddChartToDashboard={isDashboardEditMode ? undefined : handleAddChartToDashboard}
       />
       {/* 归因分析面板 */}
       <AttributionPanel
