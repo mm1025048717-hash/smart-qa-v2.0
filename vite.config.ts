@@ -14,8 +14,10 @@ export default defineConfig({
       '/api/deepseek': {
         target: 'https://api.deepseek.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/deepseek/, ''),
+        rewrite: (path) => path.replace(/^\/api\/deepseek/, '/v1'),
         secure: true,
+        // 注意：Vite 代理不会自动添加 Authorization header
+        // 需要在客户端代码中直接传递 API Key
       }
     }
   },

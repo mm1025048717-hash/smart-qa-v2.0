@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AgentProfile } from '../types';
-import { AGENTS } from '../services/agents';
+import { ALL_AGENTS as AGENTS } from '../services/agents/index';
 import { ChevronDown, Globe } from 'lucide-react';
 
 interface SimpleInputPageProps {

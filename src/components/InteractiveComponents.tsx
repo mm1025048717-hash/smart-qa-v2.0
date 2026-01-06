@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { getAgentByName } from '../services/agents';
+import { getAgentByName } from '../services/agents/index';
 
 // 选择题组件
 interface ChoiceOption {
@@ -62,20 +62,20 @@ export const ChoiceSelector = ({
     (!maxSelections || selected.length <= maxSelections);
 
   return (
-    <div className="mt-10 mb-5">
+    <div className="mt-6 mb-4">
       {question && (
-        <p className="text-[13px] text-[#86868b] mb-3">{question}</p>
+        <p className="text-[12px] text-[#86868b] mb-2.5 font-medium">{question}</p>
       )}
       {multiple && selected.length > 0 && (
-        <div className="mb-3 flex items-center gap-2">
-          <span className="text-[12px] text-[#86868b]">
+        <div className="mb-2.5 flex items-center gap-2">
+          <span className="text-[11px] text-[#86868b]">
             已选择 {selected.length} 项
             {maxSelections && ` / 最多 ${maxSelections} 项`}
             {minSelections > 0 && selected.length < minSelections && ` (至少选择 ${minSelections} 项)`}
           </span>
         </div>
       )}
-      <div className="flex flex-wrap gap-3 md:gap-4 pt-1">
+      <div className="flex flex-wrap gap-2 pt-0.5">
         {options.map((option) => {
           const isSelected = selected.includes(option.id);
           const isDisabled = Boolean(multiple && maxSelections && !isSelected && selected.length >= maxSelections);
@@ -86,31 +86,31 @@ export const ChoiceSelector = ({
               onClick={() => handleSelect(option)}
               disabled={isDisabled}
               className={`
-                flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] transition-all border text-left
-                whitespace-normal break-words min-w-[160px]
+                flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] transition-all border text-left
+                whitespace-normal break-words min-w-0
                 ${isDisabled
                   ? 'bg-[#F5F5F7] text-[#86868b] border-[#E5E5EA] cursor-not-allowed'
                   : isSelected
-                    ? 'bg-[#007AFF] text-white border-[#007AFF]'
-                    : 'bg-white text-[#007AFF] border-[#007AFF]/30 hover:border-[#007AFF] hover:bg-[#007AFF]/5'
+                    ? 'bg-[#007AFF] text-white border-[#007AFF] shadow-sm'
+                    : 'bg-white text-[#1D1D1F] border-[#D2D2D7] hover:border-[#007AFF] hover:bg-[#F5F5F7]'
                 }
               `}
             >
               {isSelected && <Check className="w-3 h-3 flex-shrink-0" />}
-              <span className="flex-1">{option.label}</span>
+              <span className="flex-1 leading-tight">{option.label}</span>
             </button>
           );
         })}
       </div>
       {multiple && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           <button
             onClick={handleConfirm}
             disabled={!canConfirm}
             className={`
-              px-4 py-2 rounded-lg text-[13px] font-medium transition-all
+              px-3 py-1.5 rounded-md text-[12px] font-medium transition-all
               ${canConfirm
-                ? 'bg-[#007AFF] text-white hover:bg-[#0066CC]'
+                ? 'bg-[#007AFF] text-white hover:bg-[#0051D5] shadow-sm'
                 : 'bg-[#E5E5EA] text-[#86868b] cursor-not-allowed'
               }
             `}
@@ -120,7 +120,7 @@ export const ChoiceSelector = ({
           {selected.length > 0 && (
             <button
               onClick={() => setSelected([])}
-              className="px-4 py-2 rounded-lg text-[13px] text-[#86868b] hover:bg-[#F5F5F7] transition-all"
+              className="px-3 py-1.5 rounded-md text-[12px] text-[#86868b] hover:bg-[#F5F5F7] transition-all"
             >
               清空
             </button>
@@ -430,35 +430,58 @@ export function parseInteractiveContent(text: string): ParsedContent[] {
     
     if (bracketIdx === -1) {
       // 没有更多 [，但可能存在裸 choices: 或 choices-multiple: 选项1|选项2
-      const bareChoicesMatch = remaining.match(/(choices(?:-multiple)?|choice(?:-multiple)?):\s*([^\n\[\]]+)/i);
-      if (bareChoicesMatch && bareChoicesMatch[2] && bareChoicesMatch[2].includes('|')) {
+      // 增强匹配：支持跨行、支持不完整的choices（流式输出中）
+      const bareChoicesMatch = remaining.match(/(choices(?:-multiple)?|choice(?:-multiple)?):\s*([^\n\[\]]+?)(?:\n|$)/i);
+      if (bareChoicesMatch && bareChoicesMatch[2]) {
         const [fullMatch, rawType, optionsStr] = bareChoicesMatch;
         const type = rawType.toLowerCase();
         const isMultiple = type.includes('multiple');
-        const textBeforeChoices = remaining.slice(0, bareChoicesMatch.index).trim();
-        if (textBeforeChoices) {
-          const text = String(textBeforeChoices).replace(/\[object Object\]/g, '').trim();
-          if (text) {
-            result.push({ type: 'text', content: text });
+        
+        // 检查是否有分隔符 |，即使只有一个也要尝试解析
+        if (optionsStr.includes('|') || optionsStr.trim().length > 0) {
+          const textBeforeChoices = remaining.slice(0, bareChoicesMatch.index).trim();
+          if (textBeforeChoices) {
+            const text = String(textBeforeChoices).replace(/\[object Object\]/g, '').trim();
+            if (text) {
+              result.push({ type: 'text', content: text });
+            }
           }
+          
+          // 增强选项解析：支持跨行、支持不完整选项（流式输出中）
+          // 清理选项字符串：将换行符转换为分隔符，统一处理
+          let cleanedOptions = optionsStr
+            .replace(/\n+/g, '|')  // 换行符转为分隔符
+            .replace(/\s*\|\s*/g, '|')  // 统一分隔符格式
+            .replace(/\|+/g, '|')  // 合并多个分隔符
+            .trim();
+          
+          // 如果以 | 结尾，说明可能还在流式输出中，暂时保留
+          const isStreaming = cleanedOptions.endsWith('|');
+          if (isStreaming) {
+            cleanedOptions = cleanedOptions.slice(0, -1); // 移除末尾的 |
+          }
+          
+          const options = cleanedOptions.split('|')
+            .map(opt => opt.trim())
+            .filter(opt => opt.length > 0)
+            .map((opt, i) => ({
+              id: `opt_${i}`,
+              label: opt.trim(),
+              value: opt.trim(),
+            }));
+          
+          // 至少要有2个选项才认为是有效的choices（避免单个选项被误解析）
+          // 但如果是在流式输出中，即使只有1个选项也先显示
+          if (options.length >= 1 || isStreaming) {
+            result.push({ type: 'choices', data: { options, multiple: isMultiple } });
+          }
+          
+          const afterIdx = bareChoicesMatch.index !== undefined ? bareChoicesMatch.index + fullMatch.length : remaining.length;
+          remaining = remaining.slice(afterIdx).trimStart();
+          if (!remaining.length) break;
+          // 继续循环处理后续内容
+          continue;
         }
-        const cleanedOptions = optionsStr.replace(/\n+/g, '|').replace(/\s*\|\s*/g, '|');
-        const options = cleanedOptions.split('|')
-          .map(opt => opt.trim())
-          .filter(opt => opt.length > 0)
-          .map((opt, i) => ({
-            id: `opt_${i}`,
-            label: opt.trim(),
-            value: opt.trim(),
-          }));
-        if (options.length > 0) {
-          result.push({ type: 'choices', data: { options, multiple: isMultiple } });
-        }
-        const afterIdx = bareChoicesMatch.index !== undefined ? bareChoicesMatch.index + fullMatch.length : remaining.length;
-        remaining = remaining.slice(afterIdx).trimStart();
-        if (!remaining.length) break;
-        // 继续循环处理后续内容
-        continue;
       }
       
       // 没有更多标记，添加剩余文本
@@ -617,6 +640,9 @@ export function parseInteractiveContent(text: string): ParsedContent[] {
     if (simpleMatch) {
       const [fullMatch, type, dataStr] = simpleMatch;
       
+      // 确保 fullMatch 包含闭合的 ]
+      const actualFullMatch = fullMatch.endsWith(']') ? fullMatch : fullMatch + ']';
+      
       switch (type.toLowerCase()) {
         case 'steps':
         case 'step':
@@ -648,32 +674,40 @@ export function parseInteractiveContent(text: string): ParsedContent[] {
         case 'choices-multiple':
         case 'choice-multiple':
           // 处理多行选项，清理换行符和多余空格
-          // 先清理数据，移除可能的尾随 ] 或其他字符
+          // 增强解析：支持流式输出中的不完整choices
           let cleanedData = dataStr.trim();
           // 移除尾随的 ]
           cleanedData = cleanedData.replace(/\]+$/, '');
           // 处理多行：将换行符转换为 |
           cleanedData = cleanedData.replace(/\n+/g, '|');
-          // 规范化分隔符
-          cleanedData = cleanedData.replace(/\s*\|\s*/g, '|');
+          // 规范化分隔符：统一处理各种分隔符格式
+          cleanedData = cleanedData
+            .replace(/\s*\|\s*/g, '|')  // 统一 | 分隔符
+            .replace(/\|+/g, '|')  // 合并多个分隔符
+            .replace(/^\|+|\|+$/g, '');  // 移除首尾分隔符
           
           // 检查是否是多选模式
           const isMultiple = type.toLowerCase().includes('multiple');
           
+          // 增强选项解析：支持不完整选项（流式输出中）
           const options = cleanedData.split('|')
             .map(opt => opt.trim())
             .filter(opt => opt.length > 0)
             .map((opt, i) => ({
-            id: `opt_${i}`,
-            label: opt.trim(),
-            value: opt.trim(),
-          }));
+              id: `opt_${i}`,
+              label: opt.trim(),
+              value: opt.trim(),
+            }));
           
+          // 至少要有1个选项才认为是有效的choices（流式输出中可能只有部分选项）
           if (options.length > 0) {
-          result.push({ type: 'choices', data: { options, multiple: isMultiple } });
+            result.push({ type: 'choices', data: { options, multiple: isMultiple } });
+            // 跳过整个匹配的内容（包括闭合的 ]），使用 actualFullMatch 确保包含 ]
+            remaining = remaining.slice(bracketIdx + actualFullMatch.length);
+            continue;
           } else {
-            // 如果没有解析到选项，记录警告
-            console.warn('Choices parsed but no valid options found:', dataStr);
+            // 如果没有解析到选项，记录警告（但不影响其他内容解析）
+            console.warn('[Choices Parser] No valid options found:', dataStr);
           }
           break;
         
@@ -756,7 +790,8 @@ export function parseInteractiveContent(text: string): ParsedContent[] {
           }
       }
       
-      remaining = remaining.slice(bracketIdx + fullMatch.length);
+      // 使用 actualFullMatch 确保跳过闭合的 ]
+      remaining = remaining.slice(bracketIdx + actualFullMatch.length);
       continue;
     }
     

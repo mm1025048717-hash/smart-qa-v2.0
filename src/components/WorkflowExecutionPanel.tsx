@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { BusinessScenario } from '../types/workflow';
-import { getAgentById } from '../services/agents';
+import { getAgentById } from '../services/agents/index';
 
 interface WorkflowExecutionPanelProps {
   scenario: BusinessScenario | null;

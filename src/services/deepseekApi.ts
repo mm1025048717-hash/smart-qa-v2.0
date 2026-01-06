@@ -5,6 +5,15 @@
 // ⚠️ 警告：生产环境必须使用环境变量配置 API Key，不要硬编码！
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
 
+// 开发环境调试：检查 API Key 是否被正确读取
+if (import.meta.env.DEV) {
+  console.log('[DeepSeek API] 🔑 API Key 状态:', {
+    hasKey: !!DEEPSEEK_API_KEY,
+    keyPrefix: DEEPSEEK_API_KEY ? `${DEEPSEEK_API_KEY.slice(0, 8)}...${DEEPSEEK_API_KEY.slice(-4)}` : '未设置',
+    envVar: import.meta.env.VITE_DEEPSEEK_API_KEY ? '已读取' : '未读取',
+  });
+}
+
 // ==========================================
 // 亿问企业知识库 - 所有数字员工共享
 // ==========================================
@@ -735,10 +744,12 @@ The Team：
 `;
 
 // API 基础 URL
-// 生产环境：优先使用代理服务（Vercel API 路由），如果没有配置则直接调用（可能遇到 CORS）
-// 开发环境：使用 Vite 代理
+// 根据 DeepSeek API 文档: https://api-docs.deepseek.com/zh-cn/
+// base_url: https://api.deepseek.com
+// 生产环境：直接调用 DeepSeek API
+// 开发环境：使用 Vite 代理（避免 CORS 问题）
 const DEEPSEEK_BASE_URL = import.meta.env.PROD 
-  ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || '/api/deepseek')  // 生产环境：优先使用 Vercel API 代理，否则直接调用
+  ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || 'https://api.deepseek.com')  // 生产环境：直接调用
   : '/api/deepseek';  // 开发环境使用 Vite 代理
 
 // ==========================================
@@ -1555,7 +1566,74 @@ const INTERACTIVE_GUIDE = `
 [choices:深入分析|查看详情|生成报告]`;
 
 // 根据 Agent 生成角色设定的 system prompt
+// 预加载的爱玛系统提示词函数（在应用启动时注入）
+let cachedAimaSystemPrompt: ((agentId: string) => string) | null = null;
+
+// 设置爱玛系统提示词函数（由应用启动时调用）
+export function setAimaSystemPrompt(getter: (agentId: string) => string) {
+  cachedAimaSystemPrompt = getter;
+}
+
 export function getAgentSystemPrompt(agentId: string, agentName: string, agentTitle: string): string {
+  // 检查是否是爱玛电动车员工，如果是则使用自定义系统提示词
+  if (agentId.startsWith('aima-')) {
+    console.log('[getAgentSystemPrompt] 检测到爱玛员工:', { agentId, agentName, cachedAimaSystemPrompt: !!cachedAimaSystemPrompt });
+    
+    if (cachedAimaSystemPrompt) {
+      try {
+        const prompt = cachedAimaSystemPrompt(agentId);
+        console.log('[getAgentSystemPrompt] 使用爱玛自定义提示词，长度:', prompt.length);
+        return prompt;
+      } catch (e) {
+        console.warn('Error calling AIMA system prompt', e);
+      }
+    } else {
+      console.warn('[getAgentSystemPrompt] cachedAimaSystemPrompt 未设置，使用基础提示词');
+    }
+    
+    // 如果还没加载，返回详细的基础提示词（包含爱玛业务背景）
+    return `你是${agentName}，${agentTitle}，专门为爱玛电动车数据部门提供数据分析服务。
+
+## 你的角色定位
+专注爱玛电动车业务数据分析，覆盖销售、门店、库存、市场等全方位数据洞察，助力业务决策。
+
+## 你的专业技能
+销售分析、门店运营、库存管理、市场分析、客户满意度分析
+
+## 你的性格特点
+- **语调风格**：专业、友好、细致
+- **沟通方式**：数据分析专业，善于用图表和数据说话，同时能够以人性化的方式解释复杂数据
+- **专业领域**：深度理解电动车行业和爱玛业务，能够提供有洞察力的分析建议
+
+## 爱玛电动车业务背景
+- **公司**：爱玛电动车（AIMA），中国电动车行业领先企业
+- **主要产品**：电动自行车、电动摩托车
+- **核心业务**：销售分析、门店运营、库存管理、市场分析
+- **主要竞品**：雅迪控股、新日股份、小牛电动、九号公司
+- **关键指标**：销售额、销量、门店坪效、库存周转率、市场份额、客户满意度
+
+## 你的工作原则
+1. **专业准确**：所有数据分析和结论必须基于真实数据，确保准确性
+2. **人性化表达**：用通俗易懂的语言解释复杂数据，避免过于技术化的术语
+3. **业务洞察**：不仅要展示数据，更要提供有价值的业务洞察和建议
+4. **图表优先**：能用图表展示的数据，优先使用可视化方式呈现
+5. **主动追问**：当用户问题不够清晰时，主动询问细节以提供更精准的分析
+
+## 回复风格示例
+- ✅ 好的："好的，我来为您分析本月电动自行车的销售情况。根据最新数据..."
+- ✅ 数据展示："本月电动自行车销售760.3万台，同比增长5.06%，表现稳定..."
+- ✅ 洞察建议："从数据来看，华东区域增长较快，建议重点关注..."
+- ✅ 人性化："这个数据很有意思，说明我们的产品在年轻用户群体中很受欢迎..."
+
+## 注意事项
+- 始终保持专业但友好的语气
+- 回答要结合爱玛电动车的实际业务场景
+- 提供的数据要准确，如果不确定要说明是示例数据
+- 善于用数据讲故事，让分析更有说服力
+- 当需要更多信息时，要礼貌地询问用户
+
+现在请开始与用户对话，展现你的专业能力和人性化服务。`;
+  }
   
   const rolePrompts: Record<string, string> = {
     'alisa': `【角色设定】你是 Alisa，理科生，SQL专家，在上海易问数据科技有限公司工作。
@@ -2408,6 +2486,64 @@ export async function chatCompletionStream(
   enableWebSearch?: boolean,  // 可选的联网搜索开关（根据意图识别动态传入）
   abortSignal?: AbortSignal  // 外部传入的AbortSignal，用于取消请求
 ): Promise<void> {
+  // 如果是爱玛员工，使用 LangChain 风格服务（更好的对话管理和提示词组织）
+  if (agentId.startsWith('aima-')) {
+    try {
+      const { streamAimaResponse } = await import('./langchain/aimaLangChainService');
+      
+      // 转换消息格式：从 ChatMessage[] 转换为对话历史格式
+      const chatHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+      
+      for (const msg of messages) {
+        if (msg.role === 'system') continue; // 跳过系统消息，LangChain 服务会单独处理
+        
+        let content = '';
+        if (typeof msg.content === 'string') {
+          content = msg.content;
+        } else {
+          // msg.content 是其他类型，转换为字符串
+          content = String(msg.content);
+        }
+        
+        if (content.trim()) {
+          chatHistory.push({
+            role: msg.role as 'user' | 'assistant',
+            content: content.trim(),
+          });
+        }
+      }
+      
+      // 提取最后一个用户消息作为当前查询
+      const lastUserMessage = chatHistory.filter(m => m.role === 'user').pop();
+      const currentQuery = lastUserMessage?.content || '';
+      const historyWithoutLast = chatHistory.slice(0, -1);
+      
+      console.log('[DeepSeek API] 🎯 检测到爱玛员工，使用 LangChain 风格服务', {
+        agentId,
+        agentName,
+        agentTitle,
+        currentQuery,
+        historyLength: historyWithoutLast.length,
+        totalMessages: messages.length,
+      });
+      
+      await streamAimaResponse(
+        agentId,
+        agentName,
+        agentTitle,
+        currentQuery,
+        historyWithoutLast,
+        onChunk,
+        onComplete,
+        onError
+      );
+      return; // 成功使用 LangChain 风格服务，直接返回
+    } catch (e) {
+      console.warn('[DeepSeek API] LangChain 风格服务不可用，回退到直接 API 调用', e);
+      // 如果 LangChain 风格服务不可用，继续使用原有方式
+    }
+  }
+
   let systemPrompt = getAgentSystemPrompt(agentId, agentName, agentTitle);
   
   // 如果有用户记忆，追加到系统提示
@@ -2477,9 +2613,9 @@ export async function chatCompletionStream(
             model: shouldEnableSearch ? 'deepseek-reasoner' : 'deepseek-chat',
             messages: limitedMessages,
             stream: true,
-            temperature: 0.8,  // 提高温度，增加回复多样性，避免每次都使用相同模板
+            temperature: 0.5,  // 降低温度，提高稳定性和速度，确保choices完整输出
             // 不限制token输出，让模型完整输出
-            top_p: 0.8,  // 降低top_p，加快采样速度
+            top_p: 0.9,  // 提高top_p，加快采样速度，提高稳定性
             // ⚠️ DeepSeek API 不支持 web_search 工具类型
             // API 错误: unknown variant 'web_search', expected 'function'
             // 如果确实需要联网搜索，需要：

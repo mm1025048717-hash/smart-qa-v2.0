@@ -12,7 +12,8 @@ export interface ParsedChunk {
   kpis: Array<{ json: string; data: any; position: number }>;
   gantts: Array<{ json: string; data: any; position: number }>;
   thoughtChains: Array<{ json: string; data: any; position: number }>;
-  blocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain'; position: number; data: any }>;
+  toolCallChains: Array<{ json: string; data: any; position: number }>;
+  blocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain' | 'tool-call-chain'; position: number; data: any }>;
 }
 
 /**
@@ -26,11 +27,12 @@ export function parseRealtimeContent(content: string): ParsedChunk {
     kpis: [],
     gantts: [],
     thoughtChains: [],
+    toolCallChains: [],
     blocks: [],
   };
   
   // 收集所有内容块，按位置排序
-  const allBlocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain'; position: number; data: any; text?: string }> = [];
+  const allBlocks: Array<{ type: 'text' | 'chart' | 'table' | 'kpi' | 'kpi-group' | 'gantt' | 'thought-chain' | 'tool-call-chain'; position: number; data: any; text?: string }> = [];
 
   // 1. 提取图表 JSON [chart:{...}] - 支持嵌套对象
   // 支持多种格式：[chart:{...}] 或 [chart: {...}] 或 [chart:{...}]
@@ -254,6 +256,89 @@ export function parseRealtimeContent(content: string): ParsedChunk {
   result.text = result.text.replace(/\[thought-chain:[^\]]*\]/gi, '');
   result.text = result.text.replace(/\[thought-chain[^\]]*/gi, '');
 
+  // 3.5. 提取工具调用链 [tool-call-chain:{...}]
+  const toolCallChainPattern = /\[tool-call-chain:\s*\{/gi;
+  let toolCallChainMatch;
+  const foundToolCallChains = new Set<string>();
+  const toolCallChainMatches: Array<{ start: number; end: number; json: string; fullMatch: string }> = [];
+  
+  toolCallChainPattern.lastIndex = 0;
+  
+  while ((toolCallChainMatch = toolCallChainPattern.exec(content)) !== null) {
+    const startIdx = toolCallChainMatch.index + toolCallChainPattern.lastIndex - 1;
+    let braceCount = 1;
+    let endIdx = startIdx + 1;
+    
+    while (endIdx < content.length && braceCount > 0) {
+      if (content[endIdx] === '{') braceCount++;
+      if (content[endIdx] === '}') braceCount--;
+      endIdx++;
+    }
+    
+    if (endIdx < content.length && content[endIdx] === ']') {
+      const jsonStr = content.slice(startIdx, endIdx);
+      const fullMatch = content.slice(toolCallChainMatch.index, endIdx + 1);
+      if (!foundToolCallChains.has(jsonStr)) {
+        foundToolCallChains.add(jsonStr);
+        toolCallChainMatches.push({
+          start: toolCallChainMatch.index,
+          end: endIdx + 1,
+          json: jsonStr,
+          fullMatch: fullMatch,
+        });
+      }
+    }
+  }
+  
+  // 从后往前处理，避免索引偏移问题
+  for (let i = toolCallChainMatches.length - 1; i >= 0; i--) {
+    const match = toolCallChainMatches[i];
+    try {
+      const toolCallChainData = JSON.parse(match.json);
+      if (toolCallChainData && toolCallChainData.items && Array.isArray(toolCallChainData.items) && toolCallChainData.items.length > 0) {
+        // 验证 items 的有效性
+        const validItems = toolCallChainData.items.filter((item: any) => 
+          item && typeof item === 'object' && item.id && item.toolName
+        );
+        
+        if (validItems.length > 0) {
+          result.toolCallChains.push({
+            json: match.json,
+            data: validItems,
+            position: match.start,
+          });
+          // 添加到blocks中
+          allBlocks.push({
+            type: 'tool-call-chain',
+            position: match.start,
+            data: validItems,
+          });
+        }
+        
+        // 从文本中移除工具调用链标记
+        result.text = result.text.replace(match.fullMatch, '');
+        const escapedMatch = match.fullMatch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        result.text = result.text.replace(new RegExp(escapedMatch, 'g'), '');
+      } else {
+        // 数据格式无效，也要从文本中移除
+        result.text = result.text.replace(match.fullMatch, '');
+        const escapedMatch = match.fullMatch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        result.text = result.text.replace(new RegExp(escapedMatch, 'g'), '');
+      }
+    } catch (e) {
+      // 即使解析失败，也要从文本中移除，避免显示代码
+      result.text = result.text.replace(match.fullMatch, '');
+      const escapedMatch = match.fullMatch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result.text = result.text.replace(new RegExp(escapedMatch, 'g'), '');
+      console.warn('ToolCallChain parse error:', e, 'JSON:', match.json.substring(0, 100));
+    }
+  }
+  
+  // 额外清理：移除任何残留的工具调用链代码
+  result.text = result.text.replace(/\[tool-call-chain:\s*\{[^}]*\}[^\]]*\]/gi, '');
+  result.text = result.text.replace(/\[tool-call-chain:[^\]]*\]/gi, '');
+  result.text = result.text.replace(/\[tool-call-chain[^\]]*/gi, '');
+
   // 4. 提取甘特图 [gantt:{...}]
   const ganttPattern = /\[gantt:\s*\{/gi;
   let ganttMatch;
@@ -339,7 +424,7 @@ export function parseRealtimeContent(content: string): ParsedChunk {
 
   // 收集所有非文本块的位置和结束位置
   interface ContentMarker {
-    type: 'chart' | 'kpi' | 'gantt' | 'table' | 'thought-chain';
+    type: 'chart' | 'kpi' | 'gantt' | 'table' | 'thought-chain' | 'tool-call-chain';
     start: number;
     end: number;
     data: any;
@@ -377,6 +462,17 @@ export function parseRealtimeContent(content: string): ParsedChunk {
     if (thoughtChainData) {
       allMarkers.push({ type: 'thought-chain', start: match.start, end: match.end, data: thoughtChainData });
       // 确保从文本中移除思维链标记
+      const fullMatch = content.slice(match.start, match.end);
+      result.text = result.text.replace(fullMatch, '');
+    }
+  }
+  
+  // 收集工具调用链位置
+  for (const match of toolCallChainMatches) {
+    const toolCallChainData = result.toolCallChains.find(tc => tc.position === match.start)?.data;
+    if (toolCallChainData) {
+      allMarkers.push({ type: 'tool-call-chain', start: match.start, end: match.end, data: toolCallChainData });
+      // 确保从文本中移除工具调用链标记
       const fullMatch = content.slice(match.start, match.end);
       result.text = result.text.replace(fullMatch, '');
     }

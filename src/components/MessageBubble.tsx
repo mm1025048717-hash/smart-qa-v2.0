@@ -46,8 +46,9 @@ import {
 } from './StoryComponents';
 import { DataVisualizer, FilterCondition } from './DataVisualizer';
 import clsx from 'clsx';
-import { getAgentById } from '../services/agents';
+import { getAgentById } from '../services/agents/index';
 import { ThoughtChain, ThoughtChainItem } from './ThoughtChain';
+import { ToolCallChain, ToolCallItem } from './ToolCallChain';
 import { MessageRating } from './MessageRating';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { DrillDownSidePanel, DrillDownData } from './DrillDownSidePanel';
@@ -754,6 +755,85 @@ const ContentBlockRenderer = memo(({
             line="dashed"
                     isStreaming={isStreaming}
           />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      );
+    }
+    
+    case 'tool-call-chain': {
+      const toolCallItems = block.data as ToolCallItem[];
+      
+      // 严格检查数据有效性
+      if (!Array.isArray(toolCallItems) || toolCallItems.length === 0) {
+        return null;
+      }
+      
+      // 验证每个 item 的有效性
+      const validItems = toolCallItems.filter(item => {
+        if (!item || typeof item !== 'object') return false;
+        if (!item.id || typeof item.id !== 'string' || item.id.trim() === '') return false;
+        if (!item.toolName || typeof item.toolName !== 'string' || item.toolName.trim() === '') return false;
+        return true;
+      });
+      
+      if (validItems.length === 0) {
+        return null;
+      }
+      
+      // 自动展开当前 loading 的工具调用
+      const autoExpandedKeys = validItems
+        .filter(item => item.status === 'loading')
+        .map(item => item.id);
+      
+      const stableKey = `tool-call-chain-${block.id || 'default'}`;
+      const [isExpanded, setIsExpanded] = useState(true);
+      
+      return (
+        <motion.div
+          key={stableKey}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15 }}
+          className="my-8"
+        >
+          {/* 工具调用链区域 - 类似思维链的设计 */}
+          <div className="bg-[#F5F9FF] rounded-2xl p-6 border border-[#E5E8F0]">
+            {/* 标题 */}
+            <div 
+              className="flex items-center gap-2 mb-5 cursor-pointer group hover:opacity-80 transition-opacity"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              <div className="w-1 h-4 bg-[#007AFF] rounded-full" />
+              <span className="text-[12px] font-medium text-[#007AFF] tracking-wide flex-1">
+                工具调用
+              </span>
+              <motion.div
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="text-[#007AFF] opacity-60 group-hover:opacity-100"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </motion.div>
+            </div>
+            
+            {/* 工具调用链内容 */}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <ToolCallChain 
+                    items={validItems} 
+                    defaultExpandedKeys={autoExpandedKeys}
+                    isStreaming={isStreaming}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

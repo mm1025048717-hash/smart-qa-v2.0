@@ -82,83 +82,92 @@ export class VoiceService {
 
       try {
         const wsUrl = this.config.wsUrl || 'ws://localhost:8765';
-        this.connectionAttempts++;
         
-        // 只在首次连接时记录日志
-        if (this.connectionAttempts === 1) {
-          console.log(`[VoiceService] Connecting to ${wsUrl}...`);
-        }
-
-        // 如果已经有 WebSocket 连接，先关闭
+        // 如果已经有 WebSocket 连接，先关闭并等待
         if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
           this.ws.close();
+          // 等待一小段时间确保连接已关闭
+          setTimeout(() => {
+            this.attemptConnect(wsUrl, resolve, reject);
+          }, 100);
+        } else {
+          this.attemptConnect(wsUrl, resolve, reject);
         }
-
-        this.ws = new WebSocket(wsUrl);
-        // 设置 binaryType 为 'arraybuffer' 以接收音频数据
-        this.ws.binaryType = 'arraybuffer';
-
-        // 设置连接超时（10秒）
-        const timeout = setTimeout(() => {
-          if (this.ws?.readyState !== WebSocket.OPEN) {
-            this.ws?.close();
-            const err = new Error(`WebSocket connection timeout: ${wsUrl}`);
-            // 节流错误日志
-            this.logErrorOnce(err.message);
-            // 只在首次超时时调用 onError
-            if (this.connectionAttempts === 1) {
-              this.config.onError?.(err);
-            }
-            reject(err);
-          }
-        }, 10000);
-
-        this.ws.onopen = () => {
-          clearTimeout(timeout);
-          // 连接成功，重置所有状态
-          this.connectionAttempts = 0;
-          this.lastErrorTime = 0;
-          this.shouldRetry = true;
-          console.log('[VoiceService] WebSocket connected');
-          // 预先初始化 AudioContext（在用户交互后）
-          this.initAudioContext();
-          this.config.onConnected?.();
-          resolve();
-        };
-
-        this.ws.onerror = (error) => {
-          clearTimeout(timeout);
-          // 达到最大尝试次数后，停止自动重试
-          if (this.connectionAttempts >= this.maxConnectionAttempts) {
-            this.shouldRetry = false;
-          }
-          // 完全静默处理错误，不输出到控制台
-          const err = new Error('语音服务不可用');
-          // 只在首次错误时调用 onError，避免重复触发
-          if (this.connectionAttempts === 1) {
-            this.config.onError?.(err);
-          }
-          reject(err);
-        };
-
-        this.ws.onclose = (event) => {
-          clearTimeout(timeout);
-          // 只在正常关闭时记录日志
-          if (event.code === 1000 || event.code === 1001) {
-            console.log('[VoiceService] WebSocket disconnected', event.code, event.reason);
-          }
-          this.config.onDisconnected?.();
-          // 如果不是正常关闭，不在这里重连，让用户手动触发
-        };
-
-        this.ws.onmessage = (event) => {
-          this.handleMessage(event);
-        };
       } catch (error) {
         console.error('[VoiceService] Connection exception:', error);
         reject(error);
       }
     });
+  }
+
+  private attemptConnect(wsUrl: string, resolve: () => void, reject: (error: Error) => void): void {
+    this.connectionAttempts++;
+    
+    // 只在首次连接时记录日志
+    if (this.connectionAttempts === 1) {
+      console.log(`[VoiceService] Connecting to ${wsUrl}...`);
+    }
+
+    this.ws = new WebSocket(wsUrl);
+    // 设置 binaryType 为 'arraybuffer' 以接收音频数据
+    this.ws.binaryType = 'arraybuffer';
+
+    // 设置连接超时（10秒）
+    const timeout = setTimeout(() => {
+      if (this.ws?.readyState !== WebSocket.OPEN) {
+        this.ws?.close();
+        const err = new Error(`WebSocket connection timeout: ${wsUrl}`);
+        // 节流错误日志
+        this.logErrorOnce(err.message);
+        // 只在首次超时时调用 onError
+        if (this.connectionAttempts === 1) {
+          this.config.onError?.(err);
+        }
+        reject(err);
+      }
+    }, 10000);
+
+    this.ws.onopen = () => {
+      clearTimeout(timeout);
+      // 连接成功，重置所有状态
+      this.connectionAttempts = 0;
+      this.lastErrorTime = 0;
+      this.shouldRetry = true;
+      console.log('[VoiceService] WebSocket connected');
+      // 不在 onopen 时初始化 AudioContext，需要在用户交互后初始化
+      // AudioContext 会在 startRecording 时由用户手势触发初始化
+      this.config.onConnected?.();
+      resolve();
+    };
+
+    this.ws.onerror = (error) => {
+      clearTimeout(timeout);
+      // 达到最大尝试次数后，停止自动重试
+      if (this.connectionAttempts >= this.maxConnectionAttempts) {
+        this.shouldRetry = false;
+      }
+      // 完全静默处理错误，不输出到控制台
+      const err = new Error('语音服务不可用');
+      // 只在首次错误时调用 onError，避免重复触发
+      if (this.connectionAttempts === 1) {
+        this.config.onError?.(err);
+      }
+      reject(err);
+    };
+
+    this.ws.onclose = (event) => {
+      clearTimeout(timeout);
+      // 只在正常关闭时记录日志
+      if (event.code === 1000 || event.code === 1001) {
+        console.log('[VoiceService] WebSocket disconnected', event.code, event.reason);
+      }
+      this.config.onDisconnected?.();
+      // 如果不是正常关闭，不在这里重连，让用户手动触发
+    };
+
+    this.ws.onmessage = (event) => {
+      this.handleMessage(event);
+    };
   }
 
   // 节流错误日志，避免重复输出
@@ -236,7 +245,7 @@ export class VoiceService {
   // 播放音频
   private async playAudio(audioData: ArrayBuffer) {
     if (this.isMuted) {
-      console.log('[VoiceService] Audio muted, skipping playback');
+      console.log('[VoiceService] ⚠️ Audio muted, skipping playback');
       return;
     }
 
@@ -245,28 +254,33 @@ export class VoiceService {
       return;
     }
 
+    console.log('[VoiceService] 🔊 Starting audio playback, data size:', audioData.byteLength, 'bytes');
+
     try {
       // 确保 AudioContext 已创建且处于运行状态
       if (!this.audioContext || this.audioContext.state === 'closed') {
+        console.log('[VoiceService] Creating AudioContext for playback...');
         this.initAudioContext();
       }
 
       // 如果 AudioContext 被暂停，尝试恢复它（需要在用户交互后）
       if (this.audioContext && this.audioContext.state === 'suspended') {
-        console.log('[VoiceService] Resuming suspended AudioContext');
+        console.log('[VoiceService] ⚠️ AudioContext suspended, attempting to resume...');
         try {
           await this.audioContext.resume();
-          console.log('[VoiceService] AudioContext resumed, state:', this.audioContext.state);
+          console.log('[VoiceService] ✅ AudioContext resumed, state:', this.audioContext.state);
         } catch (error) {
-          console.warn('[VoiceService] Failed to resume AudioContext (may need user interaction):', error);
+          console.warn('[VoiceService] ❌ Failed to resume AudioContext (may need user interaction):', error);
           // 如果恢复失败，仍然尝试解码（可能会失败，但不阻塞）
         }
       }
 
       if (!this.audioContext || this.audioContext.state === 'closed') {
-        console.warn('[VoiceService] AudioContext not available, skipping audio playback');
+        console.warn('[VoiceService] ❌ AudioContext not available, skipping audio playback. State:', this.audioContext?.state || 'null');
         return;
       }
+
+      console.log('[VoiceService] ✅ AudioContext ready, state:', this.audioContext.state);
 
       // 解码 WAV 音频数据
       const audioBuffer = await this.audioContext.decodeAudioData(audioData.slice(0));
@@ -381,7 +395,7 @@ export class VoiceService {
 
     try {
       // 在用户交互时初始化 AudioContext（解锁音频播放）
-      await this.initAudioContext();
+      this.initAudioContext();
       
       // 请求麦克风权限
       this.mediaStream = await navigator.mediaDevices.getUserMedia({

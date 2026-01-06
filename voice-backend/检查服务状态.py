@@ -91,3 +91,4 @@ print("  2. 运行后端服务: python voice_bot.py")
 print("  3. 检查是否有错误日志")
 print("  4. 确保端口 8765 未被占用")
 
+

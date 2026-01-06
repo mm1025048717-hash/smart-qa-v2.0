@@ -22,7 +22,13 @@ import {
   hasMatchedScenario,
 } from './services/narrativeGenerator';
 import { RefreshCw, Smartphone, Workflow, LayoutDashboard } from 'lucide-react';
-import { AGENTS, getAgentById, getAgentByName } from './services/agents';
+import { ALL_AGENTS as AGENTS, getAgentById, getAgentByName } from './services/agents/index';
+import { setAimaSystemPrompt } from './services/deepseekApi';
+// 预加载爱玛系统提示词
+import { getAimaSystemPrompt } from './services/agents/aima/aimaAgents';
+
+// 在应用启动时设置爱玛系统提示词函数
+setAimaSystemPrompt(getAimaSystemPrompt);
 import { detectAgentSwitch } from './services/agentSwitchDetector';
 import { detectIntent, isVagueIntent } from './services/intentEngine';
 import { chatCompletionStream, ChatMessage, classifyIntentLLM, LLMIntentResult } from './services/deepseekApi';
@@ -763,10 +769,12 @@ function App() {
 
     // ⚠️ 优先检查模糊意图：如果问题太模糊，必须先反问
     // ⚠️ 知识库查询必须走大模型，不能被反问逻辑拦截！
+    // ⚠️ 爱玛员工必须走大模型，让LLM生成个性化回复，不被反问逻辑拦截！
     // 若意图置信度较低或问题模糊，先反问再继续（避免直接输出分析/介绍）
-    // 但是知识库查询例外，直接走大模型
+    // 但是知识库查询和爱玛员工例外，直接走大模型
+    const isAimaAgent = currentAgentId.startsWith('aima-');
     const isVague = isVagueIntent(query);
-    if ((isVague || combinedConfidence < 0.6) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY) {
+    if ((isVague || combinedConfidence < 0.6) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isAimaAgent) {
       // 根据问题内容智能生成反问选项
       let clarifyText = '我需要再确认一下，您想了解哪类信息？请选择一个方向，或告诉我更具体的需求：';
       let clarifyChoices = [];
@@ -829,7 +837,8 @@ function App() {
 
     // 【规则匹配系统】优先检查是否匹配《智能问答系统显示规则》中的规则
     // 完全贴合文档规则，使用预设响应，不依赖大模型
-    if (presetResponse.hasPreset(query) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isVague) {
+    // ⚠️ 爱玛员工不走预设响应，必须走大模型生成个性化回复
+    if (presetResponse.hasPreset(query) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isVague && !isAimaAgent) {
       console.log('📋 [规则匹配] 使用预设响应', { query, intentType: intentResult.type });
       // 模拟短暂延迟
       await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
@@ -849,8 +858,8 @@ function App() {
 
     // 【测试用例精确匹配】其次检查是否为旧版测试用例
     // 如果 skipPresetResponse 为 true（从测试用例面板点击），强制走大模型
-    // ⚠️ 但是知识库查询和模糊意图必须走大模型或反问，不能使用预设响应
-    if (!skipPresetResponse && hasMatchedScenario(query) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isVague) {
+    // ⚠️ 但是知识库查询、模糊意图和爱玛员工必须走大模型或反问，不能使用预设响应
+    if (!skipPresetResponse && hasMatchedScenario(query) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isVague && !isAimaAgent) {
       console.log('📋 匹配到测试用例，使用预设响应', { query, intentType: intentResult.type });
       await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
       const narrativePresetResponse = generateNarrativeResponse(query);
@@ -998,18 +1007,35 @@ function App() {
       (chunk: string) => {
         fullContent += chunk;
         
-        // 使用稳定的时间节流：每500ms最多更新一次，并支持批量更新
+        // 使用稳定的时间节流：每300ms最多更新一次（加快更新频率，提高响应速度）
         const shouldUpdate = stableUpdate(fullContent.length);
         
+        // 优化：检测choices格式，如果检测到choices立即更新（确保choices完整渲染）
+        const hasChoices = fullContent.includes('[choices:') || 
+                          fullContent.includes('choices:') ||
+                          fullContent.match(/\[choices[^\]]*\]/i);
+        
+        // 如果检测到choices，立即更新（不等待节流），确保choices完整渲染
+        if (hasChoices && !shouldUpdate) {
+          // 强制更新，确保choices能完整渲染
+          const parsed = parseInteractiveContent(fullContent);
+          const hasValidChoices = parsed.some(p => p.type === 'choices' && p.data?.options?.length > 0);
+          if (hasValidChoices) {
+            // 有有效的choices，立即更新
+            shouldUpdate = true;
+          }
+        }
+        
         // 如果内容很少且不应该更新，跳过更新（避免频繁小更新导致跳动）
-        // 提高阈值，减少小内容更新
-        if (!shouldUpdate && fullContent.length < 300) {
+        // 但如果有choices，即使内容少也要更新
+        if (!shouldUpdate && fullContent.length < 300 && !hasChoices) {
           return;
         }
         
         // 内容增长很小且不在更新窗口内，跳过（避免频繁小更新导致闪烁）
+        // 但如果有choices，即使增长小也要更新
         const contentGrowth = fullContent.length - lastContentLength;
-        if (!shouldUpdate && contentGrowth < 30) {
+        if (!shouldUpdate && contentGrowth < 30 && !hasChoices) {
           return;
         }
         

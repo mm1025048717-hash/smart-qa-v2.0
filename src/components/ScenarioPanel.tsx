@@ -12,7 +12,7 @@ import {
 import clsx from 'clsx';
 import type { BusinessScenario } from '../types/workflow';
 import { BUSINESS_SCENARIOS, getScenariosByCategory, searchScenarios } from '../services/businessScenarios';
-import { getAgentById } from '../services/agents';
+import { getAgentById } from '../services/agents/index';
 
 interface ScenarioPanelProps {
   isOpen: boolean;

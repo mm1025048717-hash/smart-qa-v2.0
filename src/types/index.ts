@@ -96,6 +96,7 @@ export type ComponentType =
   | 'analyst-quote' // 分析师引言
   | 'visualizer'   // 数据可视化筛选条件
   | 'thought-chain' // 思维链（数字员工思考过程）
+  | 'tool-call-chain' // 工具调用链（LangChain工具调用）
   | 'report-hero'   // 报告头部卡片
   | 'report-layer'  // 报告层级卡片
   | 'query-confirmation' // 多度确认交互
@@ -226,6 +227,21 @@ export interface AgentProfile {
     semanticDB?: string;
     aiForBI?: string;
     value?: string;
+  };
+  // 自定义配置（用于特定客户/行业的扩展配置）
+  customConfig?: {
+    industry?: string;
+    company?: string;
+    businessDomain?: string[];
+    keyMetrics?: string[];
+    competitors?: string[];
+    productLines?: string[];
+    personality?: {
+      tone?: string;
+      style?: string;
+      expertise?: string;
+    };
+    [key: string]: unknown; // 允许其他自定义字段
   };
 }
 

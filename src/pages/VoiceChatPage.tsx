@@ -3,8 +3,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mic, MicOff, Volume2, VolumeX, Settings, ArrowLeft } from 'lucide-react';
 import { VoiceService, VoiceServiceConfig } from '../services/voiceService';
-import { AGENTS, getAgentById } from '../services/agents';
+import { ALL_AGENTS as AGENTS, getAgentById } from '../services/agents/index';
 import { Message } from '../types';
+import { VoiceSettingsDialog } from '../components/VoiceSettingsDialog';
 
 interface VoiceMessage {
   id: string;
@@ -30,6 +31,7 @@ export function VoiceChatPage({
   const [audioLevel, setAudioLevel] = useState(0); // 音频电平，用于波形动画
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const voiceServiceRef = useRef<VoiceService | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -275,13 +277,22 @@ export function VoiceChatPage({
     console.log('[VoiceChat] Mute toggled:', newMuted);
   };
 
-  const handleAgentChange = (agentId: string) => {
+  const handleAgentChange = async (agentId: string) => {
     setCurrentAgentId(agentId);
     // 重新连接语音服务
-    voiceServiceRef.current?.disconnect();
-    setTimeout(() => {
-      voiceServiceRef.current?.connect().catch(console.error);
-    }, 500);
+    if (voiceServiceRef.current) {
+      try {
+        // 先断开连接
+        voiceServiceRef.current.disconnect();
+        // 等待断开完成后再连接
+        await new Promise(resolve => setTimeout(resolve, 300));
+        // 重新连接，静默处理错误（避免在切换时显示错误）
+        await voiceServiceRef.current.connect();
+      } catch (error) {
+        // 静默处理连接错误，不输出到控制台（切换代理时的连接失败是正常的）
+        console.debug('[VoiceChat] Reconnection during agent change:', error);
+      }
+    }
   };
 
   // 生成波形条的高度
@@ -557,6 +568,7 @@ export function VoiceChatPage({
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setIsSettingsOpen(true)}
               className="p-4 rounded-full bg-white text-[#8E8E93] hover:bg-[#F5F5F7] hover:text-[#007AFF] transition-all duration-150 border border-[#E5E7EB]/40 shadow-[0_2px_10px_rgba(0,0,0,0.08)]"
               title="设置"
             >
@@ -612,6 +624,14 @@ export function VoiceChatPage({
           </div>
         </div>
       </div>
+
+      {/* 语音设置对话框 */}
+      <VoiceSettingsDialog
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        initialSpeed={1.0}
+        initialVolume={1.0}
+      />
     </div>
   );
 }

@@ -212,12 +212,24 @@ async def run_voice_bot(transport: BaseTransport, runner_args: RunnerArguments, 
         logger.warning("⚠️ 注意：Deepgram TTS 主要支持英文语音模型，中文发音可能不够自然。如需更自然的中文发音，建议使用 Cartesia TTS。")
     elif tts_service == "cartesia":
         # 使用 Cartesia TTS（高质量，免费额度）
-        from pipecat.services.cartesia.tts import CartesiaTTSService
+        from pipecat.services.cartesia.tts import CartesiaTTSService, GenerationConfig
+        from pipecat.transcriptions.language import Language
+        # 配置中文语言支持和优化参数（Sonic-3 模型）
+        generation_config = GenerationConfig(
+            speed=1.0,  # 正常语速（范围: 0.6-1.5，可调整）
+            volume=1.0,  # 正常音量（范围: 0.5-2.0，可调整）
+        )
+        params = CartesiaTTSService.InputParams(
+            language=Language.ZH,  # 中文语言
+            generation_config=generation_config,  # 使用 Sonic-3 优化参数
+        )
         tts = CartesiaTTSService(
             api_key=os.getenv("CARTESIA_API_KEY"),
             voice_id=os.getenv("CARTESIA_VOICE_ID", "71a7ad14-091c-4e8e-a314-022ece01c121"),
+            model="sonic-3",  # 使用最新的 Sonic-3 模型（更好的质量和更低延迟）
+            params=params,
         )
-        logger.info("✅ 使用 Cartesia TTS")
+        logger.info("✅ 使用 Cartesia TTS（已优化：Sonic-3 模型 + 中文语言 + 优化参数）")
     elif tts_service == "elevenlabs":
         # 使用 ElevenLabs TTS（自然语音）
         from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
@@ -233,11 +245,13 @@ async def run_voice_bot(transport: BaseTransport, runner_args: RunnerArguments, 
         logger.info("✅ 使用 Piper TTS（本地免费）")
     else:
         # 默认使用 OpenAI TTS
+        # 推荐中文语音: nova (清晰自然), shimmer (温暖), alloy (平衡), echo (清晰)
+        voice = os.getenv("OPENAI_TTS_VOICE", "nova")  # 默认使用 nova，适合中文
         tts = OpenAITTSService(
             api_key=os.getenv("OPENAI_API_KEY"),
-            voice="alloy",  # 可选: alloy, echo, fable, onyx, nova, shimmer
+            voice=voice,  # 可选: nova (推荐中文), alloy, echo, fable, onyx, shimmer
         )
-        logger.info("✅ 使用 OpenAI TTS")
+        logger.info(f"✅ 使用 OpenAI TTS，语音: {voice} (推荐中文: nova)")
 
     # LLM: DeepSeek (使用项目已有的 DeepSeek API)
     llm = DeepSeekLLMService(
@@ -392,8 +406,14 @@ async def bot(runner_args: RunnerArguments, agent_id: str = "alisa"):
             if isinstance(frame, OutputAudioRawFrame):
                 return frame.audio
             
-            # 其他帧使用 Protobuf 序列化
-            return await self.protobuf_serializer.serialize(frame)
+            # 跳过不可序列化的帧（如 InterruptionFrame），这些帧不需要发送到前端
+            try:
+                # 其他帧使用 Protobuf 序列化
+                return await self.protobuf_serializer.serialize(frame)
+            except Exception:
+                # 如果序列化失败（如 InterruptionFrame），返回 None 跳过
+                # 这些帧通常不需要发送到客户端
+                return None
         
         async def deserialize(self, data: bytes) -> Frame | None:
             # 先尝试 Protobuf 反序列化（处理文本消息等）

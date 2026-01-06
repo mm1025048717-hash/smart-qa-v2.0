@@ -2,7 +2,7 @@
  * 叙事文本组件 - 蓝白简约风格
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -452,9 +452,50 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
     /\[[^\]]+\|[^\]]+\]/.test(processedContent); // 检测简单格式 [选项1|选项2]
   // 注意：不再检测 [thought-chain:，因为已经清理掉了
   
+  // 解析交互内容（用于多步骤选择检测）
+  const parsed = hasInteractive ? parseInteractiveContent(processedContent) : [];
+  const choicesBlocks = parsed.filter(item => item.type === 'choices');
+  const hasMultipleChoices = choicesBlocks.length > 1;
+  
+  // 多步骤选择状态管理（必须在条件语句之前调用hooks）
+  const [multiStepSelections, setMultiStepSelections] = useState<Record<number, string | string[]>>({});
+  
+  // 检查是否所有choices都已选择
+  const allChoicesSelected = useMemo(() => {
+    if (!hasMultipleChoices) return false;
+    return choicesBlocks.every((_, index) => {
+      const selection = multiStepSelections[index];
+      if (!selection) return false;
+      // 如果是数组（多选），至少要有1个选择
+      if (Array.isArray(selection)) return selection.length > 0;
+      // 如果是字符串（单选），不能为空
+      return selection.length > 0;
+    });
+  }, [hasMultipleChoices, choicesBlocks, multiStepSelections]);
+  
+  // 提交所有选择
+  const handleSubmitAllSelections = () => {
+    if (!hasMultipleChoices || !allChoicesSelected) return;
+    
+    // 将所有选择组合成一条消息
+    const selections = choicesBlocks.map((block, index) => {
+      const selection = multiStepSelections[index];
+      const question = block.data?.question || '';
+      if (Array.isArray(selection)) {
+        return `${question}: ${selection.join(', ')}`;
+      }
+      return `${question}: ${selection}`;
+    });
+    
+    const combinedMessage = selections.join('\n');
+    onInteraction?.(combinedMessage);
+    
+    // 清空选择状态
+    setMultiStepSelections({});
+  };
+  
   // 如果包含交互组件，解析并渲染
   if (hasInteractive) {
-    const parsed = parseInteractiveContent(processedContent);
     
     return (
       <div 
@@ -504,6 +545,11 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
               // 检查是否是多选模式
               const isMultiple = item.data.multiple === true;
               
+              // 计算当前choices在所有choices中的索引
+              const choicesIndex = parsed.slice(0, index).filter(i => i.type === 'choices').length;
+              const isMultiStep = hasMultipleChoices;
+              const currentSelection = multiStepSelections[choicesIndex];
+              
               return (
                 <ChoiceSelector
                   key={`choices-${index}`}
@@ -513,12 +559,19 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
                   minSelections={item.data.minSelections}
                   maxSelections={item.data.maxSelections}
                   onSelect={(value) => {
-                    // 多选时 value 是数组，单选时是字符串
-                    if (isMultiple && Array.isArray(value)) {
-                      // 将数组转换为逗号分隔的字符串，或者调用多次 onInteraction
-                      onInteraction?.(value.join(', '));
+                    if (isMultiStep) {
+                      // 多步骤模式：保存选择，不立即提交
+                      setMultiStepSelections(prev => ({
+                        ...prev,
+                        [choicesIndex]: value
+                      }));
                     } else {
-                      onInteraction?.(value as string);
+                      // 单步骤模式：立即提交
+                      if (isMultiple && Array.isArray(value)) {
+                        onInteraction?.(value.join(', '));
+                      } else {
+                        onInteraction?.(value as string);
+                      }
                     }
                   }}
                 />
@@ -706,6 +759,24 @@ export const NarrativeText = ({ content, delay = 0, onInteraction, onAgentSwitch
               );
           }
         })}
+        {/* 多步骤选择确认按钮 */}
+        {hasMultipleChoices && (
+          <div className="mt-4 flex items-center justify-end">
+            <button
+              onClick={handleSubmitAllSelections}
+              disabled={!allChoicesSelected}
+              className={`
+                px-4 py-2 rounded-md text-[13px] font-medium transition-all
+                ${allChoicesSelected
+                  ? 'bg-[#007AFF] text-white hover:bg-[#0051D5] shadow-sm'
+                  : 'bg-[#E5E5EA] text-[#86868b] cursor-not-allowed'
+                }
+              `}
+            >
+              确认提交
+            </button>
+          </div>
+        )}
       </div>
     );
   }
