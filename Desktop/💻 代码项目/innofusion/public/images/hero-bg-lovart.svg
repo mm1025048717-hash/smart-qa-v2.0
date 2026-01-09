@@ -1,0 +1,24 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="blur1" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="80" />
+    </filter>
+    <filter id="blur2" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="120" />
+    </filter>
+    <radialGradient id="grad1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3C50FF" />
+      <stop offset="100%" stop-color="#3C50FF" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="grad2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00FFFF" />
+      <stop offset="100%" stop-color="#00FFFF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <g opacity="0.5">
+    <circle cx="400" cy="300" r="300" fill="url(#grad1)" filter="url(#blur1)" />
+    <circle cx="1500" cy="700" r="400" fill="url(#grad2)" filter="url(#blur2)" />
+    <ellipse cx="960" cy="540" rx="500" ry="250" fill="url(#grad1)" filter="url(#blur2)" transform="rotate(30 960 540)"/>
+    <circle cx="1200" cy="200" r="250" fill="url(#grad2)" filter="url(#blur1)" />
+  </g>
+</svg>

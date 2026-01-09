@@ -1,0 +1,235 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 自定义字体托管 */
+/* Inter */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local('Inter'), url('/fonts/Inter-VariableFont_slnt,wght.ttf') format('truetype-variations');
+}
+/* Plus Jakarta Sans */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: local('Plus Jakarta Sans'), url('/fonts/PlusJakartaSans-VariableFont_wght.ttf') format('truetype-variations');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: local('Plus Jakarta Sans Italic'), url('/fonts/PlusJakartaSans-Italic-VariableFont_wght.ttf') format('truetype-variations');
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto; /* Allow vertical scrolling */
+    scroll-behavior: smooth; /* Smooth scroll for navigation */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background-color: #f8fafc; /* bfl-surface-2 */
+    color: #0f172a; /* bfl-text */
+  }
+
+  #root {
+    width: 100%;
+    height: 100%;
+  }
+  
+}
+
+@layer components {
+  /* 气泡样式 */
+  .bubble {
+    @apply absolute rounded-full flex items-center justify-center cursor-move
+           transition-all duration-200 select-none touch-none shadow-sm;
+    will-change: transform;
+    contain: layout style;
+  }
+
+  .bubble.dragging {
+    @apply scale-[1.03] z-50;
+    filter: brightness(1.2);
+  }
+
+  /* 融合中的专属动画（旋转光环+脉冲描边） */
+  .bubble.fusing::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 9999px;
+    padding: 3px;
+    background: conic-gradient(from 0deg, #60a5fa, #a78bfa, #60a5fa);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    animation: spin-ring 1.2s linear infinite;
+    opacity: 0.8;
+  }
+
+  .bubble.fusing::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 0 rgba(59,130,246,0.35);
+    animation: pulse-border 1.2s ease-out infinite;
+  }
+
+  @keyframes spin-ring {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.35); }
+    70% { box-shadow: 0 0 0 10px rgba(59,130,246,0); }
+    100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+  }
+
+  .bubble.can-fuse {
+    @apply animate-pulse;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5),
+                0 0 20px rgba(255, 255, 255, 0.3);
+  }
+
+  .bubble-text {
+    @apply text-center px-3 py-1 break-words overflow-hidden;
+    max-width: 90%;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  /* 爆炸粒子 */
+  .explosion-particle {
+    @apply absolute w-2 h-2 rounded-full pointer-events-none;
+    animation: particle-fly 0.6s ease-out forwards;
+  }
+
+  @keyframes particle-fly {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* 融合建议面板 */
+  .suggestion-panel {
+    @apply bg-white rounded-xl border border-bfl-border p-4 shadow-lg animate-fade-in;
+  }
+
+  /* 日志项 */
+  .log-item {
+    @apply flex items-center gap-3 p-3 rounded-lg bg-white border border-bfl-border
+           hover:shadow-sm transition-shadow;
+  }
+
+  /* 按钮基础样式 */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-sm {
+    @apply px-2 py-1.5 text-xs rounded-md;
+  }
+
+  .btn-primary {
+    @apply bg-bfl-primary text-white hover:bg-bfl-primary-500;
+  }
+
+  .btn-secondary {
+    @apply bg-white border border-bfl-border text-bfl-text hover:bg-bfl-surface-2;
+  }
+
+  /* 文档排版优化 */
+  .section-title {
+    @apply text-sm text-bfl-secondary mb-2 tracking-wide;
+  }
+
+  .tag-pill {
+    @apply px-2.5 py-1 rounded-full border border-bfl-border bg-bfl-surface-2 text-sm;
+  }
+
+  .kpi-card {
+    @apply card p-4 flex flex-col gap-1;
+  }
+
+  /* 卡片与进度条（Agent Runner） */
+  .card {
+    @apply rounded-xl border border-bfl-border bg-white;
+  }
+  .card-head {
+    @apply px-3 py-2 border-b border-bfl-border text-xs text-bfl-text-dim flex items-center gap-1;
+  }
+  .progress {
+    @apply w-full h-2 bg-bfl-surface-2 rounded overflow-hidden border border-bfl-border;
+  }
+  .progress-bar {
+    @apply h-full bg-bfl-primary transition-all duration-500;
+  }
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+
+  /* 滚动条美化 */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(107, 114, 128, 0.5) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.5);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.7);
+  }
+}
+
+@layer utilities {
+  /* 低配模式样式调整 */
+  .low-perf .bubble {
+    box-shadow: none !important;
+  }
+
+  .low-perf .explosion-particle {
+    display: none !important;
+  }
+
+  .low-perf * {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}

@@ -1,0 +1,52 @@
+<svg width="600" height="400" viewBox="0 0 600 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+    </filter>
+    <radialGradient id="grad1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3C50FF" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#AACCFF" stop-opacity="0.3" />
+    </radialGradient>
+    <radialGradient id="grad2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#AACCFF" />
+      <stop offset="100%" stop-color="#AACCFF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Floating Idea Bubbles -->
+  <circle cx="150" cy="150" r="25" fill="url(#grad1)" opacity="0.8">
+    <animate attributeName="cy" values="150;140;150" dur="4s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="450" cy="250" r="30" fill="url(#grad1)" opacity="0.8">
+    <animate attributeName="cy" values="250;260;250" dur="5s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="200" cy="300" r="20" fill="url(#grad1)" opacity="0.7">
+    <animate attributeName="cx" values="200;210;200" dur="4.5s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="400" cy="120" r="15" fill="url(#grad1)" opacity="0.7">
+    <animate attributeName="cx" values="400;390;400" dur="3.5s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- Pulsing AI Agent Core -->
+  <g>
+    <circle cx="300" cy="200" r="40" fill="url(#grad2)" filter="url(#glow)" />
+    <circle cx="300" cy="200" r="35" fill="#3C50FF">
+      <animate attributeName="r" values="35;40;35" dur="2.5s" repeatCount="indefinite" />
+    </circle>
+  </g>
+  <text x="300" y="205" fill="white" font-size="12" text-anchor="middle" font-family="sans-serif" font-weight="bold">AI Agent</text>
+
+  <!-- Animated Connection Lines -->
+  <path d="M165 160 L270 190" stroke="#3C50FF" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="5 5">
+      <animate attributeName="stroke-dashoffset" values="0;10" dur="1s" repeatCount="indefinite"/>
+  </path>
+  <path d="M435 240 L330 210" stroke="#3C50FF" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="5 5">
+      <animate attributeName="stroke-dashoffset" values="0;-10" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+  <path d="M215 290 L275 215" stroke="#AACCFF" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="5 5">
+      <animate attributeName="stroke-dashoffset" values="0;10" dur="1.5s" repeatCount="indefinite"/>
+  </path>
+  <path d="M390 135 L325 185" stroke="#AACCFF" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="5 5">
+      <animate attributeName="stroke-dashoffset" values="0;-10" dur="1.3s" repeatCount="indefinite"/>
+  </path>
+</svg>

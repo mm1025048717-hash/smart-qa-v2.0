@@ -1,0 +1,37 @@
+<svg width="600" height="400" viewBox="0 0 600 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0.5" x2="1" y2="0.5">
+      <stop offset="0%" stop-color="#3C50FF"/>
+      <stop offset="100%" stop-color="#AACCFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Central Canvas -->
+  <rect x="150" y="100" width="300" height="200" rx="15" fill="rgba(240, 245, 255, 0.5)" stroke="#AACCFF" stroke-width="2"/>
+
+  <!-- Pulsing Shared Idea -->
+  <circle cx="300" cy="200" r="40" fill="url(#grad)" fill-opacity="0.1">
+    <animate attributeName="r" values="40;45;40" dur="2.5s" repeatCount="indefinite" />
+  </circle>
+  <text x="300" y="205" fill="#3C50FF" font-size="14" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shared Idea</text>
+
+  <!-- Animated Cursors -->
+  <g id="cursor1">
+    <path d="M120 80 L135 95 L125 98 Z" fill="#3C50FF"/>
+    <animateMotion dur="6s" repeatCount="indefinite" path="M0 0 C 50 -30, 150 30, 200 0 Z" />
+  </g>
+  <g id="cursor2">
+    <path d="M480 320 L465 305 L475 302 Z" fill="#AACCFF"/>
+    <animateMotion dur="7s" repeatCount="indefinite" path="M0 0 C -50 30, -150 -30, -200 0 Z" />
+  </g>
+
+  <!-- Ripple Effect from Cursors -->
+  <circle cx="120" cy="80" r="5" fill="#3C50FF" opacity="0.5">
+    <animate attributeName="r" from="0" to="20" dur="2s" begin="cursor1.begin" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.5" to="0" dur="2s" begin="cursor1.begin" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="480" cy="320" r="5" fill="#AACCFF" opacity="0.5">
+    <animate attributeName="r" from="0" to="20" dur="2s" begin="cursor2.begin" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.5" to="0" dur="2s" begin="cursor2.begin" repeatCount="indefinite"/>
+  </circle>
+</svg>

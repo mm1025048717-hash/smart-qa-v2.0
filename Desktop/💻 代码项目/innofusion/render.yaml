@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: bfl-api
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node src/app.js
+    autoDeploy: true
+    envVars:
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+      - key: PORT
+        value: 7070
+
+staticSites:
+  - name: bubble-fusion-lab
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    env:
+      - key: VITE_APP_TITLE
+        value: Bubble Fusion Lab
+
