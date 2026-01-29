@@ -1,0 +1,163 @@
+
+/* Process Logs Animation & Design */
+.step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    transition: all 0.3s;
+}
+
+.step.active {
+    color: var(--primary-color);
+    opacity: 1;
+    font-weight: 600;
+}
+
+.step-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.step.active .step-circle {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+.step-line {
+    width: 60px;
+    height: 2px;
+    background: #e5e7eb;
+    border-radius: 2px;
+}
+
+/* Process Logs Container */
+.process-log-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    flex: 1;
+}
+
+.spinner-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 32px;
+}
+
+.spinner-ring {
+    width: 100%;
+    height: 100%;
+    border: 4px solid rgba(59,130,246,0.1);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 60%;
+    background: rgba(59,130,246,0.05);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; } 50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; } }
+
+.process-status-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.agent-logs {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.log-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    opacity: 0;
+    animation: slideUp 0.4s forwards;
+}
+
+.log-item.completed .log-icon {
+    background: #ecfdf5;
+    color: #10b981;
+}
+
+.log-item.completed .log-title {
+    color: #0f172a;
+}
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.log-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ecfdf5;
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.log-content {
+    flex: 1;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 16px;
+}
+
+.log-item:last-child .log-content {
+    border-bottom: none;
+}
+
+.log-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.log-desc {
+    font-size: 13px;
+    color: #94a3b8;
+}
+

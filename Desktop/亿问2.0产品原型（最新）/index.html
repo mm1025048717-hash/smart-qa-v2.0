@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亿问DataAgent</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="chat-clean.css">
+    <link rel="stylesheet" href="workflow.css">
+    <link rel="stylesheet" href="process-ui.css">
+</head>
+<body>
+
+    <div class="layout-wrapper">
+        
+        <!-- Sidebar Removed -->
+
+        <!-- Main Container -->
+        <div class="layout-main-container">
+            
+            <!-- Topbar -->
+            <div class="layout-topbar">
+                <div class="topbar-branding">
+                    <i class="fas fa-water"></i>
+                    <span>亿问DataAgent</span>
+                </div>
+                
+                <ul class="topbar-menu">
+                    <li class="menu-item">
+                        <a class="menu-link" onclick="switchView('dashboard')" id="nav-dashboard">
+                            <i class="fas fa-home"></i> <span data-i18n="dashboard">仪表盘</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a class="menu-link active" onclick="switchView('source')" id="nav-source">
+                            <i class="far fa-file-alt"></i> <span data-i18n="select_source">选择数据源</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a class="menu-link" onclick="switchView('db')" id="nav-db">
+                            <i class="fas fa-database"></i> <span data-i18n="databases">数据库管理</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a class="menu-link" onclick="switchView('chat')" id="nav-chat">
+                            <i class="far fa-comments"></i> <span data-i18n="smart_chat">智能问答</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a class="menu-link" onclick="switchView('employees')" id="nav-employees">
+                            <i class="fas fa-robot"></i> <span data-i18n="ai_employees">AI 员工</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a class="menu-link" href="indicator-platform.html" target="_blank">
+                            <i class="fas fa-project-diagram"></i> <span>指标平台</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="topbar-right">
+                    <!-- Language Switcher -->
+                    <button class="p-button p-button-text" id="lang-switch-btn" onclick="toggleLanguage()" style="min-width: 80px;">
+                        <i class="fas fa-language"></i> EN
+                    </button>
+
+                    <button class="topbar-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button class="topbar-button">
+                        <i class="far fa-bell"></i>
+                    </button>
+                    <div class="user-profile">
+                        <div class="user-avatar">A</div>
+                        <span style="font-size:14px; font-weight:500">Admin</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="layout-content">
+                
+                <!-- View 0: Dashboard -->
+                <div id="view-dashboard" class="page-body hidden">
+                    <div class="dashboard-container">
+                        <!-- Left Panel: Data Dashboard -->
+                        <div class="dashboard-left-panel">
+                            <div class="dashboard-hero">
+                                <div class="hero-info">
+                                    <p class="hero-label">Marketing Dashboard</p>
+                                    <h2>智能运营驾驶舱</h2>
+                                    <p class="hero-subtitle">本周营收提升 29%，用户留存提升 6%</p>
+                                </div>
+                                <div class="hero-actions">
+                                    <div class="hero-pills">
+                                        <button class="hero-pill active">本周</button>
+                                        <button class="hero-pill">本月</button>
+                                        <button class="hero-pill">季度</button>
+                                    </div>
+                                    <button class="p-button hero-download"><i class="fas fa-download"></i> 导出周报</button>
+                                </div>
+                            </div>
+
+                            <!-- Stats Row -->
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <span class="stat-title" data-i18n="stat_total_queries">总提问数</span>
+                                        <span class="stat-badge success">+12%</span>
+                                    </div>
+                                    <div class="stat-value">2,543</div>
+                                    <div class="stat-sub">
+                                        <span data-i18n="stat_weekly">本周新增 320</span>
+                                    </div>
+                                    <div class="stat-chart-mini bar-chart-mini">
+                                        <div class="bar" style="height: 40%"></div>
+                                        <div class="bar" style="height: 70%"></div>
+                                        <div class="bar" style="height: 50%"></div>
+                                        <div class="bar" style="height: 90%"></div>
+                                        <div class="bar" style="height: 60%"></div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <span class="stat-title" data-i18n="stat_avg_response">平均响应时间</span>
+                                        <span class="stat-badge warning">-0.5s</span>
+                                    </div>
+                                    <div class="stat-value">1.2s</div>
+                                    <div class="stat-sub">
+                                        <span data-i18n="stat_optimize">性能良好</span>
+                                    </div>
+                                    <div class="stat-chart-mini line-chart-mini">
+                                        <svg viewBox="0 0 100 30">
+                                            <path d="M0,20 Q25,5 50,15 T100,10" fill="none" stroke="#3B82F6" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <span class="stat-title" data-i18n="stat_success_rate">执行成功率</span>
+                                        <span class="stat-badge success">98.5%</span>
+                                    </div>
+                                    <div class="stat-value">98.5%</div>
+                                    <div class="stat-sub">
+                                        <span data-i18n="stat_errors">异常 5 次</span>
+                                    </div>
+                                    <div class="stat-progress-mini">
+                                        <div class="progress-bar" style="width: 98.5%"></div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <span class="stat-title" data-i18n="stat_active_models">活跃模型</span>
+                                        <span class="stat-badge info">2 Online</span>
+                                    </div>
+                                    <div class="stat-value">SemanticDB</div>
+                                    <div class="stat-sub">
+                                        <span data-i18n="stat_tokens">Tokens: 1.2M</span>
+                                    </div>
+                                    <div class="stat-icon-bg">
+                                        <i class="fas fa-brain"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Charts Row -->
+                            <div class="charts-grid">
+                                <div class="chart-panel">
+                                    <div class="panel-header">
+                                        <h3 data-i18n="chart_query_trend">提问趋势分析</h3>
+                                        <div class="panel-actions">
+                                            <button class="icon-btn"><i class="fas fa-ellipsis-h"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="panel-body">
+                                        <canvas id="dashboard-main-chart" height="250"></canvas>
+                                    </div>
+                                </div>
+                                <div class="chart-panel">
+                                    <div class="panel-header">
+                                        <h3 data-i18n="chart_model_usage">模型调用分布</h3>
+                                    </div>
+                                    <div class="panel-body flex-center">
+                                        <div class="donut-chart-container">
+                                            <canvas id="dashboard-donut-chart" width="200" height="200"></canvas>
+                                            <div class="donut-legend">
+                                                <div class="legend-item"><span class="dot science"></span> Alisa (65%)</div>
+                                                <div class="legend-item"><span class="dot liberal"></span> Nora (35%)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recent Activity Table -->
+                            <div class="table-panel">
+                                <div class="panel-header">
+                                    <h3 data-i18n="recent_insights">最近的高价值洞察</h3>
+                                    <button class="p-button p-button-text" data-i18n="view_all">查看全部</button>
+                                </div>
+                                <div class="panel-body p-0">
+                                    <table class="dashboard-table">
+                                        <thead>
+                                            <tr>
+                                                <th data-i18n="col_time">时间</th>
+                                                <th data-i18n="col_user">用户</th>
+                                                <th data-i18n="col_query">提问内容</th>
+                                                <th data-i18n="col_type">类型</th>
+                                                <th data-i18n="col_status">状态</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>10:23 AM</td>
+                                                <td><div class="user-cell"><div class="avatar-sm">A</div> Admin</div></td>
+                                                <td>"Show me Q3 sales breakdown by region"</td>
+                                                <td><span class="type-badge chart">Chart</span></td>
+                                                <td><span class="status-badge success">Success</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>09:45 AM</td>
+                                                <td><div class="user-cell"><div class="avatar-sm" style="background:#87d068">L</div> Li</div></td>
+                                                <td>"Why did traffic drop last Sunday?"</td>
+                                                <td><span class="type-badge analysis">Attribution</span></td>
+                                                <td><span class="status-badge success">Success</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>09:12 AM</td>
+                                                <td><div class="user-cell"><div class="avatar-sm" style="background:#108ee9">W</div> Wang</div></td>
+                                                <td>"Export user list with high LTV"</td>
+                                                <td><span class="type-badge data">Export</span></td>
+                                                <td><span class="status-badge warning">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>08:30 AM</td>
+                                                <td><div class="user-cell"><div class="avatar-sm">A</div> Admin</div></td>
+                                                <td>"Generate weekly report"</td>
+                                                <td><span class="type-badge report">Report</span></td>
+                                                <td><span class="status-badge success">Success</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: AI Agent -->
+                        <div class="dashboard-right-panel">
+                            <div class="agent-header">
+                                <div class="agent-header-info">
+                                    <i class="fas fa-robot"></i>
+                                    <span style="font-weight: 600;">AI Data Agent</span>
+                                </div>
+                                <div class="status-dot online"></div>
+                            </div>
+
+                            <div class="agent-prompts">
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('总结本周销售亮点')"><i class="fas fa-star"></i> 洞察亮点</div>
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('对比华东和华南收入表现')"><i class="fas fa-code-branch"></i> 区域对比</div>
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('生成库存风险预警')"><i class="fas fa-triangle-exclamation"></i> 风险预警</div>
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('推荐下一步运营动作')"><i class="fas fa-magic"></i> 运营建议</div>
+                            </div>
+
+                            <div class="chat-messages" id="dashboard-chat-messages">
+                                <div class="chat-message-row">
+                                    <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                                    <div class="message-bubble">
+                                        Hi! I'm monitoring your data. <br>How can I help you analyze the dashboard?
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="chat-input-wrapper dashboard-chat-input">
+                                <input type="text" class="p-inputtext" id="dashboard-chat-input" placeholder="Ask about dashboard data..." onkeypress="handleDashboardChatEnter(event)">
+                                <button class="p-button" onclick="sendDashboardChat()"><i class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 1: Select Source -->
+                <div id="view-source" class="page-body">
+                    <div class="card">
+                        <div class="card-title" data-i18n="start_new_modeling">开始新的建模</div>
+                        <div class="source-grid">
+                            <div class="source-card-item" onclick="switchView('db')">
+                                <div class="source-icon blue"><i class="fas fa-database"></i></div>
+                                <div class="source-item-title" data-i18n="connect_db">连接数据库</div>
+                                <div class="source-item-desc" data-i18n="connect_db_desc">支持 MySQL, ClickHouse, PostgreSQL</div>
+                                <button class="p-button p-button-outlined" data-i18n="connect">去连接</button>
+                            </div>
+                            <div class="source-card-item" onclick="openConfigDrawer('excel')">
+                                <div class="source-icon green"><i class="fas fa-file-excel"></i></div>
+                                <div class="source-item-title" data-i18n="upload_excel">上传 Excel</div>
+                                <div class="source-item-desc" data-i18n="upload_excel_desc">一键导入内置 Doris 引擎</div>
+                                <button class="p-button p-button-outlined" data-i18n="upload">去上传</button>
+                            </div>
+                            <div class="source-card-item" onclick="openConfigDrawer('nodata')">
+                                <div class="source-icon purple"><i class="fas fa-magic"></i></div>
+                                <div class="source-item-title" data-i18n="nlp">自然语言建模</div>
+                                <div class="source-item-desc" data-i18n="nlp_desc">描述需求，自动生成数据模型</div>
+                                <button class="p-button p-button-outlined" data-i18n="describe">去描述</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 2: Database List -->
+                <div id="view-db" class="page-body hidden">
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                            <div class="card-title" style="margin-bottom: 0;" data-i18n="db_connections">已连接数据库</div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="p-button p-button-outlined" onclick="refreshDbList(this)"><i class="fas fa-sync"></i> <span data-i18n="refresh">刷新</span></button>
+                                <button class="p-button" onclick="openConfigDrawer('database')"><i class="fas fa-plus"></i> <span data-i18n="add_new">新建连接</span></button>
+                            </div>
+                        </div>
+                        <table class="p-datatable">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="id">ID</th>
+                                    <th data-i18n="source_name">数据源名称</th>
+                                    <th data-i18n="type">类型</th>
+                                    <th data-i18n="status">状态</th>
+                                    <th data-i18n="tables">表数量</th>
+                                    <th data-i18n="model_status">模型状态</th>
+                                    <th data-i18n="actions">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr id="row-mysql">
+                                    <td>1</td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <i class="fas fa-database" style="color: var(--primary-color);"></i>
+                                            <b>MySQL - Production</b>
+                                        </div>
+                                    </td>
+                                    <td>MySQL</td>
+                                    <td><span class="p-tag p-tag-success" data-i18n="connected">已连接</span></td>
+                                    <td>12</td>
+                                    <td id="status-mysql"><span class="p-tag p-tag-warning" data-i18n="not_configured">未配置</span></td>
+                                    <td id="actions-mysql">
+                                        <button class="p-button p-button-text" onclick="openConfigDrawer('database')" data-i18n="edit">配置</button>
+                                        <button class="p-button p-button-text" onclick="openTableSelectionDrawer('MySQL - Production')" data-i18n="select_tables">选择表</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <i class="fas fa-server" style="color: #7C3AED;"></i>
+                                            <b>ClickHouse - Logs</b>
+                                        </div>
+                                    </td>
+                                    <td>ClickHouse</td>
+                                    <td><span class="p-tag p-tag-success" data-i18n="connected">已连接</span></td>
+                                    <td>5</td>
+                                    <td><span class="p-tag p-tag-warning" data-i18n="not_configured">未配置</span></td>
+                                    <td>
+                                        <button class="p-button p-button-text" onclick="openConfigDrawer('database')" data-i18n="edit">配置</button>
+                                        <button class="p-button p-button-text" onclick="openTableSelectionDrawer('ClickHouse - Logs')" data-i18n="select_tables">选择表</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- View 3: Chat (Full Height) -->
+                <div id="view-chat" class="page-body hidden">
+                    <!-- Chat Top Header -->
+                    <div class="chat-top-header">
+                        <div class="chat-top-left">
+                            <span class="chat-top-icon">智能问答</span>
+                        </div>
+                        <div class="chat-top-center">
+                            <span>AI 数据分析</span>
+                        </div>
+                        <div class="chat-top-right">
+                            <div class="current-employee-info" onclick="toggleAgentPaletteFromButton()">
+                                <img id="current-employee-avatar" src="" alt="" class="current-employee-avatar">
+                                <div class="current-employee-text">
+                                    <div class="current-employee-label">当前数字员工</div>
+                                    <div class="current-employee-name" id="current-employee-name">Alisa</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-full-container simple-mode">
+                        <!-- Chat Sidebar -->
+                        <div class="chat-sidebar-panel">
+                            <div class="chat-sidebar-header">
+                                <button class="sidebar-new-btn" onclick="startNewChat()">新建对话</button>
+                            </div>
+                            <div class="sidebar-group">
+                                <div class="sidebar-group-title">最近历史</div>
+                                <div class="chat-list-item active" onclick="switchChat(this)">
+                                    <div class="chat-list-item-title">今年销售额分析</div>
+                                    <div class="chat-list-item-meta">刚刚</div>
+                                </div>
+                                <div class="chat-list-item" onclick="switchChat(this)">
+                                    <div class="chat-list-item-title">各地区销售对比</div>
+                                    <div class="chat-list-item-meta">2小时前</div>
+                                </div>
+                                <div class="chat-list-item" onclick="switchChat(this)">
+                                    <div class="chat-list-item-title">11月销售额异常</div>
+                                    <div class="chat-list-item-meta">昨天</div>
+                                </div>
+                            </div>
+                            <div class="sidebar-nav">
+                                <a href="#" class="sidebar-nav-item">历史对话</a>
+                                <a href="#" class="sidebar-nav-item">数据源</a>
+                                <a href="#" class="sidebar-nav-item">设置</a>
+                            </div>
+                            <div class="sidebar-user">
+                                <div class="sidebar-user-avatar">A</div>
+                                <div class="sidebar-user-info">
+                                    <div class="sidebar-user-name">AC Alex Chen</div>
+                                    <div class="sidebar-user-plan">Pro Plan</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Chat Main Content -->
+                        <div class="chat-main-content">
+                            <!-- AI Profile Section -->
+                            <div class="chat-profile-section" id="chat-profile-section">
+                                <img id="agent-profile-avatar" src="" alt="" class="agent-profile-avatar-large">
+                                <div class="agent-profile-name" id="agent-profile-name">Alisa</div>
+                                <div class="agent-profile-desc" id="agent-profile-desc">核心算法 · 自然语言理解</div>
+                                <div class="agent-profile-hint">根据您的偏好推荐</div>
+                                <div class="agent-quick-prompts" id="agent-quick-prompts">
+                                    <!-- Quick prompts will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Chat Messages Section (hidden initially) -->
+                            <div class="chat-messages-container hidden" id="chat-messages-container">
+                                <div class="chat-messages" id="chat-messages"></div>
+                            </div>
+
+                            <!-- Chat Input Section -->
+                            <div class="chat-input-section">
+                                <div class="chat-input-wrapper">
+                                    <img id="chat-input-avatar" src="" alt="" class="chat-input-avatar">
+                                    <input type="text" class="chat-input-field" id="chat-input" placeholder="向 Alisa 提问..." onkeydown="handleChatEnter(event)">
+                                    <div class="chat-input-hint">
+                                        <span>Enter 发送・Shift+Enter 换行</span>
+                                        <span class="chat-input-mic-hint">点击输入框查看推荐问题</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Employee Switch Palette -->
+                    <div id="agent-command-palette" class="agent-palette"></div>
+                </div>
+
+                <!-- View 4: AI Employees (List) -->
+                <div id="view-employees" class="page-body hidden">
+                    <div class="card">
+                        <div class="employee-list-header">
+                            <div>
+                                <div class="card-title" style="margin-bottom: 8px;" data-i18n="ai_employee_manage">AI 员工管理</div>
+                                <div class="employee-stats">
+                                    <span class="stat-item"><i class="fas fa-robot"></i> <span id="quota-active-text">已启用 3</span></span>
+                                    <span class="stat-item"><i class="fas fa-ticket-alt"></i> <span id="quota-remaining-text">剩余配额 2</span></span>
+                                </div>
+                            </div>
+                            <div class="action-bar">
+                                <div class="search-input-wrapper">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" class="p-inputtext" placeholder="搜索员工..." oninput="filterEmployees(this.value)">
+                                </div>
+                                <button class="p-button p-button-text" onclick="openTemplateLibrary()" title="模板库"><i class="fas fa-shapes"></i></button>
+                                <div style="width: 1px; background: #e5e7eb; margin: 4px 0;"></div>
+                                <button class="p-button p-button-text" onclick="openEmployeeBuilder()" style="color: var(--primary-color); font-weight: 600;">
+                                    <i class="fas fa-plus"></i> <span data-i18n="create_employee">新建</span>
+                                </button>
+                            </div>
+                        </div>
+                        <table class="styled-table" id="employee-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="employee_info">员工信息</th>
+                                    <th data-i18n="username">用户名</th>
+                                    <th data-i18n="model">模型</th>
+                                    <th data-i18n="status">状态</th>
+                                    <th data-i18n="actions" style="text-align: right;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employee-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- View 5: Workflow Editor (Full Screen) -->
+                <div id="view-workflow-editor" class="page-body hidden" style="height: 100%; padding: 0;">
+                    <div class="workflow-container">
+                        <!-- Sidebar -->
+                        <div class="workflow-sidebar">
+                            <div class="workflow-sidebar-header">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <button class="icon-btn" onclick="exitWorkflowEditor()" title="返回"><i class="fas fa-arrow-left"></i></button>
+                                    <span>工作流编排</span>
+                                </div>
+                            </div>
+                            <div class="node-category">输入 & 输出</div>
+                            <div class="node-item" draggable="true" ondragstart="drag(event)" data-type="start">
+                                <i class="fas fa-play" style="background: #3b82f6;"></i>
+                                <span>开始节点</span>
+                            </div>
+                            <div class="node-item" draggable="true" ondragstart="drag(event)" data-type="end">
+                                <i class="fas fa-stop" style="background: #ef4444;"></i>
+                                <span>结束节点</span>
+                            </div>
+                            
+                            <div class="node-category">处理</div>
+                            <div class="node-item" draggable="true" ondragstart="drag(event)" data-type="llm">
+                                <i class="fas fa-robot" style="background: #8b5cf6;"></i>
+                                <span>LLM 模型</span>
+                            </div>
+                            <div class="node-item" draggable="true" ondragstart="drag(event)" data-type="code">
+                                <i class="fas fa-code" style="background: #10b981;"></i>
+                                <span>代码执行</span>
+                            </div>
+                            <div class="node-item" draggable="true" ondragstart="drag(event)" data-type="knowledge">
+                                <i class="fas fa-book" style="background: #f59e0b;"></i>
+                                <span>知识库检索</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Canvas -->
+                        <div class="canvas-area" id="workflow-canvas" ondrop="drop(event)" ondragover="allowDrop(event)">
+                            <div class="workflow-toolbar">
+                                <button class="tool-btn" onclick="zoomCanvas(0.1)"><i class="fas fa-plus"></i></button>
+                                <button class="tool-btn" onclick="zoomCanvas(-0.1)"><i class="fas fa-minus"></i></button>
+                                <button class="tool-btn primary" onclick="runWorkflowTest()"><i class="fas fa-play"></i> 试运行</button>
+                                <button class="tool-btn" onclick="saveWorkflow()" style="width: auto; padding: 0 12px;">保存</button>
+                            </div>
+                            <svg class="flow-connections" id="flow-connections-layer"></svg>
+                            <!-- Nodes will be dropped here -->
+                        </div>
+
+                        <!-- Right Sidebar: Properties Panel -->
+                        <div class="workflow-properties hidden" id="workflow-properties-panel">
+                            <div class="props-header">
+                                <div class="props-title">节点配置</div>
+                                <button class="icon-btn" onclick="closePropertiesPanel()"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="props-body" id="props-body-content">
+                                <!-- Dynamic Form Content -->
+                                <div class="empty-state">
+                                    <i class="fas fa-mouse-pointer"></i>
+                                    <p>点击画布上的节点<br>以配置属性</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Template Library Modal -->
+    <div class="drawer-overlay" id="template-library-modal" style="justify-content: center; align-items: center;">
+        <div class="card" style="width: 900px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div class="drawer-header">
+                <div>
+                    <div style="font-weight: 600; font-size: 18px;">数字员工模板库</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">选择预置的行业专家 Agent，快速构建您的数字团队</div>
+                </div>
+                <i class="fas fa-times" style="cursor: pointer;" onclick="closeDrawer('template-library-modal')"></i>
+            </div>
+            <div class="drawer-body" style="background: #f9fafb; padding: 24px;">
+                <div id="template-grid" class="template-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                    <!-- Templates populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config Drawer -->
+    <!-- Database Selection Drawer -->
+    <div class="drawer-overlay" id="db-selection-drawer">
+        <div class="drawer-panel">
+            <div class="drawer-header">
+                <span class="drawer-title" style="font-size: 18px; font-weight: 400; letter-spacing: -0.3px;">选择数据库</span>
+                <i class="fas fa-times" style="cursor: pointer; font-size: 18px; opacity: 0.6;" onclick="closeDrawer('db-selection-drawer')"></i>
+            </div>
+            <div class="drawer-body" style="padding: 0;">
+                <div id="db-selection-list" style="padding: 8px 0;">
+                    <!-- Database list will be populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="drawer-overlay" id="config-drawer">
+        <div class="drawer-panel">
+            <div class="drawer-header">
+                <span class="drawer-title" style="font-size: 18px; font-weight: 400; letter-spacing: -0.3px;" id="config-drawer-title">配置详情</span>
+                <i class="fas fa-times" style="cursor: pointer; font-size: 18px; opacity: 0.6;" onclick="closeDrawer('config-drawer')"></i>
+            </div>
+            <div class="drawer-body">
+                <div id="drawer-form-content"></div>
+            </div>
+            <div class="drawer-footer">
+                <button class="p-button p-button-outlined" onclick="closeDrawer('config-drawer')" data-i18n="cancel">取消</button>
+                <button class="p-button" onclick="handleConfigConfirm()" data-i18n="confirm">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Selection Drawer (Main Flow) -->
+    <div class="drawer-overlay" id="table-selection-drawer">
+        <div class="drawer-panel wide">
+            <div class="drawer-header">
+                <span class="drawer-title" id="table-selection-title" style="font-size: 18px; font-weight: 600;" data-i18n="select_tables">选择表</span>
+                <i class="fas fa-times" style="cursor: pointer; font-size: 18px;" onclick="closeDrawer('table-selection-drawer')"></i>
+            </div>
+            
+            <div class="step-indicator hidden" id="gen-steps" style="margin-top: 20px;">
+                <div class="step active" id="step-1"><div class="step-circle">1</div> <span data-i18n="select">选择</span></div>
+                <div class="step-line"></div>
+                <div class="step" id="step-2"><div class="step-circle">2</div> <span data-i18n="generate">生成</span></div>
+                <div class="step-line"></div>
+                <div class="step" id="step-3"><div class="step-circle">3</div> <span data-i18n="adjust">调整</span></div>
+            </div>
+
+            <div class="drawer-body" style="display: flex; flex-direction: column;">
+                
+                <!-- Stage 1: Table List -->
+                <div id="stage-table-list" style="height: 100%; display: flex; flex-direction: column;">
+                    <div class="field">
+                        <input type="text" class="p-inputtext" placeholder="搜索表名..." data-i18n="search_tables" oninput="searchTables()">
+                    </div>
+                    
+                    <div style="margin-bottom: 16px; padding: 16px; background: #F3F4F6; border-radius: 8px; border: 1px dashed #D1D5DB;">
+                         <div style="font-weight: 500; margin-bottom: 8px;" data-i18n="optional_dict">(选填) 上传数据字典</div>
+                         <div style="display: flex; align-items: center; gap: 12px;">
+                             <button class="p-button p-button-outlined p-button-text" onclick="triggerDictionaryUpload()">
+                                 <i class="fas fa-upload"></i> <span data-i18n="upload_file">上传文件</span>
+                             </button>
+                             <span id="dictionary-file-label" style="font-size: 13px; color: #666;" data-i18n="no_file">未选择文件</span>
+                             <input type="file" id="dictionary-file-input" style="display: none;" onchange="handleDictionaryFileChange(this)">
+                         </div>
+                    </div>
+
+                    <div style="flex: 1; overflow: auto;">
+                        <table class="p-datatable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" checked></th>
+                                    <th data-i18n="table_name">表名</th>
+                                    <th data-i18n="rows_est">行数 (预估)</th>
+                                    <th data-i18n="last_updated">更新时间</th>
+                                    <th data-i18n="actions">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="checkbox" checked></td>
+                                    <td><b>dim_users</b></td>
+                                    <td>45,200</td>
+                                    <td>2023-11-18</td>
+                                    <td><a style="color:var(--primary-color); cursor:pointer" onclick="previewTable('dim_users')" data-i18n="preview">预览</a></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="checkbox" checked></td>
+                                    <td><b>fact_orders</b></td>
+                                    <td>1.2M</td>
+                                    <td>2023-11-19</td>
+                                    <td><a style="color:var(--primary-color); cursor:pointer" onclick="previewTable('fact_orders')" data-i18n="preview">预览</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-top: 24px; text-align: center; padding: 24px; border: 1px dashed var(--primary-color); border-radius: 12px; background: #F0F9FF;">
+                        <div style="font-size: 18px; font-weight: 600; color: var(--primary-color); margin-bottom: 8px;" data-i18n="ready_generate">准备就绪</div>
+                        <div style="color: var(--text-secondary); margin-bottom: 16px;" data-i18n="ready_desc">已选择 2 张表。点击下方按钮开始语义建模。</div>
+                        <button class="p-button" onclick="startSchemaGeneration()" style="width: 160px; padding: 10px 24px; justify-content: center;">
+                            <i class="fas fa-magic" style="margin-right: 8px;"></i> <span data-i18n="gen_schema">一键生成 Schema</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stage 2: Logs -->
+                <div id="stage-process-logs" class="hidden">
+                    <div class="process-log-container">
+                        <div class="spinner-wrapper">
+                            <div class="spinner-ring"></div>
+                            <div class="spinner-pulse"></div>
+                        </div>
+                        <div class="process-status-text" id="process-status-text" data-i18n="processing">正在处理...</div>
+                        <div id="agent-logs" class="agent-logs"></div>
+                    </div>
+                </div>
+
+                <!-- Stage 3: Adjust -->
+                <div id="stage-schema-adjust" class="hidden">
+                    <div class="p-tag p-tag-info" style="width: 100%; margin-bottom: 16px; display: flex; gap: 8px;">
+                        <i class="fas fa-info-circle"></i> <span data-i18n="semantic_generated">SemanticDB 模型已生成，请复核。</span>
+                    </div>
+                    <table class="p-datatable">
+                        <thead>
+                            <tr><th data-i18n="field">字段名</th><th data-i18n="type">类型</th><th data-i18n="desc">描述</th><th data-i18n="lock">锁定</th></tr>
+                        </thead>
+                        <tbody id="schema-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Stage 4: Success -->
+                <div id="stage-success-info" class="hidden" style="text-align: center; padding-top: 80px;">
+                    <i class="fas fa-check-circle" style="font-size: 80px; color: #10B981; margin-bottom: 24px;"></i>
+                    <h2 style="margin-bottom: 12px;" data-i18n="model_saved">SemanticDB 模型保存成功！</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 32px;" data-i18n="can_ask">现在您可以直接对数据进行提问了。</p>
+                    <button class="p-button" onclick="goToChat()" data-i18n="go_chat">进入智能问答</button>
+                </div>
+            </div>
+
+            <div class="drawer-footer" id="drawer-footer-bar">
+                <button class="p-button p-button-outlined" onclick="closeDrawer('table-selection-drawer')" data-i18n="close">关闭</button>
+                <button class="p-button hidden" id="btn-save-schema" onclick="confirmSchema()" data-i18n="confirm_save">确认并保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Preview Modal -->
+    <div class="drawer-overlay" id="data-preview-modal" style="justify-content: center; align-items: center;">
+        <div class="card" style="width: 800px; max-height: 80vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div class="drawer-header">
+                <div>
+                    <div style="font-weight: 600; font-size: 16px;" data-i18n="data_preview">数据预览</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="preview-table-name">Table</div>
+                </div>
+                <i class="fas fa-times" style="cursor: pointer;" onclick="togglePreviewModal(false)"></i>
+            </div>
+            <div style="padding: 24px; overflow: auto;">
+                <table class="p-datatable preview-table">
+                    <thead id="preview-table-head"></thead>
+                    <tbody id="preview-table-body"></tbody>
+                </table>
+            </div>
+            <div class="drawer-footer">
+                <button class="p-button" onclick="togglePreviewModal(false)" data-i18n="close">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Agent Modal -->
+    <div class="drawer-overlay" id="data-agent-modal" style="justify-content: center; align-items: center;">
+        <div class="card" style="width: 1000px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div class="drawer-header">
+                 <div>
+                    <div style="font-weight: 600; font-size: 18px;" data-i18n="agent_report">DataAgent 分析报告</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="agent-report-date">Date</div>
+                </div>
+                <i class="fas fa-times" style="cursor: pointer;" onclick="toggleDataAgentModal(false)"></i>
+            </div>
+            <div class="drawer-body" id="agent-report-body" style="background: #fff;">
+                <!-- Dynamic Report -->
+            </div>
+            <div class="drawer-footer">
+                <button class="p-button p-button-outlined"><i class="fas fa-download"></i> <span data-i18n="export_pdf">导出 PDF</span></button>
+                <button class="p-button" onclick="toggleDataAgentModal(false)" data-i18n="close">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Builder Drawer -->
+    <div class="drawer-overlay" id="employee-builder-drawer">
+        <div class="drawer-panel wide">
+            <div class="drawer-header">
+                <span class="drawer-title" style="font-size: 18px; font-weight: 600;" id="employee-builder-title">新建 AI 员工</span>
+                <i class="fas fa-times" style="cursor: pointer; font-size: 18px;" onclick="closeDrawer('employee-builder-drawer')"></i>
+            </div>
+            <div class="drawer-body" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 60px);">
+                <div class="tabs-header">
+                    <div class="tab-item active" onclick="switchEmployeeTab('basic')" data-tab="basic">员工资料</div>
+                    <div class="tab-item" onclick="switchEmployeeTab('soul')" data-tab="soul">模型设置</div>
+                    <div class="tab-item" onclick="switchEmployeeTab('skills')" data-tab="skills">技能</div>
+                    <div class="tab-item" onclick="switchEmployeeTab('workflow')" data-tab="workflow">工作流</div>
+                    <div class="tab-item" onclick="switchEmployeeTab('knowledge')" data-tab="knowledge">知识库</div>
+                    <div class="tab-item" onclick="switchEmployeeTab('sandbox')" data-tab="sandbox"><i class="fas fa-vial" style="font-size: 12px; margin-right: 4px;"></i> 调试</div>
+                </div>
+                <div class="tab-content-container" style="padding: 24px; overflow-y: auto; flex: 1; background: #fff;">
+                    
+                    <!-- Tab 1: Basic (Already Refactored) -->
+                    <div id="emp-tab-basic" class="tab-pane active">
+                        <!-- Creation Shortcuts -->
+                        <div class="creation-shortcuts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                            <div class="shortcut-card" onclick="triggerMindMapUpload()" style="border: 1px dashed #d1d5db; padding: 16px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9fafb; transition: all 0.2s;">
+                                <i class="fas fa-sitemap" style="font-size: 24px; color: var(--primary-color); margin-bottom: 8px;"></i>
+                                <div style="font-weight: 500; font-size: 14px;">导入思维导图</div>
+                                <div style="font-size: 12px; color: #6b7280;">支持 .xmind, .mm, .opml 格式</div>
+                                <input type="file" id="mindmap-upload-input" style="display: none;" accept=".xmind,.mm,.opml,.md" onchange="handleMindMapUpload(this)">
+                            </div>
+                            <div class="shortcut-card" onclick="toggleNLPCreation()" style="border: 1px dashed #d1d5db; padding: 16px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9fafb; transition: all 0.2s;">
+                                <i class="fas fa-magic" style="font-size: 24px; color: #8b5cf6; margin-bottom: 8px;"></i>
+                                <div style="font-weight: 500; font-size: 14px;">自然语言创建</div>
+                                <div style="font-size: 12px; color: #6b7280;">描述需求，AI 自动配置</div>
+                            </div>
+                        </div>
+
+                        <!-- NLP Creation Panel -->
+                        <div id="nlp-creation-panel" class="hidden" style="margin-bottom: 24px; background: #f5f3ff; padding: 16px; border-radius: 8px; border: 1px solid #ddd6fe;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <label style="font-weight: 500; color: #5b21b6; font-size: 13px;">描述您需要的数字员工</label>
+                                <i class="fas fa-times" style="cursor: pointer; color: #6b7280;" onclick="toggleNLPCreation()"></i>
+                            </div>
+                            <textarea class="p-inputtext" id="nlp-creation-input" rows="3" placeholder="例如：帮我创建一个资深的电商数据分析师，擅长分析 GMV 波动，语气专业严谨，能够自动生成周报。" style="width: 100%; background: #fff; margin-bottom: 10px;"></textarea>
+                            <div style="text-align: right;">
+                                <button class="p-button p-button-sm" onclick="generateEmployeeFromNLP()" style="background: #8b5cf6; border-color: #8b5cf6;">
+                                    <i class="fas fa-sparkles"></i> <span style="margin-left: 4px;">立即生成</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-section-title">基本信息</div>
+                        <div class="form-grid-2">
+                            <div class="field">
+                                <label>用户名 <span style="color:red">*</span></label>
+                                <input type="text" class="p-inputtext" id="emp-username" placeholder="例如: avery">
+                            </div>
+                            <div class="field">
+                                <label>昵称 <span style="color:red">*</span></label>
+                                <input type="text" class="p-inputtext" id="emp-nickname" placeholder="例如: Avery">
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid-2">
+                            <div class="field">
+                                <label>职位</label>
+                                <input type="text" class="p-inputtext" id="emp-position" placeholder="例如: 表单助理">
+                            </div>
+                            <div class="field">
+                                <label>启用状态</label>
+                                <div style="display: flex; align-items: center; height: 42px;">
+                                    <div class="form-check form-switch">
+                                        <label class="switch">
+                                            <input type="checkbox" id="emp-enabled" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                    <span style="margin-left: 12px; font-size: 13px; color: var(--text-secondary);">启用后占用配额</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label>头像选择</label>
+                            <div class="avatar-selection-grid" id="avatar-grid">
+                                <!-- JS Populated -->
+                            </div>
+                        </div>
+
+                        <div class="form-section-title">人设设定</div>
+                        <div class="field">
+                            <label>简介</label>
+                            <textarea class="p-inputtext" id="emp-desc" rows="2" placeholder="AI 员工职责的简短描述"></textarea>
+                        </div>
+                        <div class="field">
+                            <label>欢迎语</label>
+                            <textarea class="p-inputtext" id="emp-welcome" rows="2" placeholder="例如：你好，我是你的表单助手，随时准备整理数据。"></textarea>
+                        </div>
+                        <div class="field">
+                            <label>推荐问题 (Quick Prompts)</label>
+                            <textarea class="p-inputtext" id="emp-quick-prompts" rows="3" placeholder="示例：&#10;近 7 天 GMV Top 5 门店&#10;本月复购率趋势"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Soul (Nora) -->
+                    <div id="emp-tab-soul" class="tab-pane hidden">
+                        <div class="form-section-title">模型配置</div>
+                        <div class="field">
+                            <label>LLM 服务</label>
+                            <select class="p-inputtext" id="emp-llm-service">
+                                <option value="deepseek-chat">DeepSeek Chat</option>
+                                <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>温度 (Temperature): <span id="temp-val">0.7</span></label>
+                            <input type="range" id="emp-temp" min="0" max="1" step="0.1" value="0.7" oninput="document.getElementById('temp-val').innerText = this.value" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 4px;">
+                                <span>精确 (0.0)</span>
+                                <span>创意 (1.0)</span>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>系统提示词 (System Prompt)</label>
+                            <textarea class="p-inputtext" id="emp-prompt" rows="12" placeholder="定义 AI 的人设、语气和行为准则..." style="font-family: monospace; font-size: 13px; line-height: 1.6;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Skills (Alisa) -->
+                    <div id="emp-tab-skills" class="tab-pane hidden">
+                         <!-- Data Authorization Section -->
+                         <div style="margin-bottom: 32px;">
+                            <div class="form-section-title">数据域授权</div>
+                            <div class="field-desc" style="margin-bottom: 16px; color: #666; font-size: 13px;">指定该员工有权访问的数据模型。未授权的模型数据将对该员工不可见。</div>
+                            <div id="data-scope-list" class="data-scope-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <!-- Dynamic Data Scopes -->
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                             <div class="form-section-title" style="margin: 0;">已装配技能</div>
+                             <button class="p-button p-button-outlined p-button-sm" onclick="openSkillLibrary()"><i class="fas fa-plus"></i> 添加技能</button>
+                        </div>
+                        
+                        <div class="skill-cards-container" id="emp-skill-list">
+                            <!-- SQL Skill -->
+                            <input type="checkbox" id="skill-sql" class="skill-card-checkbox" checked disabled>
+                            <label class="skill-card" for="skill-sql">
+                                <div class="skill-card-header">
+                                    <span class="skill-card-title">SQL 生成</span>
+                                    <div class="skill-check-icon"><i class="fas fa-check"></i></div>
+                                </div>
+                                <div class="skill-card-desc">核心能力。允许 AI 查询数据库并生成 SQL 语句。</div>
+                            </label>
+
+                            <!-- Chart Skill -->
+                            <input type="checkbox" id="skill-chart" class="skill-card-checkbox" checked>
+                            <label class="skill-card" for="skill-chart">
+                                <div class="skill-card-header">
+                                    <span class="skill-card-title">图表生成</span>
+                                    <div class="skill-check-icon"><i class="fas fa-check"></i></div>
+                                </div>
+                                <div class="skill-card-desc">允许 AI 根据数据分析结果推荐并渲染可视化图表。</div>
+                            </label>
+                            
+                            <!-- Report Skill -->
+                            <input type="checkbox" id="skill-report" class="skill-card-checkbox">
+                            <label class="skill-card" for="skill-report">
+                                <div class="skill-card-header">
+                                    <span class="skill-card-title">深度报告</span>
+                                    <div class="skill-check-icon"><i class="fas fa-check"></i></div>
+                                </div>
+                                <div class="skill-card-desc">生成 PDF/Word 格式的深度分析报告，适合周期性汇报。</div>
+                            </label>
+
+                            <!-- Python Skill -->
+                            <input type="checkbox" id="skill-python" class="skill-card-checkbox">
+                            <label class="skill-card" for="skill-python">
+                                <div class="skill-card-header">
+                                    <span class="skill-card-title">Python 解释器</span>
+                                    <div class="skill-check-icon"><i class="fas fa-check"></i></div>
+                                </div>
+                                <div class="skill-card-desc">在沙箱环境中执行 Python 脚本，用于复杂预测与数据清洗。</div>
+                            </label>
+
+                            <!-- Internet Skill -->
+                            <input type="checkbox" id="skill-internet" class="skill-card-checkbox">
+                            <label class="skill-card" for="skill-internet">
+                                <div class="skill-card-header">
+                                    <span class="skill-card-title">联网搜索</span>
+                                    <div class="skill-check-icon"><i class="fas fa-check"></i></div>
+                                </div>
+                                <div class="skill-card-desc">调用搜索引擎补充外部信息，适合市场调研与竞对分析。</div>
+                            </label>
+                            
+                            <!-- Dynamic Skills will be appended here -->
+                        </div>
+
+                        <div class="workflow-skill-section">
+                            <div class="workflow-skill-head">
+                                <div class="form-section-title" style="margin: 0;">专属工作流</div>
+                                <p class="field-desc">为该员工装配常用的自动化流程模板。</p>
+                            </div>
+                            <div class="workflow-skill-grid" id="workflow-skill-grid">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="emp-tab-workflow" class="tab-pane hidden">
+                        <div class="workflow-template-section">
+                            <div class="workflow-template-head">
+                                <div>
+                                    <div class="form-section-title" style="margin: 0 0 6px;">智能模板库</div>
+                                    <p class="field-desc">直接套用常见流程模板，开箱即用。</p>
+                                </div>
+                                <button class="p-button p-button-sm" onclick="createNewWorkflow()">
+                                    <i class="fas fa-plus"></i> <span style="margin-left: 6px;">空白画布</span>
+                                </button>
+                            </div>
+                            <div class="workflow-template-grid">
+                                <div class="wf-template-card" onclick="useWorkflowTemplate('gmv_playbook')">
+                                    <div class="wf-template-badge">GMV</div>
+                                    <h4>GMV 增长剧本</h4>
+                                    <p>用户输入 → LLM 生成洞察 → 知识库校验 → 输出报告</p>
+                                    <button type="button"><i class="fas fa-rocket"></i> 使用模板</button>
+                                </div>
+                                <div class="wf-template-card" onclick="useWorkflowTemplate('qa_guardrail')">
+                                    <div class="wf-template-badge violet">QA</div>
+                                    <h4>问答拦截流程</h4>
+                                    <p>输入问题 → 关键词检测 → LLM 回复 → 审核节点</p>
+                                    <button type="button"><i class="fas fa-play-circle"></i> 使用模板</button>
+                                </div>
+                                <div class="wf-template-card" onclick="useWorkflowTemplate('weekly_report')">
+                                    <div class="wf-template-badge green">报告</div>
+                                    <h4>周报自动汇总</h4>
+                                    <p>定时触发 → SQL 拉取 → LLM 总结 → 邮件下发</p>
+                                    <button type="button"><i class="fas fa-envelope-open-text"></i> 使用模板</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="workflow-existing-section">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <div>
+                                    <div class="form-section-title" style="margin: 0 0 4px;">已编排工作流</div>
+                                    <div class="field-desc" style="color: #666; font-size: 12px;">为该员工定义专属的数据处理流程。</div>
+                                </div>
+                                <button class="p-button p-button-sm" onclick="createNewWorkflow()">
+                                    <i class="fas fa-plus"></i> <span style="margin-left: 6px;">新建工作流</span>
+                                </button>
+                            </div>
+                        
+                        <div id="emp-workflow-list" class="workflow-card-list">
+                            <!-- Populated by JS -->
+                            <div class="empty-state-box">
+                                <i class="fas fa-project-diagram" style="font-size: 24px; color: #d1d5db; margin-bottom: 8px;"></i>
+                                <p style="font-size: 13px;">暂无工作流，点击右上角新建</p>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Knowledge (RAG) -->
+                    <div id="emp-tab-knowledge" class="tab-pane hidden">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                            <div>
+                                <div class="form-section-title" style="margin: 0 0 4px;">知识库配置</div>
+                                <div class="field-desc" style="color: #666; font-size: 12px;">上传 PDF/Word/Markdown 或关联企业知识库。</div>
+                            </div>
+                            <div class="knowledge-head-actions">
+                                <button class="p-button p-button-outlined p-button-sm" onclick="triggerKnowledgeUpload()"><i class="fas fa-upload"></i> 上传文档</button>
+                            </div>
+                        </div>
+
+                        <div class="knowledge-wrapper" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                            <div class="knowledge-column">
+                                <div class="field-desc" style="margin-bottom: 12px; font-weight: 600; color: var(--text-color);">已关联知识库 (<span id="knowledge-linked-count">0</span>)</div>
+                                <div id="linked-knowledge-list" class="knowledge-card-list" style="min-height: 200px; background: #f9fafb; border-radius: 8px; padding: 12px; border: 1px dashed #e5e7eb;">
+                                    <!-- Dynamic List -->
+                                </div>
+                            </div>
+
+                            <div class="knowledge-column">
+                                <div class="field-desc" style="margin-bottom: 12px; font-weight: 600; color: var(--text-color);">知识库仓库</div>
+                                <div class="knowledge-search" style="margin-bottom: 12px; position: relative;">
+                                    <i class="fas fa-search" style="position: absolute; left: 10px; top: 10px; color: #9ca3af; font-size: 13px;"></i>
+                                    <input type="text" class="p-inputtext" placeholder="搜索知识库..." style="padding-left: 32px; font-size: 13px;" oninput="filterKnowledgeLibrary(this.value)">
+                                </div>
+                                <div id="knowledge-library-list" class="library-grid knowledge-card-list" style="max-height: 400px; overflow-y: auto;">
+                                    <!-- Dynamic List -->
+                                </div>
+                            </div>
+                        </div>
+                        <input type="file" id="knowledge-file-input" style="display:none" accept=".pdf,.doc,.docx,.txt,.md,.ppt,.pptx" onchange="handleKnowledgeFileChange(event)">
+                    </div>
+
+                    <!-- Tab 5: Sandbox -->
+                    <div id="emp-tab-sandbox" class="tab-pane hidden">
+                        <div style="height: 100%; display: flex; flex-direction: column; min-height: 500px;">
+                            <div style="margin-bottom: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd; font-size: 13px; color: #0369a1; display: flex; gap: 8px;">
+                                <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
+                                <div>
+                                    <div style="font-weight: 600;">调试模式</div>
+                                    <div>在此处测试员工的实时反应。它将使用当前配置（包括未保存的修改）进行回复。</div>
+                                </div>
+                            </div>
+                            
+                            <div id="sandbox-chat-stage" class="sandbox-chat-stage" style="flex: 1; margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                                <!-- Chat content -->
+                                <div style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 20px;">
+                                    -- 调试会话已就绪 --
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="sandbox-input" class="p-inputtext" placeholder="输入测试消息..." style="flex: 1;" onkeydown="if(event.key === 'Enter') sendSandboxMessage()">
+                                <button class="p-button p-button-outlined" style="width: 40px; padding: 0; justify-content: center;" title="重置会话" onclick="resetSandbox()"><i class="fas fa-redo"></i></button>
+                                <button class="p-button" onclick="sendSandboxMessage()"><i class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button class="p-button p-button-outlined" onclick="closeDrawer('employee-builder-drawer')" data-i18n="cancel">取消</button>
+                <button class="p-button" onclick="saveEmployee()" data-i18n="save">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Knowledge Preview Modal -->
+    <div class="drawer-overlay" id="knowledge-preview-modal" style="justify-content: center; align-items: center;">
+        <div class="card" style="width: 720px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div class="drawer-header">
+                <div>
+                    <div style="font-weight: 600; font-size: 18px;" id="knowledge-preview-title">知识库详情</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="knowledge-preview-meta">--</div>
+                </div>
+                <i class="fas fa-times" style="cursor: pointer;" onclick="toggleKnowledgePreview(false)"></i>
+            </div>
+            <div class="drawer-body" id="knowledge-preview-body" style="overflow: auto; background: #fff;">
+                <!-- Dynamic content -->
+            </div>
+            <div class="drawer-footer">
+                <button class="p-button p-button-outlined" onclick="toggleKnowledgePreview(false)">关闭</button>
+                <button class="p-button" onclick="downloadKnowledgeFiles()"><i class="fas fa-download"></i> 下载所有文件</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skill Library Modal -->
+    <div class="drawer-overlay" id="skill-library-modal" style="justify-content: center; align-items: center;">
+        <div class="card" style="width: 900px; max-height: 85vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+            <div class="drawer-header" style="padding: 20px 24px; border-bottom: 1px solid #f3f4f6;">
+                <div>
+                    <div style="font-weight: 600; font-size: 18px; color: var(--text-color);">技能中心 (Skill Center)</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">为 AI 员工配置额外的工具与集成能力</div>
+                </div>
+                <i class="fas fa-times" style="cursor: pointer; color: var(--text-secondary); font-size: 18px;" onclick="closeDrawer('skill-library-modal')"></i>
+            </div>
+            <div class="drawer-body" style="background: #fff; padding: 0; display: flex; flex: 1; overflow: hidden;">
+                <!-- Sidebar -->
+                <div style="width: 240px; border-right: 1px solid #f3f4f6; background: #f9fafb; padding: 24px 16px; display: flex; flex-direction: column; gap: 8px;">
+                    <div class="skill-cat-item active" onclick="filterSkillCat('all', this)">
+                        <i class="fas fa-th-large"></i>
+                        <span>全部技能</span>
+                    </div>
+                    <div style="height: 1px; background: #e5e7eb; margin: 8px 8px;"></div>
+                    <div class="skill-cat-item" onclick="filterSkillCat('office', this)">
+                        <i class="fas fa-briefcase"></i>
+                        <span>办公协同</span>
+                    </div>
+                    <div class="skill-cat-item" onclick="filterSkillCat('dev', this)">
+                        <i class="fas fa-code"></i>
+                        <span>开发工具</span>
+                    </div>
+                    <div class="skill-cat-item" onclick="filterSkillCat('external', this)">
+                        <i class="fas fa-globe"></i>
+                        <span>外部连接</span>
+                    </div>
+                    <div class="skill-cat-item" onclick="filterSkillCat('workflow', this)">
+                        <i class="fas fa-project-diagram"></i>
+                        <span>工作流</span>
+                    </div>
+                </div>
+                <!-- Grid -->
+                <div style="flex: 1; padding: 32px; overflow-y: auto; background: #fff;">
+                    <div id="skill-lib-grid" class="skill-lib-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Overlay -->
+    <div id="onboarding-overlay" class="onboarding-overlay hidden">
+        <div class="onboarding-frame">
+            <div class="onboarding-topbar">
+                <div class="onboarding-brand">
+                    <span class="brand-dot"></span>
+                    <span>亿问DataAgent Onboarding</span>
+                </div>
+            </div>
+
+            <div class="onboarding-progress" id="onboarding-progress">
+                <div class="progress-pill active" data-step="1">
+                    <span class="pill-index">1</span>
+                    <span class="pill-label">欢迎</span>
+                </div>
+                <div class="progress-pill" data-step="2">
+                    <span class="pill-index">2</span>
+                    <span class="pill-label">伙伴</span>
+                </div>
+                <div class="progress-pill" data-step="3">
+                    <span class="pill-index">3</span>
+                    <span class="pill-label">配置</span>
+                </div>
+                <div class="progress-pill" data-step="4">
+                    <span class="pill-index">4</span>
+                    <span class="pill-label">完成</span>
+                </div>
+            </div>
+
+            <div class="onboarding-container" id="onboarding-container">
+            
+            <!-- Step 1: Welcome -->
+            <div id="step-welcome" class="step-content active">
+                <div class="robot-wrapper" id="robot-wrapper">
+                    <i class="fas fa-robot robot-icon"></i>
+                </div>
+                <div class="welcome-title" data-i18n="welcome_title">你好，欢迎使用 亿问DataAgent</div>
+                <div class="welcome-desc" data-i18n="welcome_desc">您的智能数据分析伙伴</div>
+                <div class="onboarding-footer">
+                    <button class="p-button" onclick="onboardingNext(2)" data-i18n="get_started">开始使用</button>
+                </div>
+            </div>
+
+            <!-- Step 2: LLM Enable Selection -->
+            <div id="step-mode" class="step-content">
+                <div class="welcome-title" style="font-size:28px; font-weight:300; letter-spacing:-0.5px; margin-bottom:32px;">是否启动大模型</div>
+                
+                <div class="llm-toggle-container">
+                    <div class="llm-toggle-card">
+                        <div class="llm-toggle-content">
+                            <div class="llm-toggle-title">启用大模型 AI 能力</div>
+                            <div class="llm-toggle-desc">开启后将获得智能问答、AI 建模等功能</div>
+                        </div>
+                        <label class="llm-toggle-switch">
+                            <input type="checkbox" id="llm-enable-switch" checked onchange="toggleLLMEnable()">
+                            <span class="llm-toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="llm-warning-box" id="llm-warning-box" style="display: none;">
+                        <div class="llm-warning-title">关闭后将无法使用以下功能</div>
+                        <div class="llm-warning-list">
+                            <div class="llm-warning-item">AI Agent 智能助手</div>
+                            <div class="llm-warning-item">AI 建模功能</div>
+                            <div class="llm-warning-item">智能问答对话</div>
+                            <div class="llm-warning-item">自然语言分析</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="onboarding-footer">
+                    <button class="p-button" onclick="handleModeConfirm()" data-i18n="next">下一步</button>
+                </div>
+            </div>
+
+            <!-- Step 3: LLM Config -->
+            <div id="step-config" class="step-content">
+                <div class="welcome-title" style="font-size:28px; font-weight:300; letter-spacing:-0.5px; margin-bottom:8px;" data-i18n="config_llm">配置智能大脑</div>
+                <div class="welcome-desc" style="font-size:14px; font-weight:300; margin-bottom:32px; opacity:0.7; letter-spacing:-0.1px;" data-i18n="config_desc">为您的"文科生"注入智慧，请配置 LLM API。</div>
+                
+                <div class="config-form-container">
+                    <div class="field">
+                        <label>API Key</label>
+                        <input type="password" class="p-inputtext" placeholder="sk-..." id="llm-api-key">
+                    </div>
+                    <div class="field">
+                        <label>Base URL</label>
+                        <input type="text" class="p-inputtext" placeholder="https://api.openai.com/v1">
+                    </div>
+                    <div class="field">
+                        <label>Model</label>
+                        <select class="p-inputtext" id="llm-model-select">
+                            <option>gpt-4-turbo</option>
+                            <option>gpt-3.5-turbo</option>
+                            <option>claude-3-opus</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Test Connection Area -->
+                    <div class="test-connection-area" style="margin-top: 10px; margin-bottom: 20px;">
+                        <button class="p-button p-button-outlined" id="btn-test-conn" onclick="testLLMConnection()" style="width: 100%;">
+                            <i class="fas fa-plug"></i> <span data-i18n="test_conn">测试连接</span>
+                        </button>
+                        <div id="conn-status" class="conn-status hidden">
+                            <i class="fas fa-circle-notch fa-spin"></i> <span>Connecting...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="onboarding-footer">
+                    <button class="p-button p-button-text" onclick="onboardingNext(2)" data-i18n="back">上一步</button>
+                    <button class="p-button disabled" id="btn-config-next" onclick="onboardingNext(4)" data-i18n="save_next" disabled>保存并继续</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Finish -->
+            <div id="step-finish" class="step-content">
+                <div class="success-icon-wrapper">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="welcome-title" style="font-size:28px; opacity:1; transform:none;" data-i18n="all_set">一切就绪！</div>
+                <div class="welcome-desc" style="opacity:1; transform:none;" data-i18n="ready_go">让我们开始探索您的数据吧。</div>
+                <div class="onboarding-footer">
+                    <button class="p-button" style="padding: 12px 32px; font-size: 16px;" onclick="closeOnboarding()" data-i18n="enter_app">进入系统</button>
+                </div>
+            </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Test Modal -->
+    <div class="drawer-overlay" id="llm-test-modal" style="justify-content: center; align-items: center;">
+        <div class="card llm-test-card">
+            <div class="drawer-header">
+                <div>
+                    <div style="font-weight: 600; font-size: 18px;" id="llm-test-title">LLM 测试链接</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="llm-test-desc">与模型交互以确认响应效果</div>
+                </div>
+                <i class="fas fa-times" style="cursor: pointer;" onclick="toggleLlmTestModal(false)"></i>
+            </div>
+            <div class="llm-test-body">
+                <div class="llm-test-conversation" id="llm-test-conversation"></div>
+                <div class="llm-test-input">
+                    <input type="text" class="p-inputtext" id="llm-test-input" placeholder="请输入测试问题..." onkeypress="handleLlmTestEnter(event)">
+                    <button class="p-button" onclick="sendLlmTestMessage()"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="api-client.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
