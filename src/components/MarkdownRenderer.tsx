@@ -847,9 +847,9 @@ const CodeBlock = ({ language, content }: { language: string; content: string })
   );
 };
 
-// 引用块组件 - 简约无图标
+// 引用块组件 - 支持建议标签和图标
 const QuoteBlock = ({ content, variant = 'info' }: { content: string; variant?: string }) => {
-  const styles: Record<string, { bg: string; border: string }> = {
+  const styles: Record<string, { bg: string; border: string; label?: string; icon?: string }> = {
     info: {
       bg: 'bg-[#F0F7FF]',
       border: 'border-l-[#007AFF]',
@@ -857,6 +857,8 @@ const QuoteBlock = ({ content, variant = 'info' }: { content: string; variant?: 
     tip: {
       bg: 'bg-[#FFFBF0]',
       border: 'border-l-[#FF9500]',
+      label: '建议',
+      icon: '💡', // 灯泡图标
     },
     warning: {
       bg: 'bg-[#FFF5F5]',
@@ -869,6 +871,7 @@ const QuoteBlock = ({ content, variant = 'info' }: { content: string; variant?: 
   };
   
   const style = styles[variant] || styles.info;
+  const isSuggestion = variant === 'tip' && (content.includes('建议') || content.includes('推荐'));
   
   return (
     <div className={clsx(
@@ -876,6 +879,16 @@ const QuoteBlock = ({ content, variant = 'info' }: { content: string; variant?: 
       style.bg,
       style.border
     )}>
+      {isSuggestion && style.label && (
+        <div className="flex items-center gap-1.5 mb-2">
+          {style.icon && (
+            <span className="text-[14px]">{style.icon}</span>
+          )}
+          <span className="text-[12px] font-semibold text-[#FF9500] uppercase tracking-wide">
+            {style.label}
+          </span>
+        </div>
+      )}
       <span className="text-[14px] text-[#1d1d1f] leading-[1.8] break-words overflow-wrap-anywhere max-w-full" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
         {renderInlineMarkdown(content)}
       </span>

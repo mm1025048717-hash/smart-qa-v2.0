@@ -97,7 +97,7 @@
     @apply rounded-2xl;
     @apply border border-[#E8F0FF];
     @apply shadow-[0_2px_12px_rgba(0,0,0,0.03)];
-    @apply p-4;
+    @apply p-3;
     @apply w-full;
     @apply overflow-hidden;
     word-break: break-word;

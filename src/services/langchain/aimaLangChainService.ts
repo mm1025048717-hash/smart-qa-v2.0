@@ -10,19 +10,27 @@ import { getToolsForAPI, executeTool, type ToolCall, type ToolResult } from './a
 // DeepSeek API 配置
 // 根据 DeepSeek API 文档: https://api-docs.deepseek.com/zh-cn/
 // base_url: https://api.deepseek.com
-// 与主服务保持一致：开发环境使用 Vite 代理，生产环境直接调用
+// 与主服务保持一致：开发环境使用 Vite 代理，生产环境根据 API Key 情况选择
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
+
+// 检查 API Key 是否有效（非空且以 sk- 开头）
+const hasValidApiKey = DEEPSEEK_API_KEY && DEEPSEEK_API_KEY.trim().length > 0 && DEEPSEEK_API_KEY.startsWith('sk-');
 
 // 开发环境调试：检查 API Key 是否被正确读取
 if (import.meta.env.DEV) {
   console.log('[LangChain Service] 🔑 API Key 状态:', {
     hasKey: !!DEEPSEEK_API_KEY,
+    hasValidKey: hasValidApiKey,
     keyPrefix: DEEPSEEK_API_KEY ? `${DEEPSEEK_API_KEY.slice(0, 8)}...${DEEPSEEK_API_KEY.slice(-4)}` : '未设置',
     envVar: import.meta.env.VITE_DEEPSEEK_API_KEY ? '已读取' : '未读取',
   });
 }
+
+// 构建 API 基础 URL：如果没有有效的前端 API Key，使用 Serverless Function
 const DEEPSEEK_BASE_URL = import.meta.env.PROD 
-  ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || 'https://api.deepseek.com')  // 生产环境：直接调用
+  ? (hasValidApiKey 
+      ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || 'https://api.deepseek.com')  // 有有效 API Key：直接调用
+      : '/api/deepseek')  // 没有有效 API Key：使用 Serverless Function（API Key 在服务端）
   : '/api/deepseek';  // 开发环境使用 Vite 代理
 
 /**
@@ -109,18 +117,21 @@ export async function streamAimaResponse(
     });
 
     // 调用 DeepSeek API（流式）
-    // 开发环境：使用代理路径（Vite 会自动添加 /v1/chat/completions）
-    // 生产环境：直接调用完整路径
-    const apiUrl = import.meta.env.PROD 
-      ? `${DEEPSEEK_BASE_URL}/chat/completions`
-      : `${DEEPSEEK_BASE_URL}/chat/completions`;
+    const apiUrl = `${DEEPSEEK_BASE_URL}/chat/completions`;
+    
+    // 构建请求头：如果使用 Serverless Function（以 / 开头），不需要 Authorization header
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 只有在不是 Serverless Function（不以 / 开头）且有有效 API Key 时才需要 Authorization header
+    if (hasValidApiKey && !DEEPSEEK_BASE_URL.startsWith('/')) {
+      headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
+    }
     
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: allMessages,
@@ -421,16 +432,21 @@ ${JSON.stringify(result.result, null, 2)}`;
         ...toolMessages,
       ];
 
-      const apiUrl = import.meta.env.PROD 
-        ? `${DEEPSEEK_BASE_URL}/chat/completions`
-        : `${DEEPSEEK_BASE_URL}/chat/completions`;
+      const apiUrl = `${DEEPSEEK_BASE_URL}/chat/completions`;
+
+      // 构建请求头：如果使用 Serverless Function（以 / 开头），不需要 Authorization header
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 只有在不是 Serverless Function（不以 / 开头）且有 API Key 时才需要 Authorization header
+      if (DEEPSEEK_API_KEY && !DEEPSEEK_BASE_URL.startsWith('/')) {
+        headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
+      }
 
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-        },
+        headers,
         body: JSON.stringify({
           model: 'deepseek-chat',
           messages: [
@@ -538,16 +554,21 @@ export async function getAimaResponse(
       })),
     ];
 
-    const apiUrl = import.meta.env.PROD 
-      ? `${DEEPSEEK_BASE_URL}/chat/completions`
-      : `${DEEPSEEK_BASE_URL}/chat/completions`;
+    const apiUrl = `${DEEPSEEK_BASE_URL}/chat/completions`;
+    
+    // 构建请求头：如果使用 Serverless Function（以 / 开头），不需要 Authorization header
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 只有在不是 Serverless Function（不以 / 开头）且有有效 API Key 时才需要 Authorization header
+    if (hasValidApiKey && !DEEPSEEK_BASE_URL.startsWith('/')) {
+      headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
+    }
     
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: allMessages,

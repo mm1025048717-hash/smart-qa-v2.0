@@ -287,6 +287,54 @@ export const AGENTS: AgentProfile[] = [
       { label: '综合业务看板', query: '生成百胜中国本周综合业务分析看板' },
     ],
   },
+  {
+    id: 'profit-analyst',
+    name: '利润分析专家',
+    title: '财务分析专家 · 利润洞察',
+    badge: '财务专家',
+    description: '专注利润分析与财务洞察，深度挖掘成本结构、费用变化和盈利能力，提供可落地的财务优化建议',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    suggestedQuestions: [
+      { label: '为什么利润率在下滑', query: '为什么利润率在下滑' },
+      { label: '管理费用变化分析', query: '管理费用上涨了多少' },
+      { label: '成本结构分析', query: '原材料成本变化情况' },
+      { label: '营销活动ROI评估', query: '重新评估营销活动的ROI' },
+      { label: '盈利能力诊断', query: '分析当前盈利能力下降的原因' },
+      { label: '成本优化建议', query: '哪些成本可以优化' },
+    ],
+  },
+  {
+    id: 'supply-chain-expert',
+    name: '供应链专家',
+    title: '供应链管理专家 · 智能优化',
+    badge: '供应链专家',
+    description: '实时监控库存、智能预测需求、优化采购流程，确保供应链高效运转',
+    avatar: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop&crop=face',
+    suggestedQuestions: [
+      { label: '实时库存监控', query: '当前库存水平和库存周转情况' },
+      { label: '需求预测分析', query: '预测下个月的需求量' },
+      { label: '采购流程优化', query: '优化采购流程的建议' },
+      { label: '库存周转率分析', query: '分析库存周转率和滞销商品' },
+      { label: '缺货风险预警', query: '哪些商品存在缺货风险' },
+      { label: '供应商评估', query: '评估供应商的交付表现' },
+    ],
+  },
+  {
+    id: 'sales-expert',
+    name: '销售专家',
+    title: '销售分析专家 · 增长策略',
+    badge: '销售专家',
+    description: '深入分析客户行为、准确预测市场趋势、制定增长策略，助力销售业绩提升',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face',
+    suggestedQuestions: [
+      { label: '客户行为分析', query: '分析客户购买行为和偏好' },
+      { label: '市场趋势预测', query: '预测未来市场趋势' },
+      { label: '增长策略制定', query: '制定销售增长策略' },
+      { label: '客户分群分析', query: '对客户进行分群分析' },
+      { label: '销售漏斗分析', query: '分析销售漏斗各环节转化率' },
+      { label: '竞品对比分析', query: '对比竞品的市场表现' },
+    ],
+  },
 ];
 
 export function getAgentById(id?: string): AgentProfile {
@@ -315,6 +363,9 @@ export function getAgentByName(name: string): AgentProfile | undefined {
     'predictor': ['预测', '预测君', '趋势预测'],
     'growth-hacker': ['kevin', '增长', '转化'],
     'operation-pro': ['小美', '运营', '活动'],
+    'profit-analyst': ['利润', '利润率', '利润分析', '财务', '成本', '费用', 'ROI', '盈利能力', '财务分析'],
+    'supply-chain-expert': ['供应链', '库存', '采购', '需求预测', '库存周转', '缺货', '供应商', '供应链管理'],
+    'sales-expert': ['销售专家', '销售分析', '客户行为', '市场趋势', '增长策略', '客户分群', '销售漏斗', '销售策略'],
     'yum-china-expert': ['百胜', '百胜专家', '百胜中国', 'yum', 'kfc', '肯德基', '必胜客', '塔可钟', '塔可贝尔', '餐饮', '门店', '坪效', '翻台率', '客单价', 'GMV', '人效', '售罄率', '连带率', '复购率', '库存周转', '缺货率', '配送时效', '供应链', '多品牌对比'],
   };
   

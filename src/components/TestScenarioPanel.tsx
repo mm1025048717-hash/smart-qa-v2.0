@@ -9,7 +9,7 @@ import {
 import clsx from 'clsx';
 
 interface TestScenarioPanelProps {
-  onQuestionSelect: (question: string, options?: { forceWebSearch?: boolean }) => void;
+  onQuestionSelect: (question: string, options?: { forceWebSearch?: boolean; questionId?: string }) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
@@ -31,7 +31,7 @@ const TEST_QUESTIONS: QuestionCategory[] = [
     questions: [
       { id: '1.1-1', text: '今年销售额是多少？', desc: '年度趋势对比' },
       { id: '1.1-2', text: '2024年度销售额表现如何？', desc: '年度趋势对比' },
-      { id: '1.1-3', text: '全年销售额统计', desc: '年度趋势对比' },
+      { id: '1.1-3', text: '查看全年销售额数据', desc: '年度趋势对比' },
       { id: '1.1-4', text: '本年营收情况怎么样？', desc: '年度趋势对比' },
     ]
   },
@@ -314,7 +314,7 @@ const CategoryItem = ({
   category: QuestionCategory;
   isExpanded: boolean;
   onToggle: () => void;
-  onSelect: (text: string) => void;
+  onSelect: (text: string, options?: { forceWebSearch?: boolean; questionId?: string }) => void;
 }) => {
   return (
     <div className="mb-3">
@@ -370,7 +370,7 @@ const CategoryItem = ({
                 return (
                   <button
                     key={q.id}
-                    onClick={() => onSelect(q.text, { forceWebSearch: isWebSearch })}
+                    onClick={() => onSelect(q.text, { forceWebSearch: isWebSearch, questionId: q.id })}
                     className={clsx(
                       "w-full text-left px-3 py-2 rounded-lg transition-all group relative",
                       "hover:bg-[#007AFF]/5 hover:shadow-sm border border-transparent hover:border-[#007AFF]/5",

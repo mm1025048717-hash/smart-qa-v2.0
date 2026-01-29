@@ -47,18 +47,18 @@ function convertToMessage(preset: PresetResponse, messageId: string): Message {
     };
   });
   
-  // 如果有规则说明，在开头添加规则说明卡片
-  if (preset.ruleApplied) {
-    const ruleBlock: ContentBlock = {
-      id: `${messageId}_rule_${generateId()}`,
-      type: 'rule-explanation',
-      data: {
-        rule: preset.ruleApplied,
-        chartType: extractChartType(preset.ruleApplied),
-      },
-    };
-    contentBlocks.unshift(ruleBlock);
-  }
+  // 【已移除】规则匹配信息框 - 用户不需要显示绿色的规则匹配提示
+  // if (preset.ruleApplied) {
+  //   const ruleBlock: ContentBlock = {
+  //     id: `${messageId}_rule_${generateId()}`,
+  //     type: 'rule-explanation',
+  //     data: {
+  //       rule: preset.ruleApplied,
+  //       chartType: extractChartType(preset.ruleApplied),
+  //     },
+  //   };
+  //   contentBlocks.unshift(ruleBlock);
+  // }
   
   // 如果有推荐和被过滤的推荐，添加推荐去重展示
   if (preset.recommendations && preset.filteredRecommendations && preset.filteredRecommendations.length > 0) {

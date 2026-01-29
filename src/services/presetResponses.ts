@@ -197,6 +197,56 @@ const trendResponse: PresetResponse = {
   recommendations: ['分析趋势变化原因', '查看各渠道趋势', '预测未来趋势']
 };
 
+// 本月销售额是多少 → 销售额和订单量并列展示（固定回复，不调用API）
+const monthlySalesResponse: PresetResponse = {
+  ruleApplied: '规则2.2.1: 本月销售额查询 → 销售额和订单量并列展示',
+  content: [
+    createVisualizer({ datasource: '销售流水', groupBy: '指标 并列', dateRange: '本月', metric: '销售额,订单量' }),
+    {
+      type: 'text',
+      data: '销售额与订单量并列展示：'
+    },
+    {
+      type: 'kpi-group',
+      data: [
+        {
+          id: 'sales',
+          label: '本月销售额',
+          value: 3560000,
+          prefix: '¥',
+          trend: { value: 12.3, direction: 'up', label: '同比' }
+        },
+        {
+          id: 'orders',
+          label: '本月订单量',
+          value: 10000,
+          unit: '单',
+          trend: { value: 8.5, direction: 'up', label: '同比' }
+        }
+      ]
+    },
+    {
+      type: 'text',
+      data: '销售额增速（12.3%）高于订单量增速（8.5%），说明客单价有所提升。'
+    },
+    {
+      type: 'bar-chart',
+      data: {
+        title: '核心指标增速对比（%）',
+        data: [
+          { metric: '销售额增速', value: 12.3 },
+          { metric: '订单量增速', value: 8.5 },
+          { metric: '客单价增速', value: 3.5 },
+        ],
+        xKey: 'metric',
+        yKey: 'value',
+        unit: '%'
+      }
+    }
+  ],
+  recommendations: ['分析客单价', '转化率分析', '查看渠道表现'],
+};
+
 // 月度环比（12月） → KPI + 对比图（用于归因入口验证）
 const decMoMResponse: PresetResponse = {
   ruleApplied: '规则2.2.1: 月度销售额环比 → 环比对比 + 归因入口',
@@ -448,6 +498,7 @@ const singleDayResponse: PresetResponse = {
 const shortRangeResponse: PresetResponse = {
   ruleApplied: '规则1.2: 短期数据场景（隐藏季度分解）',
   content: [
+    createVisualizer({ datasource: '销售流水', groupBy: '日期 分组', dateRange: '最近3天', metric: '销售额' }),
     {
       type: 'kpi',
       data: {
@@ -478,7 +529,7 @@ const shortRangeResponse: PresetResponse = {
           { date: '12-17', value: 86.3 },
         ],
         xKey: 'date',
-        yKey: 'value',
+        yKeys: [{ key: 'value', name: '销售额（万元）' }],
         unit: '万元'
       }
     }
@@ -572,6 +623,14 @@ const fullAnalysisResponse: PresetResponse = {
 // ============================================
 
 export const RESPONSE_RULES: ResponseRule[] = [
+  // KPI匹配规则 - 本月销售额（固定回复，不调用API）
+  {
+    id: 'monthly-sales',
+    keywords: ['本月销售额是多少', '本月销售额', '这个月销售额'],
+    exactMatch: '本月销售额是多少',
+    response: monthlySalesResponse,
+    ruleRef: '规则2.2.1: 本月销售额查询 → 销售额和订单量并列展示'
+  },
   // KPI匹配规则 - 年度
   {
     id: 'yearly-sales',
@@ -643,8 +702,8 @@ export const RESPONSE_RULES: ResponseRule[] = [
   // 空状态规则 - 权限不足
   {
     id: 'permission-denied',
-    keywords: ['权限不足', '没有权限', '无法访问', '拒绝访问'],
-    exactMatch: '如果没有权限查看数据会显示什么？',
+    keywords: ['权限不足', '没有权限', '无法访问', '拒绝访问', '如果没有权限查看数据会显示什么'],
+    exactMatch: '如果没有权限查看数据会显示什么',
     response: permissionDeniedResponse,
     ruleRef: '规则1.1: 权限不足场景'
   },
@@ -660,7 +719,7 @@ export const RESPONSE_RULES: ResponseRule[] = [
   // 数据量规则 - 短期
   {
     id: 'short-range',
-    keywords: ['最近3天', '近3天', '近几天'],
+    keywords: ['最近3天', '近3天', '近几天', '查询最近3天的销售额', '最近3天的销售额'],
     exactMatch: '查询最近3天的销售额',
     response: shortRangeResponse,
     ruleRef: '规则1.2: 短期数据场景（2-6天）'
@@ -680,11 +739,377 @@ export const RESPONSE_RULES: ResponseRule[] = [
     keywords: ['分析今年销售情况', '全面分析', '完整分析'],
     response: fullAnalysisResponse,
     ruleRef: '规则3.4: 智能推荐去重'
+  },
+  
+  // 财务场景 - 利润率下滑分析（固定回复，不走大模型）
+  {
+    id: 'profit-decline-analysis',
+    keywords: ['为什么利润率在下滑', '利润率下滑', '利润率下降', '利润率为什么下降', '利润下滑原因'],
+    exactMatch: '为什么利润率在下滑？',
+    response: {
+      content: [
+        createVisualizer({ datasource: '财务流水', groupBy: '月度 分组', dateRange: '近3个月', metric: '利润率' }),
+        {
+          type: 'thought-chain',
+          data: [
+            {
+              key: 'understand',
+              title: '理解问题',
+              description: '分析用户意图：需要找出利润率下滑的根本原因',
+              status: 'success'
+            },
+            {
+              key: 'query-data',
+              title: '查询数据',
+              description: '获取近3个月的利润率、成本结构和费用数据',
+              status: 'success',
+              collapsible: true,
+              content: '查询利润率趋势、管理费用变化、原材料成本变化、营销费用ROI等关键指标'
+            },
+            {
+              key: 'analyze-cost',
+              title: '成本分析',
+              description: '深度分析成本结构变化，识别影响利润的关键因素',
+              status: 'success',
+              collapsible: true,
+              content: '发现管理费用上涨15%，原材料成本增加12%，这两项是主要影响因素'
+            },
+            {
+              key: 'identify-issues',
+              title: '问题定位',
+              description: '定位利润率下滑的核心问题',
+              status: 'success',
+              collapsible: true,
+              content: '成本端双重压力：管理费用和原材料成本同时上涨，挤压利润空间'
+            },
+            {
+              key: 'generate-insight',
+              title: '生成洞察',
+              description: '基于数据分析生成商业洞察和优化建议',
+              status: 'success',
+              collapsible: true,
+              content: '建议重新评估营销活动ROI，优化成本结构，控制费用增长'
+            }
+          ]
+        },
+        {
+          type: 'kpi',
+          data: {
+            id: 'profit_margin',
+            label: '当前利润率',
+            value: 12.5,
+            unit: '%',
+            trend: { value: 3.2, direction: 'down', label: '环比下降' }
+          }
+        },
+        {
+          type: 'heading',
+          data: '核心发现'
+        },
+        {
+          type: 'text',
+          data: '**管理费用上涨了+15%**\n\n这是影响利润率的主要因素之一。管理费用的快速增长直接压缩了利润空间。'
+        },
+        {
+          type: 'text',
+          data: '**原材料成本增加了+12%**\n\n成本端的压力明显增大，原材料价格上涨对整体盈利能力造成冲击。'
+        },
+        {
+          type: 'bar-chart',
+          data: {
+            title: '成本结构变化对比',
+            data: [
+              { name: '管理费用', value: 115, lastMonth: 100 },
+              { name: '原材料成本', value: 112, lastMonth: 100 },
+              { name: '人工成本', value: 98, lastMonth: 100 },
+              { name: '其他成本', value: 95, lastMonth: 100 }
+            ],
+            xKey: 'name',
+            yKey: 'value',
+            unit: '万元（基准=100）'
+          }
+        },
+        {
+          type: 'heading',
+          data: '优化建议'
+        },
+        {
+          type: 'text',
+          data: '> 建议重新评估营销活动的ROI\n\n部分营销投入未能带来预期回报，建议优化营销预算分配，提高投资效率。'
+        },
+        {
+          type: 'text',
+          data: '从成本结构来看，管理费用和原材料成本的双重上涨挤压了利润空间。同时，营销活动的投资回报率需要重新评估。\n\n这不是表格和图表，这是基于深度分析的商业洞察。'
+        }
+      ],
+      recommendations: ['分析成本结构', '评估营销ROI', '优化费用管理', '查看利润趋势']
+    }
+  },
+  
+  // 供应链场景 - 库存监控与需求预测（固定回复，不走大模型）
+  {
+    id: 'supply-chain-inventory',
+    keywords: ['实时监控库存', '库存水平', '库存情况', '当前库存', '库存监控', '库存状态'],
+    exactMatch: '实时监控库存',
+    response: {
+      content: [
+        createVisualizer({ datasource: '库存表', groupBy: 'SKU 分组', dateRange: '当前', metric: '库存水平' }),
+        {
+          type: 'thought-chain',
+          data: [
+            {
+              key: 'understand',
+              title: '理解需求',
+              description: '分析用户意图：需要实时了解库存水平和库存状态',
+              status: 'success'
+            },
+            {
+              key: 'query-inventory',
+              title: '查询库存数据',
+              description: '获取当前所有SKU的库存水平、周转率、缺货风险等数据',
+              status: 'success',
+              collapsible: true,
+              content: '查询当前库存总量、各SKU库存分布、库存周转率、安全库存水平等关键指标'
+            },
+            {
+              key: 'analyze-status',
+              title: '分析库存状态',
+              description: '识别库存异常、缺货风险和滞销商品',
+              status: 'success',
+              collapsible: true,
+              content: '发现3个SKU存在缺货风险，5个SKU库存周转率低于平均水平'
+            },
+            {
+              key: 'predict-demand',
+              title: '智能预测需求',
+              description: '基于历史数据和趋势，预测未来需求',
+              status: 'success',
+              collapsible: true,
+              content: '预测下月需求增长15%，建议提前备货，避免缺货'
+            },
+            {
+              key: 'optimize-procurement',
+              title: '优化采购建议',
+              description: '基于库存分析和需求预测，生成采购优化建议',
+              status: 'success',
+              collapsible: true,
+              content: '建议优化采购流程，提高采购效率，降低缺货风险'
+            }
+          ]
+        },
+        {
+          type: 'kpi-group',
+          data: [
+            { id: 'total_inventory', label: '当前库存总量', value: 12580, unit: '件', prefix: '' },
+            { id: 'turnover_rate', label: '库存周转率', value: 8.5, unit: '次/年', trend: { value: 12.3, direction: 'up', label: '同比提升' } },
+            { id: 'out_of_stock', label: '缺货风险SKU', value: 3, unit: '个' }
+          ]
+        },
+        {
+          type: 'heading',
+          data: '实时库存监控'
+        },
+        {
+          type: 'text',
+          data: '**当前库存总量：12,580件**\n\n库存周转率8.5次/年，同比增长12.3%，库存管理效率持续提升。'
+        },
+        {
+          type: 'line-chart',
+          data: {
+            title: '库存水平动态监控',
+            data: [
+              { date: '1月', value: 11800, safety: 10000 },
+              { date: '2月', value: 12000, safety: 10000 },
+              { date: '3月', value: 12200, safety: 10000 },
+              { date: '4月', value: 12400, safety: 10000 },
+              { date: '5月', value: 12580, safety: 10000 }
+            ],
+            xKey: 'date',
+            yKeys: [
+              { key: 'value', name: '实际库存', color: '#007AFF' },
+              { key: 'safety', name: '安全库存线', color: '#FF3B30', isDashed: true }
+            ],
+            unit: '件'
+          }
+        },
+        {
+          type: 'heading',
+          data: '智能需求预测'
+        },
+        {
+          type: 'text',
+          data: '**预测下月需求增长+15%**\n\n基于历史数据和市场趋势，预计下月需求量将达到14,500件，建议提前备货。'
+        },
+        {
+          type: 'line-chart',
+          data: {
+            title: '需求预测 vs 实际需求',
+            data: [
+              { date: '1月', actual: 10500, predicted: 10200 },
+              { date: '2月', actual: 10800, predicted: 11000 },
+              { date: '3月', actual: 11200, predicted: 11500 },
+              { date: '4月', actual: 11500, predicted: 11800 },
+              { date: '5月', actual: 12000, predicted: 12200 },
+              { date: '6月', actual: null, predicted: 14500 }
+            ],
+            xKey: 'date',
+            yKeys: [
+              { key: 'actual', name: '实际需求', color: '#34C759' },
+              { key: 'predicted', name: '预测需求', color: '#FF9500', isDashed: true }
+            ],
+            unit: '件'
+          }
+        },
+        {
+          type: 'heading',
+          data: '采购流程优化'
+        },
+        {
+          type: 'text',
+          data: '> 建议优化采购流程\n\n当前采购周期为7天，建议通过供应商协同和智能补货系统，将采购周期缩短至5天，提高响应速度。'
+        },
+        {
+          type: 'text',
+          data: '通过实时监控库存、智能预测需求和优化采购流程，可以确保供应链高效运转，降低缺货风险，提高库存周转效率。'
+        }
+      ],
+      recommendations: ['查看缺货风险SKU', '分析库存周转详情', '优化采购计划', '查看供应商表现']
+    }
+  },
+  
+  // 销售场景 - 客户行为分析与增长策略（固定回复，不走大模型）
+  {
+    id: 'sales-customer-analysis',
+    keywords: ['客户行为分析', '分析客户行为', '客户分群', '客户分析', '客户行为', '市场趋势预测', '增长策略'],
+    exactMatch: '客户行为分析',
+    response: {
+      content: [
+        createVisualizer({ datasource: '用户表', groupBy: '客户分群', dateRange: '近3个月', metric: '客户行为' }),
+        {
+          type: 'thought-chain',
+          data: [
+            {
+              key: 'understand',
+              title: '理解需求',
+              description: '分析用户意图：需要深入了解客户行为，制定增长策略',
+              status: 'success'
+            },
+            {
+              key: 'query-customer',
+              title: '查询客户数据',
+              description: '获取客户购买行为、偏好、分群、转化率等数据',
+              status: 'success',
+              collapsible: true,
+              content: '查询客户购买频次、客单价、复购率、流失率、客户分群等关键指标'
+            },
+            {
+              key: 'analyze-behavior',
+              title: '分析客户行为',
+              description: '深度分析客户购买行为模式，进行客户分群',
+              status: 'success',
+              collapsible: true,
+              content: '识别出4个主要客户群体：高价值客户、活跃客户、潜在客户、流失风险客户'
+            },
+            {
+              key: 'predict-trend',
+              title: '预测市场趋势',
+              description: '基于客户行为和市场数据，预测未来市场趋势',
+              status: 'success',
+              collapsible: true,
+              content: '预测未来3个月市场增长15%，高价值客户占比将提升至35%'
+            },
+            {
+              key: 'generate-strategy',
+              title: '制定增长策略',
+              description: '基于客户分析和趋势预测，制定可执行的增长策略',
+              status: 'success',
+              collapsible: true,
+              content: '制定精准营销策略、客户留存计划、新客户获取策略等增长方案'
+            }
+          ]
+        },
+        {
+          type: 'kpi-group',
+          data: [
+            { id: 'total_customers', label: '总客户数', value: 125800, unit: '人', trend: { value: 18.5, direction: 'up', label: '同比增长' } },
+            { id: 'avg_order', label: '平均客单价', value: 285, unit: '元', trend: { value: 12.3, direction: 'up', label: '环比提升' } },
+            { id: 'repurchase_rate', label: '复购率', value: 45.8, unit: '%', trend: { value: 5.2, direction: 'up', label: '环比提升' } }
+          ]
+        },
+        {
+          type: 'heading',
+          data: '客户行为分析'
+        },
+        {
+          type: 'text',
+          data: '**客户总数：125,800人，同比增长18.5%**\n\n平均客单价285元，环比提升12.3%，客户价值持续提升。'
+        },
+        {
+          type: 'pie-chart',
+          data: {
+            title: '客户分群可视化',
+            data: [
+              { name: '高价值客户', value: 25160, color: '#007AFF' },
+              { name: '活跃客户', value: 44030, color: '#34C759' },
+              { name: '潜在客户', value: 37740, color: '#FF9500' },
+              { name: '流失风险客户', value: 18870, color: '#FF3B30' }
+            ]
+          }
+        },
+        {
+          type: 'text',
+          data: '客户分群分析显示：高价值客户占比20%，活跃客户占比35%，潜在客户占比30%，流失风险客户占比15%。'
+        },
+        {
+          type: 'heading',
+          data: '市场趋势预测'
+        },
+        {
+          type: 'text',
+          data: '**预测未来3个月市场增长+15%**\n\n基于客户行为和市场数据，预计未来3个月客户总数将增长至144,670人，高价值客户占比提升至35%。'
+        },
+        {
+          type: 'line-chart',
+          data: {
+            title: '市场趋势预测',
+            data: [
+              { date: '1月', actual: 105000, predicted: null },
+              { date: '2月', actual: 112000, predicted: null },
+              { date: '3月', actual: 118000, predicted: null },
+              { date: '4月', actual: 125800, predicted: null },
+              { date: '5月', actual: null, predicted: 135000 },
+              { date: '6月', actual: null, predicted: 140000 },
+              { date: '7月', actual: null, predicted: 144670 }
+            ],
+            xKey: 'date',
+            yKeys: [
+              { key: 'actual', name: '实际客户数', color: '#34C759' },
+              { key: 'predicted', name: '预测客户数', color: '#FF9500', isDashed: true }
+            ],
+            unit: '人'
+          }
+        },
+        {
+          type: 'heading',
+          data: '增长策略制定'
+        },
+        {
+          type: 'text',
+          data: '> 制定精准营销策略\n\n针对高价值客户：提供VIP服务和专属优惠，提升客户忠诚度。\n\n针对活跃客户：通过交叉销售和向上销售，提升客单价。\n\n针对潜在客户：通过精准营销和优惠活动，促进转化。\n\n针对流失风险客户：通过挽留活动和个性化推荐，降低流失率。'
+        },
+        {
+          type: 'text',
+          data: '通过深入分析客户行为、准确预测市场趋势和制定增长策略，可以助力销售业绩提升，实现可持续增长。'
+        }
+      ],
+      recommendations: ['查看客户分群详情', '分析转化漏斗', '优化营销策略', '预测销售趋势']
+    }
   }
 ];
 
 /**
  * 归因专区问题列表 - 这些问题应该由 narrativeGenerator 处理，不走 presetResponses
+ * ⚠️ 注意：财务场景的"为什么利润率在下滑？"使用固定回复，不走归因流程
  */
 const ATTRIBUTION_QUESTIONS = [
   '为什么销售额下降了',
@@ -699,8 +1124,8 @@ const ATTRIBUTION_QUESTIONS = [
   '线上渠道增长的驱动因素',
   '产品A销量下滑原因分析',
   '详细分析华东区下降原因',
-  // 关键词
-  '为什么',
+  // 关键词（但排除财务场景的固定回复）
+  // '为什么', // 移除，因为"为什么利润率在下滑"需要走固定回复
   '原因',
   '归因',
   '下降了',
@@ -738,9 +1163,26 @@ const NARRATIVE_QUESTIONS = [
 
 /**
  * 检查是否为归因专区问题
+ * ⚠️ 注意：财务场景、供应链场景、销售场景的固定回复问题，不走归因流程
  */
 export function isAttributionQuestion(question: string): boolean {
   const normalized = question.toLowerCase().trim();
+  
+  // 固定回复场景问题，不走归因流程
+  const fixedResponseKeywords = [
+    // 财务场景
+    '为什么利润率在下滑', '利润率下滑', '利润率下降', '利润率为什么下降',
+    // 供应链场景
+    '实时监控库存', '库存水平', '库存情况', '当前库存', '库存监控', '库存状态',
+    // 销售场景
+    '客户行为分析', '分析客户行为', '客户分群', '市场趋势预测', '增长策略'
+  ];
+  
+  if (fixedResponseKeywords.some(kw => normalized.includes(kw.toLowerCase()))) {
+    console.log(`[isAttributionQuestion] 跳过固定回复场景问题: ${question}`);
+    return false;
+  }
+  
   // 检查是否包含归因相关关键词
   const isAttr = ATTRIBUTION_QUESTIONS.some(q => normalized.includes(q.toLowerCase()));
   if (isAttr) {
@@ -768,6 +1210,35 @@ export function isNarrativeQuestion(question: string): boolean {
 export function matchPresetResponse(question: string): PresetResponse | null {
   const normalizedQuestion = question.toLowerCase().trim();
   
+  // 1. 优先检查固定回复场景（必须在归因检测之前）
+  const fixedResponseRules = [
+    RESPONSE_RULES.find(rule => rule.id === 'profit-decline-analysis'),
+    RESPONSE_RULES.find(rule => rule.id === 'supply-chain-inventory'),
+    RESPONSE_RULES.find(rule => rule.id === 'sales-customer-analysis')
+  ].filter(Boolean);
+  
+  for (const rule of fixedResponseRules) {
+    if (!rule) continue;
+    
+    // 精确匹配 - 支持忽略问号、空格等标点符号
+    if (rule.exactMatch) {
+      const normalizedExactMatch = rule.exactMatch.toLowerCase().trim().replace(/[？?。，,]/g, '');
+      const normalizedQuery = normalizedQuestion.replace(/[？?。，,]/g, '');
+      if (normalizedQuery === normalizedExactMatch) {
+        console.log(`[PresetResponse] 固定回复场景（精确匹配）: ${rule.id}`);
+        return rule.response;
+      }
+    }
+    
+    // 关键词匹配
+    for (const keyword of rule.keywords) {
+      if (normalizedQuestion.includes(keyword.toLowerCase())) {
+        console.log(`[PresetResponse] 固定回复场景（关键词匹配）: ${rule.id}, keyword: ${keyword}`);
+        return rule.response;
+      }
+    }
+  }
+  
   // ⚠️ 归因专区问题不走这里，交给 narrativeGenerator 处理
   if (isAttributionQuestion(question)) {
     console.log(`[PresetResponse] 跳过归因问题: ${question}`);
@@ -780,16 +1251,25 @@ export function matchPresetResponse(question: string): PresetResponse | null {
     return null;
   }
   
-  // 1. 先尝试精确匹配
+  // 2. 先尝试精确匹配（其他规则）- 支持忽略问号、空格等标点符号
+  const fixedResponseIds = ['profit-decline-analysis', 'supply-chain-inventory', 'sales-customer-analysis'];
   for (const rule of RESPONSE_RULES) {
-    if (rule.exactMatch && normalizedQuestion === rule.exactMatch.toLowerCase()) {
-      console.log(`[PresetResponse] 精确匹配: ${rule.id}`);
-      return rule.response;
+    if (fixedResponseIds.includes(rule.id)) continue; // 已处理
+    if (rule.exactMatch) {
+      // 移除问号、空格等标点符号后比较，使匹配更灵活
+      const normalizedExactMatch = rule.exactMatch.toLowerCase().trim().replace(/[？?。，,]/g, '');
+      const normalizedQuery = normalizedQuestion.replace(/[？?。，,]/g, '');
+      if (normalizedQuery === normalizedExactMatch) {
+        console.log(`[PresetResponse] 精确匹配: ${rule.id}`);
+        return rule.response;
+      }
     }
   }
   
-  // 2. 关键词匹配（需要更严格的匹配）
+  // 3. 关键词匹配（需要更严格的匹配）
   for (const rule of RESPONSE_RULES) {
+    if (fixedResponseIds.includes(rule.id)) continue; // 已处理
+    
     // 对于 dec-mom-sales 规则，需要同时包含"12月"和"环比"
     if (rule.id === 'dec-mom-sales') {
       if (normalizedQuestion.includes('12月') && normalizedQuestion.includes('环比')) {

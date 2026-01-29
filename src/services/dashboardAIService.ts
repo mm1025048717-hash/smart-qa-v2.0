@@ -306,26 +306,33 @@ export async function handleDashboardChat(
     }
 
     // 直接调用 DeepSeek API，绕过 getAgentSystemPrompt
+    const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
+    
+    // 构建 API 基础 URL：如果没有前端 API Key，使用 Serverless Function
     const DEEPSEEK_BASE_URL = import.meta.env.PROD 
-      ? 'https://api.deepseek.com/v1'
-      : '/api/deepseek';
-    const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
-
-    if (!DEEPSEEK_API_KEY) {
-      throw new Error('DeepSeek API Key 未配置');
-    }
+      ? (DEEPSEEK_API_KEY 
+          ? (import.meta.env.VITE_DEEPSEEK_PROXY_URL || 'https://api.deepseek.com')  // 有 API Key：直接调用
+          : '/api/deepseek')  // 没有 API Key：使用 Serverless Function
+      : '/api/deepseek';  // 开发环境使用 Vite 代理
 
     const allMessages = [
       { role: 'system', content: systemPrompt },
       ...messages
     ];
 
+    // 构建请求头：如果使用 Serverless Function（以 / 开头），不需要 Authorization header
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 只有在不是 Serverless Function（不以 / 开头）且有 API Key 时才需要 Authorization header
+    if (DEEPSEEK_API_KEY && !DEEPSEEK_BASE_URL.startsWith('/')) {
+      headers['Authorization'] = `Bearer ${DEEPSEEK_API_KEY}`;
+    }
+
     const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: allMessages,

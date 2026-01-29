@@ -53,7 +53,7 @@ import { MessageRating } from './MessageRating';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { DrillDownSidePanel, DrillDownData } from './DrillDownSidePanel';
 import { WorkflowExecution, WorkflowExecutionData } from './WorkflowExecution';
-import { EmptyStateCard, InfoBanner, RuleExplanation, RecommendationFilterCard } from './EmptyStateCard';
+import { EmptyStateCard, InfoBanner, RecommendationFilterCard } from './EmptyStateCard';
 import { QueryConfirmationBubble } from './QueryConfirmationBubble';
 import { AmbiguousSelectionBubble } from './AmbiguousSelectionBubble';
 import { QueryDimensions } from '../services/queryParser';
@@ -859,7 +859,7 @@ const ContentBlockRenderer = memo(({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay, duration: 0.15 }}
-          className="relative mt-6"
+          className="relative -mx-3"
           style={{ zIndex: 1000, position: 'relative' }}
         >
           <DataVisualizer 
@@ -921,23 +921,24 @@ const ContentBlockRenderer = memo(({
       );
     }
 
-    case 'rule-explanation': {
-      let ruleData;
-      try {
-        ruleData = typeof block.data === 'string' ? JSON.parse(block.data) : block.data;
-      } catch {
-        ruleData = block.data;
-      }
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay, duration: 0.15 }}
-        >
-          <RuleExplanation data={ruleData} />
-        </motion.div>
-      );
-    }
+    // 【已移除】规则匹配信息框 - 用户不需要显示绿色的规则匹配提示
+    // case 'rule-explanation': {
+    //   let ruleData;
+    //   try {
+    //     ruleData = typeof block.data === 'string' ? JSON.parse(block.data) : block.data;
+    //   } catch {
+    //     ruleData = block.data;
+    //   }
+    //   return (
+    //     <motion.div
+    //       initial={{ opacity: 0, y: 4 }}
+    //       animate={{ opacity: 1, y: 0 }}
+    //       transition={{ delay, duration: 0.15 }}
+    //     >
+    //       <RuleExplanation data={ruleData} />
+    //     </motion.div>
+    //   );
+    // }
 
     case 'recommendation-filter': {
       let filterData;
@@ -1338,24 +1339,6 @@ const SystemBubble = ({
     });
   }, [content]);
   
-  const hasValidContent = validBlocks.length > 0;
-  
-  // 如果没有通过校验的块，但原始 content 里有文本，兜底渲染文本，避免内容被过滤掉
-  const fallbackText = useMemo(() => {
-    if (hasValidContent || !Array.isArray(content)) return '';
-    for (const b of content) {
-      if (!b) continue;
-      if (typeof b === 'string') return b;
-      if (typeof (b as any).data === 'string' && (b as any).data.trim().length > 0) return (b as any).data;
-      const dataObj = (b as any).data;
-      if (dataObj && typeof dataObj === 'object') {
-        if (typeof dataObj.text === 'string' && dataObj.text.trim().length > 0) return dataObj.text;
-        if (typeof dataObj.content === 'string' && dataObj.content.trim().length > 0) return dataObj.content;
-      }
-    }
-    return '';
-  }, [content, hasValidContent]);
-  
   // 使用 useMemo 缓存 contentKey，避免每次渲染都重新计算
   const contentKey = useMemo(() => {
     if (!Array.isArray(content) || content.length === 0) {
@@ -1444,10 +1427,28 @@ const SystemBubble = ({
             const isChartAfterText = isChartType(block.type) && prevBlock?.type === 'text';
             const isChartFollowedByText = isChartType(block.type) && nextBlock?.type === 'text';
             
+            // 判断是否是KPI卡片
+            const isKpiCard = block.type === 'kpi' || block.type === 'kpi-group';
+            const prevIsKpiCard = prevBlock && (prevBlock.type === 'kpi' || prevBlock.type === 'kpi-group');
+            
             // 文本和图表紧密结合，确保内容占满卡片，减少空白
+            // ⚠️ 指标卡之间需要足够的间距，不要挨太近
+            // ⚠️ 压缩空白，让界面更紧凑美观
             let spacingClass = '';
             if (isCoreData && index === 0) {
               spacingClass = ''; // 核心数据在第一位，无上间距
+            } else if (block.type === 'visualizer' && index === 0) {
+              spacingClass = ''; // visualizer 在第一位，无上间距
+            } else if (block.type === 'visualizer' && prevBlock) {
+              spacingClass = 'mt-1'; // visualizer 后接内容，紧凑间距
+            } else if (prevBlock?.type === 'visualizer') {
+              spacingClass = 'mt-1'; // visualizer 后的内容，紧凑间距
+            } else if (isKpiCard && prevIsKpiCard) {
+              spacingClass = 'mt-4'; // 指标卡之间需要足够的间距（16px）
+            } else if (isKpiCard && prevBlock && prevBlock.type === 'text') {
+              spacingClass = 'mt-2'; // 指标卡在文本后，紧凑间距（8px）
+            } else if (block.type === 'text' && prevIsKpiCard) {
+              spacingClass = 'mt-2'; // 文本在指标卡后，紧凑间距（8px）
             } else if (isCoreData && prevBlock && prevBlock.type === 'text') {
               spacingClass = 'mt-0.5'; // 核心数据紧跟文本，极小间距
             } else if (isTextFollowedByChart) {
@@ -1457,15 +1458,15 @@ const SystemBubble = ({
             } else if (isChartFollowedByText) {
               spacingClass = hasCoreData ? 'mb-1' : 'mb-1.5'; // 图表后接文本，紧凑间距
             } else if (block.type === 'text' && prevBlock?.type === 'text') {
-              spacingClass = 'mt-1'; // 连续文本之间需要小间距
+              spacingClass = 'mt-0.5'; // 连续文本之间极小间距
             } else if (isChartType(block.type) && prevBlock && isChartType(prevBlock.type)) {
-              spacingClass = hasCoreData ? 'mt-1' : 'mt-2'; // 图表之间，紧凑间距
+              spacingClass = hasCoreData ? 'mt-1' : 'mt-1.5'; // 图表之间，紧凑间距
             } else if (block.type === 'text' && !prevBlock) {
               spacingClass = ''; // 第一个文本块无上间距
             } else if (block.type === 'text' && prevBlock && isChartType(prevBlock.type)) {
               spacingClass = hasCoreData ? 'mt-1' : 'mt-1.5'; // 文本在图表后，紧凑间距
             } else {
-              spacingClass = hasCoreData && isCoreData ? 'mt-0.5' : 'mt-1.5'; // 紧凑间距，确保占满卡片
+              spacingClass = hasCoreData && isCoreData ? 'mt-0.5' : 'mt-1'; // 紧凑间距，确保占满卡片
       }
       
       return {
@@ -1572,7 +1573,7 @@ const SystemBubble = ({
           >
             {/* 顶部操作工具栏 - 只在消息完成时显示，不遮挡内容 */}
             {status === 'complete' && validBlocks.length > 0 && onAddChartToDashboard && (
-              <div className="flex items-center justify-end gap-1.5 mb-3 pb-2 border-b border-[#E8F0FF]/50">
+              <div className="flex items-center justify-end gap-1.5 mb-2 pb-1.5 border-b border-[#E8F0FF]/50">
                 {/* 固定到看板按钮 - 更明显的提示 */}
                 <button
                   onClick={() => {

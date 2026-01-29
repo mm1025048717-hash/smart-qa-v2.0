@@ -87,7 +87,11 @@ npm run dev
 npm run build
 ```
 
-### 🚀 自动部署到 GitHub Pages
+### 🚀 部署到 GitHub Pages 和 Vercel
+
+项目支持部署到 GitHub Pages 和 Vercel。
+
+#### GitHub Pages 部署
 
 项目已配置 GitHub Actions 自动部署工作流。当你推送代码到 `main` 分支时，会自动构建并部署到 GitHub Pages。
 
@@ -99,6 +103,25 @@ npm run build
 **详细说明**：请查看 [`.github/DEPLOYMENT_SETUP.md`](.github/DEPLOYMENT_SETUP.md)
 
 **部署地址**：`https://mm1025048717-hash.github.io/smart-qa-v2.0/`
+
+#### Vercel 部署（推荐）
+
+Vercel 支持 Serverless Functions，可以安全地处理 API 请求。
+
+**快速部署**：
+1. 访问 [Vercel Dashboard](https://vercel.com/dashboard)
+2. 点击 **Add New Project**
+3. 导入你的 GitHub 仓库
+4. 配置环境变量 `DEEPSEEK_API_KEY`
+5. 点击 **Deploy**
+
+**详细说明**：请查看 [部署指南.md](./部署指南.md) 或 [快速部署指南.md](./快速部署指南.md)
+
+**优势**：
+- ✅ 支持 Serverless Functions（API 路由）
+- ✅ API Key 更安全（存储在服务器端）
+- ✅ 自动 HTTPS 和 CDN
+- ✅ 自动部署（GitHub 推送后自动部署）
 
 ## 📁 项目结构
 

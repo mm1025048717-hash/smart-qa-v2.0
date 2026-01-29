@@ -26,11 +26,26 @@ export interface KPIData {
     value: number;
     direction: 'up' | 'down' | 'flat';
     label?: string;
+    /** 同比数据 */
+    yoy?: number;
+    /** 环比数据 */
+    mom?: number;
   };
   subMetrics?: SubMetric[];
   isPrimary?: boolean;
   /** 是否隐藏归因按钮 - 用于直接问归因的场景，因为回复本身就是归因分析 */
   hideAttribution?: boolean;
+  /** 预警规则配置 */
+  alertRule?: {
+    /** 预警阈值 - 低于此值触发预警 */
+    warningThreshold?: number;
+    /** 优秀阈值 - 高于此值显示优秀样式 */
+    excellentThreshold?: number;
+    /** 自定义预警样式 */
+    warningStyle?: 'red' | 'orange' | 'custom';
+    /** 自定义优秀样式 */
+    excellentStyle?: 'green' | 'gradient' | 'custom';
+  };
 }
 
 export interface SubMetric {

@@ -16,13 +16,14 @@ import { AttributionDemoPage } from './pages/AttributionDemoPage';
 import AIDashboard from './pages/AIDashboard';
 import DashboardList from './pages/DashboardList';
 import { VoiceChatPage } from './pages/VoiceChatPage';
+import KPICardShowcase from './pages/KPICardShowcase';
 import { 
   createUserMessage,
   generateNarrativeResponse,
   createSystemMessage,
   hasMatchedScenario,
 } from './services/narrativeGenerator';
-import { RefreshCw, Smartphone, Workflow, LayoutDashboard } from 'lucide-react';
+import { RefreshCw, Smartphone, Workflow, LayoutDashboard, BarChart3 } from 'lucide-react';
 import { ALL_AGENTS as AGENTS, getAgentById, getAgentByName } from './services/agents/index';
 import { setAimaSystemPrompt } from './services/deepseekApi';
 // 预加载爱玛系统提示词
@@ -63,7 +64,7 @@ function App() {
   // 业务场景相关状态
   const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false);
   const [, setActiveScenario] = useState<BusinessScenario | null>(null);
-  const [currentPage, setCurrentPage] = useState<'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat'>(() => {
+  const [currentPage, setCurrentPage] = useState<'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase'>(() => {
     // 初始化时检查URL参数
     const params = new URLSearchParams(window.location.search);
     const page = params.get('page');
@@ -78,6 +79,7 @@ function App() {
       // add=true 表示从问答页面添加卡片过来
       return (dashboardId || addAction) ? 'dashboard' : 'dashboard-list';
     }
+    if (page === 'kpi-showcase') return 'kpi-showcase';
     return 'main';
   });
 
@@ -89,7 +91,7 @@ function App() {
       const dashboardId = params.get('id');
       const addAction = params.get('add');
       
-      let newPage: 'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' = 'main';
+      let newPage: 'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase' = 'main';
       
       if (page === 'mobile') newPage = 'mobile';
       else if (page === 'gesture') newPage = 'gesture';
@@ -98,6 +100,7 @@ function App() {
       else if (page === 'dashboard') {
         newPage = (dashboardId || addAction) ? 'dashboard' : 'dashboard-list';
       } else if (page === 'voice-chat') newPage = 'voice-chat';
+      else if (page === 'kpi-showcase') newPage = 'kpi-showcase';
       
       setCurrentPage(prevPage => {
         if (prevPage !== newPage) {
@@ -125,21 +128,24 @@ function App() {
   const [currentAgentId, setCurrentAgentId] = useState<string>(AGENTS[0].id);
   const currentAgent = getAgentById(currentAgentId);
 
-  // 处理外部跳转进来的查询（如看板点击探索）
+  // 处理外部跳转进来的查询（如看板点击探索、KPI展示页面）
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const queryParam = params.get('query');
-    if (queryParam && messages.length === 0) {
-      // 延迟一会等 Agent 加载
+    const scenarioParam = params.get('scenario'); // KPI展示场景的场景ID
+    if (queryParam) {
+      // 延迟一会等 Agent 加载和页面切换完成
       const timer = setTimeout(() => {
-        handleSend(decodeURIComponent(queryParam));
+        // 如果有scenario参数，将其作为questionId传递，确保匹配到正确的场景响应
+        const questionId = scenarioParam || undefined;
+        handleSend(decodeURIComponent(queryParam), false, false, questionId);
         // 清理 URL，防止刷新重复触发
         const newUrl = window.location.pathname + (window.location.search.includes('page=') ? `?page=${params.get('page')}` : '');
         window.history.replaceState({}, '', newUrl || '/');
-      }, 600);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [currentPage]); // 当页面切换时也检查
 
   // 监听添加到看板事件（主页面）
   useEffect(() => {
@@ -357,7 +363,7 @@ function App() {
   };
 
   // 处理发送消息
-  const handleSend = async (query: string, forceWebSearch?: boolean, skipPresetResponse?: boolean) => {
+  const handleSend = async (query: string, forceWebSearch?: boolean, skipPresetResponse?: boolean, questionId?: string) => {
     if (!query.trim() || isLoading) return;
 
     // 先添加用户消息
@@ -366,7 +372,7 @@ function App() {
 
     // 完全禁用查询确认对话框，所有对话直接调用大模型
     // 用户明确要求使用大模型进行自然对话，不再显示确认对话框
-    const skipConfirmation = true; // 强制跳过所有确认对话框
+    // skipConfirmation 已移除，因为整个确认逻辑块已被禁用
     
     if (false) { // 禁用整个确认逻辑块
       try {
@@ -409,9 +415,10 @@ function App() {
         // 检查同名员工确认（多个张三）
         if (needsEmployeeConfirmation(query)) {
           const employeeMatch = query.match(/(张三|李四|王五|赵六)/);
-          if (employeeMatch) {
-            const employeeName = employeeMatch[1];
-            const options = getAmbiguousEmployeeOptions(employeeName);
+          const employeeName = employeeMatch?.[1];
+          if (employeeName) {
+            // employeeName 在 if 检查后已确保不为 undefined
+            const options = getAmbiguousEmployeeOptions(employeeName as string);
             if (options.length > 0) {
               const confirmationMessage: Message = {
                 id: `ambiguous-employee-${Date.now()}`,
@@ -541,11 +548,11 @@ function App() {
     }
 
     // 继续原有的发送逻辑
-    await handleSendInternal(query, forceWebSearch, skipPresetResponse);
+    await handleSendInternal(query, forceWebSearch, skipPresetResponse, questionId);
   };
 
   // 内部发送消息处理（原有逻辑）
-  const handleSendInternal = async (query: string, forceWebSearch?: boolean, skipPresetResponse?: boolean) => {
+  const handleSendInternal = async (query: string, forceWebSearch?: boolean, skipPresetResponse?: boolean, questionId?: string) => {
     if (!query.trim() || isLoading) return;
 
     // 🔥 优先检测切换 Agent 意图（使用增强版意图识别引擎）
@@ -857,22 +864,21 @@ function App() {
       }
     }
 
-    // 【测试用例精确匹配】其次检查是否为旧版测试用例
-    // 如果 skipPresetResponse 为 true（从测试用例面板点击），强制走大模型
-    // ⚠️ 但是知识库查询、模糊意图和爱玛员工必须走大模型或反问，不能使用预设响应
-    if (!skipPresetResponse && hasMatchedScenario(query) && intentResult.type !== 'knowledge_query' && !FORCE_KNOWLEDGE_QUERY && !isVague && !isAimaAgent) {
-      console.log('📋 匹配到测试用例，使用预设响应', { query, intentType: intentResult.type });
+    // 【测试用例精确匹配】所有测试用例都使用固定回复，不调用大模型
+    // 如果 skipPresetResponse 为 false（从测试用例面板点击），优先使用预设响应
+    // ⚠️ 用户要求：110个测试用例都不要调用大模型，采用固定回复
+    if (!skipPresetResponse && hasMatchedScenario(query)) {
+      console.log('📋 匹配到测试用例，使用预设响应（固定回复，不调用大模型）', { query, questionId, intentType: intentResult.type });
       await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
-      const narrativePresetResponse = generateNarrativeResponse(query);
+      // 传递问题ID以确保每个问题都有独特的回复
+      const narrativePresetResponse = generateNarrativeResponse(query, questionId);
       const systemMessage = createSystemMessage(narrativePresetResponse, currentAgentId);
       setMessages((prev) => [...prev, systemMessage]);
       updateContext(query);
       setIsLoading(false);
       return;
-    } else if (hasMatchedScenario(query) && intentResult.type === 'knowledge_query') {
-      console.log('📚 知识库查询跳过测试用例匹配，强制走大模型', { query });
     } else if (skipPresetResponse) {
-      console.log('🤖 测试用例面板点击，强制调用大模型', { query });
+      console.log('🤖 非测试用例面板问题，继续走大模型', { query });
     }
 
     // 【已禁用】不再自动触发工作流，所有问题都先经过大模型理解
@@ -1023,8 +1029,8 @@ function App() {
         // 如果检测到choices，立即更新（不等待节流），确保choices完整渲染
         if (hasChoices && !shouldUpdate) {
           // 强制更新，确保choices能完整渲染
-          const parsed = parseInteractiveContent(fullContent);
-          const hasValidChoices = parsed.some(p => p.type === 'choices' && p.data?.options?.length > 0);
+          // 直接检查是否有有效的choices格式
+          const hasValidChoices = /\[choices:[^\]]+\]/.test(fullContent);
           if (hasValidChoices) {
             // 有有效的choices，立即更新
             shouldUpdate = true;
@@ -2129,6 +2135,11 @@ function App() {
     );
   }
 
+  // 路由：KPI卡片展示页面
+  if (currentPage === 'kpi-showcase') {
+    return <KPICardShowcase />;
+  }
+
   // 主页面渲染 - 根据是否有消息决定显示简约输入界面还是问答界面
   return (
     <AnimatePresence mode="wait">
@@ -2237,6 +2248,13 @@ function App() {
                   <Smartphone className="w-4 h-4" />
                   <span>移动端测试</span>
                 </a>
+                <a
+                  href="?page=kpi-showcase"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[#4E5969] hover:text-[#1664FF] hover:bg-[#E8F0FF] rounded-lg transition-colors"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>KPI卡片展示</span>
+                </a>
                 {hasMessages && (
                   <button
                     onClick={handleNewChat}
@@ -2312,7 +2330,7 @@ function App() {
               <TestScenarioPanel
                 isOpen={testPanelOpen}
                 onToggle={() => setTestPanelOpen(!testPanelOpen)}
-                onQuestionSelect={(question, options) => handleSend(question, options?.forceWebSearch, true)}
+                onQuestionSelect={(question, options) => handleSend(question, options?.forceWebSearch, false, options?.questionId)}
               />
             </div>
           </main>

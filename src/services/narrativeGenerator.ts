@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 叙事生成器 - 覆盖所有测试用例
  * 每个测试问题对应唯一的响应
  */
@@ -23,6 +23,21 @@ import {
   NARRATIVE_SCENARIOS,
   EDGE_SCENARIOS,
 } from './testCaseDataL3Edge';
+import {
+  RULE_1_1_SCENARIOS,
+  RULE_1_2_SCENARIOS,
+  RULE_1_3_SCENARIOS,
+  RULE_1_4_SCENARIOS,
+  RULE_1_5_SCENARIOS,
+  RULE_2_0_SCENARIOS,
+  RULE_3_0_SCENARIOS,
+  RULE_4_0_SCENARIOS,
+  CONFIRM_SCENARIOS,
+  AMB_METRIC_SCENARIOS,
+  AMB_EMP_SCENARIOS,
+  WEB_SEARCH_SCENARIOS,
+} from './testCaseDataRules';
+import { KPI_SHOWCASE_SCENARIOS } from './kpiShowcaseScenarios';
 
 // 生成唯一ID
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -44,6 +59,21 @@ const ALL_SCENARIOS: Record<string, () => ContentBlock[]> = {
   ...L3_SCENARIOS,
   ...NARRATIVE_SCENARIOS,
   ...EDGE_SCENARIOS,
+  // 规则测试用例场景 - 确保每个问题都有独特的回复
+  ...RULE_1_1_SCENARIOS,
+  ...RULE_1_2_SCENARIOS,
+  ...RULE_1_3_SCENARIOS,
+  ...RULE_1_4_SCENARIOS,
+  ...RULE_1_5_SCENARIOS,
+  ...RULE_2_0_SCENARIOS,
+  ...RULE_3_0_SCENARIOS,
+  ...RULE_4_0_SCENARIOS,
+  ...CONFIRM_SCENARIOS,
+  ...AMB_METRIC_SCENARIOS,
+  ...AMB_EMP_SCENARIOS,
+  ...WEB_SEARCH_SCENARIOS,
+  // KPI展示场景 - 用于展示页面的问答效果
+  ...KPI_SHOWCASE_SCENARIOS,
 };
 
 // ============================================
@@ -52,7 +82,114 @@ const ALL_SCENARIOS: Record<string, () => ContentBlock[]> = {
 const QUERY_TO_SCENARIO: Record<string, string> = {
   // ========== L1 基础查询 ==========
   '今年销售额是多少': 'L1-01',
-  '今年销售额是多少？': 'L1-01',
+  // 注意：'今年销售额是多少？' 会被多个场景使用，优先级：attr-07 > 1.1-1 > 4.1-1 > L1-01
+  // 在测试用例面板中，根据问题ID选择对应的场景
+  // 规则1.1年度对比匹配 - 每个问题都有独特的回复
+  // 注意：1.1-1 的"今年销售额是多少？"需要特殊处理，因为它在多个地方出现
+  '2024年度销售额表现如何？': '1.1-2',
+  '查看全年销售额数据': '1.1-3',
+  '本年营收情况怎么样？': '1.1-4',
+  // 规则1.2季度分析匹配
+  '各季度销售额是多少？': '1.2-1',
+  'Q1到Q4的销售额对比': '1.2-2',
+  '季度销售额对比情况': '1.2-3',
+  // 规则1.3趋势分析匹配
+  '销售额趋势如何？': '1.3-1',
+  '近3个月销售额变化趋势': '1.3-2',
+  '销售额走势怎么样？': '1.3-3',
+  '销售额波动情况': '1.3-4',
+  // 规则1.4占比分析匹配
+  '销售渠道构成分析': '1.4-2',
+  // 规则1.5地区对比匹配 - 每个问题都有独特的回复
+  '各城市销售额排名': '1.5-2',
+  '分地区看销量情况': '1.5-3',
+  // 规则2.0空状态与异常
+  '查询2030年的销售额': '2.1-1',
+  '查询不存在的产品数据': '2.1-2',
+  '查询2025年12月的销售额': '2.2-1',
+  '查询过去20年的销售趋势': '2.2-2',
+  '如果数据源连接失败了会显示什么？': '2.3-1',
+  '如果没有权限查看数据会显示什么？': '2.4-1',
+  // ========== 归因分析专区 ==========
+  // 直接提问归因
+  '为什么销售额下降了？': 'ATTR-01',
+  '为什么销售额下降了': 'ATTR-01',
+  '分析销售额增长原因': 'ATTR-02',
+  '为什么11月销售额下降了？': 'ATTR-03',
+  '为什么11月销售额下降了': 'ATTR-03',
+  '利润下滑的影响因素有哪些？': 'ATTR-04',
+  '利润下滑的影响因素有哪些': 'ATTR-04',
+  '分析转化率偏低的原因': 'ATTR-05',
+  // 带归因入口的查询
+  '12月份的销售额环比？': 'attr-06', // 归因专区的12月环比（与L1-07不同，带归因入口）
+  // 注意：'今年销售额是多少？' 在归因专区中使用 attr-07，但需要特殊处理避免冲突
+  '本月销售额比上月如何？': 'attr-08', // 归因专区的环比分析（与L2-04不同，带归因入口）
+  // 地区/渠道/产品归因
+  '华东区销售下降的原因': 'ATTR-09',
+  '线上渠道增长的驱动因素': 'ATTR-10',
+  '产品A销量下滑原因分析': 'ATTR-11',
+  // 下钻归因
+  '详细分析华东区下降原因': 'ATTR-12',
+  // 规则3.0数据量极小
+  '查询2024年12月1日的销售额': '3.1-1',
+  '查询最近3天的销售额': '3.2-1',
+  '查询只有两天的销售数据会怎么样？': '3.3-1',
+  // 规则4.0智能推荐去重 - 这些是重复的问题，但应该有不同的回复（独特的去重视角）
+  // 注意：这些问题的文本与其他问题相同，但场景ID不同，确保有独特的回复
+  // '今年销售额是多少？': '4.1-1', // 规则4.0过滤时间维度 - 已在上面定义，但需要特殊处理
+  // '各地区销售额对比': '4.2-1', // 规则4.0过滤地区维度 - 已在上面定义，但需要特殊处理
+  // '各渠道销售额占比': '4.3-1', // 规则4.0过滤渠道维度 - 已在上面定义，但需要特殊处理
+  // 多度确认交互
+  '帮我看看': 'confirm-2',
+  '查看数据': 'confirm-3',
+  '数据分析': 'confirm-4',
+  '做个分析': 'confirm-5',
+  // 模糊指标确认
+  '销售额是多少': 'amb-metric-1',
+  '今年的销售额': 'amb-metric-2',
+  '本月销售额': 'amb-metric-3',
+  '销售额数据': 'amb-metric-4',
+  // 同名员工确认
+  '张三今年的业绩': 'amb-emp-1',
+  '张三的销售额': 'amb-emp-2',
+  '张三这个月表现怎么样': 'amb-emp-3',
+  '查询张三的数据': 'amb-emp-4',
+  // L1基础查询补充
+  '现在的库存数值是多少？': 'L1-03',
+  '帮我看看销售额和订单量': 'L1-04',
+  '我想看一下营收以及利润': 'L1-05',
+  '近3个月销售额趋势如何？': 'L2-01',
+  // 联网搜索测试
+  '搜索最新的AI行业报告': 'web-01',
+  '查找一下ChatGPT的最新动态': 'web-02',
+  '帮我搜索2024年电商市场分析': 'web-03',
+  '找一下Python的最新教程': 'web-04',
+  '搜索一下竞争对手的定价策略': 'web-05',
+  '查找最新的政策法规': 'web-06',
+  '搜索实时股票行情': 'web-07',
+  '帮我找一下行业趋势报告': 'web-08',
+  // KPI展示场景问答效果映射
+  '本月销售额是多少': 'L1-04', // 修改为返回销售额和订单量并列展示，匹配真实问答效果
+  '近3个月销售额如何': 'showcase-with-trend',
+  '今年销售额是多少，各季度如何': 'showcase-with-submetrics',
+  '查询2024年12月1日的销售额': 'showcase-single-day',
+  '查询最近3天的销售额': 'showcase-short-range',
+  '查询2030年的销售额': 'showcase-no-data',
+  '如果数据源连接失败了会显示什么': 'showcase-connection-error',
+  '如果没有权限查看数据会显示什么': 'showcase-permission-denied',
+  '12月份的销售额环比': 'showcase-with-attribution',
+  '本月销售额目标完成情况': 'showcase-with-target',
+  '转化率是多少': 'showcase-percentage-value',
+  '累计销售额是多少': 'showcase-large-number',
+  '11月销售额下降了': 'showcase-negative-trend',
+  '本月销售额基本持平': 'showcase-flat-trend',
+  'GMV成交总额是多少': 'showcase-ecommerce-gmv',
+  '营业收入是多少': 'showcase-finance-revenue',
+  '营销ROI是多少': 'showcase-marketing-roi',
+  '出勤率是多少': 'showcase-hr-attendance',
+  '帮我看看销售额和订单量': 'showcase-kpi-group',
+  // 叙事与故事
+  '今年业务怎么样？': 'E2E-01',
   '本月订单量有多少': 'L1-02',
   '本月订单量有多少？': 'L1-02',
   '当前库存数值': 'L1-03',
@@ -67,6 +204,7 @@ const QUERY_TO_SCENARIO: Record<string, string> = {
   '12月份的销售额环比？': 'L1-07',
   '12月的销售额环比': 'L1-07',
   '12月的销售额环比？': 'L1-07',
+  // 注意：如果有重复的"12月份的销售额环比？"，应该使用不同的场景ID（如attr-06）
   
   // L1追问按钮
   '查看各月明细': 'L2-02',
@@ -92,6 +230,7 @@ const QUERY_TO_SCENARIO: Record<string, string> = {
   '最近一周订单量波动大吗？': 'L2-03',
   '本月销售额比上月如何': 'L2-04',
   '本月销售额比上月如何？': 'L2-04',
+  // 注意：如果有重复的"本月销售额比上月如何？"，应该使用不同的场景ID
   '对比去年和今年营收': 'L2-05',
   '对比一下去年和今年的营收': 'L2-05',
   'Q3销售额同比增长情况': 'L2-06',
@@ -110,13 +249,14 @@ const QUERY_TO_SCENARIO: Record<string, string> = {
   '分析Q3增长驱动因素': 'L2-06',
   
   // ========== L2 构成分析 ==========
-  '销售渠道占比分析': 'L2-07',
+  '销售渠道占比分析': '1.4-2', // 独特的构成分析视角
   '各渠道销售额占比是多少？': 'L2-07',
   '各渠道销售额占比': 'L2-07',
   '各品类销售额构成': 'L2-08',
   '各品类销售额构成是怎样的？': 'L2-08',
-  '各品类销售额分布情况': 'L2-08',
+  '各品类销售额分布情况': '1.4-3', // 独特的分布视角（已在L2-08中定义，但需要确保有独特回复）
   '用户年龄分布比例': 'L2-09',
+  // 注意：如果有重复的"用户年龄分布比例"，应该使用不同的场景ID
   
   // 构成追问
   '渠道趋势': 'L2-07',
@@ -132,8 +272,8 @@ const QUERY_TO_SCENARIO: Record<string, string> = {
   
   // ========== L2 维度对比 ==========
   '各地区销售额对比': 'L2-10',
-  '各城市销售额排名': 'L2-10',
-  '分地区看销量情况': 'L2-10',
+  '各城市销售额排名': '1.5-2', // 独特的城市排名视角
+  '分地区看销量情况': '1.5-3', // 独特的销量视角
   '分产品线看销量': 'L2-11',
   '分产品线看销量排名': 'L2-11',
   '各渠道转化率哪个最好': 'L2-12',
@@ -398,6 +538,7 @@ const QUERY_TO_SCENARIO: Record<string, string> = {
   '火星地区销售分布': 'E-02',
   '销售': 'E-03',
   '看看数据': 'E-04',
+  // 注意：如果有重复的"看看数据"，应该使用不同的场景ID（如confirm-1）
   '帮我分析一下': 'E-05',
   '分析2024年Q1-Q3各地区各产品线销售额同比环比变化趋势并找出异常': 'E-06',
   
@@ -564,6 +705,145 @@ function fuzzyMatch(query: string): string | null {
 }
 
 // ============================================
+// 问题ID → 场景ID 映射（确保每个问题都有独特的回复）
+// ============================================
+const QUESTION_ID_TO_SCENARIO: Record<string, string> = {
+  // 规则1.1年度对比匹配
+  '1.1-1': '1.1-1',
+  '1.1-2': '1.1-2',
+  '1.1-3': '1.1-3',
+  '1.1-4': '1.1-4',
+  // 规则1.2季度分析匹配
+  '1.2-1': '1.2-1',
+  '1.2-2': '1.2-2',
+  '1.2-3': '1.2-3',
+  // 规则1.3趋势分析匹配
+  '1.3-1': '1.3-1',
+  '1.3-2': 'L2-01', // 使用L2-01，但确保有独特回复
+  '1.3-3': '1.3-3',
+  '1.3-4': '1.3-4',
+  // 规则1.4占比分析匹配
+  '1.4-1': 'L2-07',
+  '1.4-2': '1.4-2',
+  '1.4-3': 'L2-08', // 使用L2-08，但确保有独特回复
+  '1.4-4': 'L2-09',
+  // 规则1.5地区对比匹配
+  '1.5-1': 'L2-10',
+  '1.5-2': '1.5-2',
+  '1.5-3': '1.5-3',
+  // 规则2.0空状态与异常
+  '2.1-1': 'E-01',
+  '2.1-2': '2.1-2',
+  '2.2-1': '2.2-1',
+  '2.2-2': '2.2-2',
+  '2.3-1': '2.3-1',
+  '2.4-1': '2.4-1',
+  // 规则3.0数据量极小
+  '3.1-1': '3.1-1',
+  '3.2-1': '3.2-1',
+  '3.3-1': '3.3-1',
+  // 规则4.0智能推荐去重
+  '4.1-1': '4.1-1',
+  '4.2-1': '4.2-1',
+  '4.3-1': '4.3-1',
+  // 多度确认交互
+  'confirm-1': 'E-04',
+  'confirm-2': 'confirm-2',
+  'confirm-3': 'confirm-3',
+  'confirm-4': 'confirm-4',
+  'confirm-5': 'confirm-5',
+  // 模糊指标确认
+  'amb-metric-1': 'amb-metric-1',
+  'amb-metric-2': 'amb-metric-2',
+  'amb-metric-3': 'amb-metric-3',
+  'amb-metric-4': 'amb-metric-4',
+  // 同名员工确认
+  'amb-emp-1': 'amb-emp-1',
+  'amb-emp-2': 'amb-emp-2',
+  'amb-emp-3': 'amb-emp-3',
+  'amb-emp-4': 'amb-emp-4',
+  // L1基础查询
+  'L1-01': 'L1-01',
+  'L1-02': 'L1-02',
+  'L1-03': 'L1-03',
+  'L1-04': 'L1-04',
+  'L1-05': 'L1-05',
+  'L1-07': 'L1-07',
+  // L2趋势与同环比
+  'L2-01': 'L2-01',
+  'L2-02': 'L2-02',
+  'L2-03': 'L2-03',
+  'L2-04': 'L2-04',
+  'L2-05': 'L2-05',
+  'L2-06': 'L2-06',
+  // L2构成与分布
+  'L2-07': 'L2-07',
+  'L2-08': 'L2-08',
+  'L2-09': 'L2-09',
+  'L2-10': 'L2-10',
+  'L2-11': 'L2-11',
+  'L2-12': 'L2-12',
+  // L2地域分布
+  'L2-16': 'L2-16',
+  'L2-17': 'L2-17',
+  'L2-18': 'L2-18',
+  // L2排名与评估
+  'L2-19': 'L2-19',
+  'L2-20': 'L2-20',
+  'L2-21': 'L2-21',
+  'L2-13': 'L2-13',
+  'L2-14': 'L2-14',
+  'L2-15': 'L2-15',
+  // L2异常检测
+  'L2-22': 'L2-22',
+  'L2-23': 'L2-23',
+  'L2-24': 'L2-24',
+  // L2预测分析
+  'L2-28': 'L2-28',
+  'L2-29': 'L2-29',
+  'L2-30': 'L2-30',
+  // L3下钻探索
+  'L3-01': 'L3-01',
+  'L3-02': 'L3-02',
+  'L3-03': 'L3-03',
+  // 叙事与故事
+  'S-01': 'S-01',
+  'S-02': 'S-02',
+  'S-03': 'S-03',
+  'S-04': 'S-04',
+  'P-01': 'P-01',
+  'G-01': 'G-01',
+  'E2E-01': 'E2E-01',
+  // 边界条件
+  'E-03': 'E-03',
+  'E-04': 'E-04',
+  'E-05': 'E-05',
+  'E-06': 'E-06',
+  // 联网搜索测试
+  'web-01': 'web-01',
+  'web-02': 'web-02',
+  'web-03': 'web-03',
+  'web-04': 'web-04',
+  'web-05': 'web-05',
+  'web-06': 'web-06',
+  'web-07': 'web-07',
+  'web-08': 'web-08',
+  // 归因分析专区
+  'attr-01': 'ATTR-01',
+  'attr-02': 'ATTR-02',
+  'attr-03': 'ATTR-03',
+  'attr-04': 'ATTR-04',
+  'attr-05': 'ATTR-05',
+  'attr-06': 'attr-06',
+  'attr-07': 'attr-07',
+  'attr-08': 'attr-08',
+  'attr-09': 'ATTR-09',
+  'attr-10': 'ATTR-10',
+  'attr-11': 'ATTR-11',
+  'attr-12': 'ATTR-12',
+};
+
+// ============================================
 // 主入口
 // ============================================
 
@@ -588,13 +868,34 @@ export function hasMatchedScenario(query: string): boolean {
   return false;
 }
 
-export function generateNarrativeResponse(query: string): ContentBlock[] {
-  // 1. 精确匹配场景ID (如 L1-01, S-04 等)
+/**
+ * 根据问题文本和可选的问题ID生成响应
+ * @param query 问题文本
+ * @param questionId 可选的问题ID（用于区分相同文本的不同问题）
+ */
+export function generateNarrativeResponse(query: string, questionId?: string): ContentBlock[] {
+  // 1. 如果提供了问题ID，优先使用问题ID映射（确保每个问题都有独特的回复）
+  // 如果questionId是场景ID（如showcase-*），直接使用
+  if (questionId) {
+    if (ALL_SCENARIOS[questionId]) {
+      console.log(`[generateNarrativeResponse] 直接使用场景ID: ${questionId}`);
+      return ALL_SCENARIOS[questionId]();
+    }
+    if (QUESTION_ID_TO_SCENARIO[questionId]) {
+      const scenarioId = QUESTION_ID_TO_SCENARIO[questionId];
+      if (ALL_SCENARIOS[scenarioId]) {
+        console.log(`[generateNarrativeResponse] 使用问题ID映射: ${questionId} -> ${scenarioId}`);
+        return ALL_SCENARIOS[scenarioId]();
+      }
+    }
+  }
+  
+  // 2. 精确匹配场景ID (如 L1-01, S-04 等)
   if (ALL_SCENARIOS[query]) {
     return ALL_SCENARIOS[query]();
   }
   
-  // 2. 精确匹配中文问题
+  // 3. 精确匹配中文问题
   if (QUERY_TO_SCENARIO[query]) {
     const scenarioId = QUERY_TO_SCENARIO[query];
     if (ALL_SCENARIOS[scenarioId]) {
@@ -602,13 +903,13 @@ export function generateNarrativeResponse(query: string): ContentBlock[] {
     }
   }
   
-  // 3. 模糊匹配
+  // 4. 模糊匹配
   const fuzzyScenarioId = fuzzyMatch(query);
   if (fuzzyScenarioId && ALL_SCENARIOS[fuzzyScenarioId]) {
     return ALL_SCENARIOS[fuzzyScenarioId]();
   }
   
-  // 4. 默认返回引导页
+  // 5. 默认返回引导页
   return ALL_SCENARIOS['E-04']();
 }
 

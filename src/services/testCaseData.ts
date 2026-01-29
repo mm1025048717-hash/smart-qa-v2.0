@@ -210,7 +210,7 @@ export const L1_SCENARIOS: Record<string, () => ContentBlock[]> = {
       { 
         id: 'orders', 
         label: '本月订单量', 
-        value: 11823, 
+        value: 10000, 
         unit: '单',
         trend: { value: 8.5, direction: 'up', label: '同比' }
       },

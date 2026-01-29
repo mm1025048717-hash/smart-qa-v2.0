@@ -253,7 +253,7 @@ export const DataVisualizer = ({
     <div 
       className={clsx(
         'sticky top-0',
-        'py-3 px-4 -mx-4 mt-8 mb-4',
+        'py-2 px-4 -mx-4 mt-2 mb-2',
         'border-b border-[#d2d2d7]',
         className
       )}
@@ -265,7 +265,7 @@ export const DataVisualizer = ({
       }}
     >
       {/* 筛选条件区域 */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         {conditions.map((c) => (
           <FilterTag
             key={c.id}
@@ -280,7 +280,7 @@ export const DataVisualizer = ({
       {showActions && (
         <div className={clsx(
           layout === 'horizontal' ? 'flex items-center gap-2' : 'flex flex-col gap-2',
-          'pt-3 border-t border-[#d2d2d7]'
+          'pt-2 border-t border-[#d2d2d7]'
         )}>
           <ActionButton icon={Save} label="保存" onClick={onSave} />
           <ActionButton icon={Download} label="导出" onClick={onExport} />

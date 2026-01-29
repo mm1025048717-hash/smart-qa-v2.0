@@ -167,16 +167,53 @@ export const PrimaryKPICard = ({
   const shouldShowTrend = !isSingleDay && !hasInsufficientData;
   const shouldShowSubMetrics = showQuarterlyBreakdown && !isSingleDay && !hasInsufficientData && !isShortRange;
   
+  // 预警规则判断
+  const numericValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.]/g, '')) || 0;
+  const alertRule = data.alertRule;
+  let cardStyle = 'bg-white border-[#E8F0FF]';
+  let valueTextStyle = 'text-[#1d1d1f]';
+  let unitTextStyle = 'text-[#86868b]';
+  let trendTextStyle = 'text-[#86868b]';
+  let labelTextStyle = 'text-[#86868b]';
+  let isWarning = false;
+  let isExcellent = false;
+  
+  if (alertRule) {
+    if (alertRule.warningThreshold !== undefined && numericValue < alertRule.warningThreshold) {
+      isWarning = true;
+      // 预警样式：苹果风格 - 柔和的红色渐变，精致优雅
+      cardStyle = 'bg-gradient-to-br from-[#FF6B6B] via-[#FF5252] to-[#FF3B30] border-[#FF3B30]/20';
+      valueTextStyle = 'text-white';
+      unitTextStyle = 'text-white/85';
+      trendTextStyle = 'text-white/90';
+      labelTextStyle = 'text-white/90';
+    } else if (alertRule.excellentThreshold !== undefined && numericValue >= alertRule.excellentThreshold) {
+      isExcellent = true;
+      // 优秀样式：苹果风格 - 柔和的绿色渐变，清新自然
+      cardStyle = 'bg-gradient-to-br from-[#52C41A] via-[#34C759] to-[#30D158] border-[#34C759]/20';
+      valueTextStyle = 'text-white';
+      unitTextStyle = 'text-white/85';
+      trendTextStyle = 'text-white/90';
+      labelTextStyle = 'text-white/90';
+    }
+  }
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, delay }}
-      className="bg-white rounded-xl border border-[#E8F0FF] shadow-[0_1px_3px_rgba(22,100,255,0.04)] p-4 h-full flex flex-col justify-center relative"
+      className={clsx(
+        'rounded-xl p-4 h-full flex flex-col justify-center relative transition-all duration-300',
+        isWarning || isExcellent 
+          ? 'shadow-[0_4px_20px_rgba(0,0,0,0.12)]' 
+          : 'shadow-[0_1px_3px_rgba(22,100,255,0.04)]',
+        cardStyle
+      )}
     >
       {/* 标题和按钮 */}
       <div className="flex items-start justify-between mb-2 relative z-[60]">
-        <span className="text-[14px] text-[#86868b] font-medium flex-1 pr-2">{label}</span>
+        <span className={clsx('text-[14px] font-medium flex-1 pr-2', labelTextStyle)}>{label}</span>
         <div className="flex items-center gap-2 relative z-[60] flex-shrink-0">
           {/* 添加到看板按钮 */}
           {blockData && onAddToDashboard && (
@@ -185,7 +222,12 @@ export const PrimaryKPICard = ({
                 e.stopPropagation();
                 onAddToDashboard(blockData);
               }}
-              className="h-7 px-3 rounded-lg flex items-center justify-center text-[#007AFF] hover:text-white bg-white hover:bg-[#007AFF] transition-all duration-200 border border-[#007AFF]/30 hover:border-[#007AFF] text-[12px] font-medium whitespace-nowrap relative z-[60] flex-shrink-0"
+              className={clsx(
+                'h-7 px-3 rounded-lg flex items-center justify-center transition-all duration-200 border text-[12px] font-medium whitespace-nowrap relative z-[60] flex-shrink-0',
+                isWarning || isExcellent
+                  ? 'text-white hover:text-white bg-white/15 hover:bg-white/25 border-white/25 hover:border-white/40 backdrop-blur-sm'
+                  : 'text-[#007AFF] hover:text-white bg-white hover:bg-[#007AFF] border-[#007AFF]/30 hover:border-[#007AFF]'
+              )}
               title="添加到数据看板"
             >
               添加
@@ -209,7 +251,12 @@ export const PrimaryKPICard = ({
                   triggerRect: rect
                 });
               }}
-              className="h-7 px-3 rounded-lg flex items-center justify-center text-[#007AFF] hover:text-white bg-white hover:bg-[#007AFF] transition-all duration-200 border border-[#007AFF]/30 hover:border-[#007AFF] text-[12px] font-medium whitespace-nowrap flex-shrink-0"
+              className={clsx(
+                'h-7 px-3 rounded-lg flex items-center justify-center transition-all duration-200 border text-[12px] font-medium whitespace-nowrap flex-shrink-0',
+                isWarning || isExcellent
+                  ? 'text-white hover:text-white bg-white/15 hover:bg-white/25 border-white/25 hover:border-white/40 backdrop-blur-sm'
+                  : 'text-[#007AFF] hover:text-white bg-white hover:bg-[#007AFF] border-[#007AFF]/30 hover:border-[#007AFF]'
+              )}
               title="归因分析"
             >
               归因
@@ -218,28 +265,58 @@ export const PrimaryKPICard = ({
         </div>
       </div>
       
-      {/* 趋势值 - 移到主数值下方 */}
-      {trend && shouldShowTrend && (
-        <div className="flex items-center gap-1 mb-2">
-          <span className={clsx(
-            'text-[13px] font-semibold',
-            trend.direction === 'up' ? 'text-[#34C759]' : 
-            trend.direction === 'down' ? 'text-[#FF3B30]' : 
-            'text-[#86868b]'
-          )}>
-            {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '−'} {trend.value}%
-            {trend.label && <span className="opacity-80 ml-1 text-[12px]">{trend.label}</span>}
-          </span>
-        </div>
-      )}
-      
       {/* 主数值 */}
-      <div className="flex items-baseline gap-1.5 mb-3">
-        <span className="text-[28px] font-bold text-[#1d1d1f] tracking-tight leading-none">
+      <div className="flex items-baseline gap-1.5 mb-2">
+        <span className={clsx(
+          'text-[28px] font-bold tracking-tight leading-none',
+          valueTextStyle
+        )}>
           {prefix}{formatValue(value)}
         </span>
-        {unit && <span className="text-[14px] text-[#86868b] font-medium">{unit}</span>}
+        {unit && <span className={clsx(
+          'text-[14px] font-medium',
+          unitTextStyle
+        )}>{unit}</span>}
       </div>
+      
+      {/* 环比同比 - 移到主数值下方 */}
+      {trend && shouldShowTrend && (
+        <div className="flex items-center gap-3 mb-2">
+          {trend.mom !== undefined && (
+            <span className={clsx(
+              'text-[13px] font-medium',
+              isWarning || isExcellent 
+                ? trendTextStyle 
+                : trend.mom > 0 ? 'text-[#34C759]' : trend.mom < 0 ? 'text-[#FF3B30]' : 'text-[#86868b]'
+            )}>
+              {trend.mom > 0 ? '↑' : trend.mom < 0 ? '↓' : '−'} {Math.abs(trend.mom)}% 环比
+            </span>
+          )}
+          {trend.yoy !== undefined && (
+            <span className={clsx(
+              'text-[13px] font-medium',
+              isWarning || isExcellent 
+                ? trendTextStyle 
+                : trend.yoy > 0 ? 'text-[#34C759]' : trend.yoy < 0 ? 'text-[#FF3B30]' : 'text-[#86868b]'
+            )}>
+              {trend.yoy > 0 ? '↑' : trend.yoy < 0 ? '↓' : '−'} {Math.abs(trend.yoy)}% 同比
+            </span>
+          )}
+          {!trend.mom && !trend.yoy && trend.value !== undefined && (
+            <span className={clsx(
+              'text-[13px] font-medium',
+              isWarning || isExcellent 
+                ? trendTextStyle 
+                : trend.direction === 'up' ? 'text-[#34C759]' : 
+                  trend.direction === 'down' ? 'text-[#FF3B30]' : 
+                  'text-[#86868b]'
+            )}>
+              {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '−'} {trend.value}%
+              {trend.label && <span className="opacity-80 ml-1 text-[12px]">{trend.label}</span>}
+            </span>
+          )}
+        </div>
+      )}
       
       {/* 信息提示条 */}
       {isSingleDay && (
@@ -321,19 +398,21 @@ export const SecondaryKPICard = ({ data, delay = 0, onAttributionClick, blockDat
             </button>
           )}
           {/* 归因按钮 */}
-          {trend && onAttributionClick && (trend.label?.includes('同比') || trend.label?.includes('环比')) && (
+          {trend && onAttributionClick && (trend.label?.includes('同比') || trend.label?.includes('环比') || trend.mom !== undefined || trend.yoy !== undefined) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 if (!onAttributionClick) return;
                 const rect = e.currentTarget.getBoundingClientRect();
                 const metric = label.replace(/年度|季度|月度|本月|今年|去年/g, '').trim();
-                const changeType = trend.label?.includes('同比') ? '同比' as const : 
-                                 trend.label?.includes('环比') ? '环比' as const : '同比' as const;
+                const changeType = trend.label?.includes('同比') || trend.yoy !== undefined ? '同比' as const : 
+                                 trend.label?.includes('环比') || trend.mom !== undefined ? '环比' as const : '同比' as const;
+                const changeValue = trend.mom !== undefined ? Math.abs(trend.mom) : trend.yoy !== undefined ? Math.abs(trend.yoy) : trend.value;
+                const changeDirection = (trend.mom !== undefined && trend.mom > 0) || (trend.yoy !== undefined && trend.yoy > 0) || trend.direction === 'up' ? 'up' : 'down';
                 onAttributionClick({
                   metric: metric || label,
-                  changeValue: trend.value,
-                  changeDirection: trend.direction === 'up' ? 'up' : 'down',
+                  changeValue,
+                  changeDirection,
                   changeType,
                   triggerRect: rect
                 });
@@ -347,27 +426,46 @@ export const SecondaryKPICard = ({ data, delay = 0, onAttributionClick, blockDat
         </div>
       </div>
       
-      {/* 趋势值 - 移到主数值下方 */}
-      {trend && (
-        <div className="flex items-center gap-1 mb-1">
-          <span className={clsx(
-            'text-[11px] font-semibold whitespace-nowrap',
-            trend.direction === 'up' ? 'text-[#34C759]' : 
-            trend.direction === 'down' ? 'text-[#FF3B30]' : 
-            'text-[#86868b]'
-          )}>
-            {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '−'} {trend.value}%
-          </span>
-        </div>
-      )}
-      
       {/* 数值行 */}
-      <div className="flex items-baseline gap-1 flex-wrap">
+      <div className="flex items-baseline gap-1 flex-wrap mb-1">
         <span className="text-[18px] font-bold text-[#1d1d1f] tracking-tight">
           {prefix}{formatValue(value)}
         </span>
         {unit && <span className="text-[11px] text-[#86868b]">{unit}</span>}
       </div>
+      
+      {/* 环比同比 - 移到主数值下方 */}
+      {trend && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {trend.mom !== undefined && (
+            <span className={clsx(
+              'text-[11px] font-medium whitespace-nowrap',
+              trend.mom > 0 ? 'text-[#34C759]' : trend.mom < 0 ? 'text-[#FF3B30]' : 'text-[#86868b]'
+            )}>
+              {trend.mom > 0 ? '↑' : trend.mom < 0 ? '↓' : '−'} {Math.abs(trend.mom)}% 环比
+            </span>
+          )}
+          {trend.yoy !== undefined && (
+            <span className={clsx(
+              'text-[11px] font-medium whitespace-nowrap',
+              trend.yoy > 0 ? 'text-[#34C759]' : trend.yoy < 0 ? 'text-[#FF3B30]' : 'text-[#86868b]'
+            )}>
+              {trend.yoy > 0 ? '↑' : trend.yoy < 0 ? '↓' : '−'} {Math.abs(trend.yoy)}% 同比
+            </span>
+          )}
+          {!trend.mom && !trend.yoy && trend.value !== undefined && (
+            <span className={clsx(
+              'text-[11px] font-semibold whitespace-nowrap',
+              trend.direction === 'up' ? 'text-[#34C759]' : 
+              trend.direction === 'down' ? 'text-[#FF3B30]' : 
+              'text-[#86868b]'
+            )}>
+              {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '−'} {trend.value}%
+              {trend.label && <span className="opacity-80 ml-1 text-[10px]">{trend.label}</span>}
+            </span>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 };
