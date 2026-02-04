@@ -9,6 +9,10 @@
       "destination": "/api/deepseek"
     },
     {
+      "source": "/api/annotations/:path*",
+      "destination": "/api/annotations"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

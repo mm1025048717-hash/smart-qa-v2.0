@@ -1,9 +1,9 @@
 /**
- * PRD 批注系统
- * 允许用户点击任何组件进行文字批注，支持添加、编辑、删除批注
+ * PRD 批注系统 - 支持多人协作同步
+ * 使用 Vercel KV 存储批注数据，通过智能轮询实现同步
  */
 
-import { useState, useEffect, useRef, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, useRef, createContext, useContext, ReactNode, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageSquarePlus, 
@@ -20,137 +20,406 @@ import {
   EyeOff,
   Download,
   Upload,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Cloud,
+  CloudOff,
+  Users
 } from 'lucide-react';
 
-// 批注数据结构
-export interface Annotation {
-  id: string;
-  targetId: string; // 目标元素的 data-annotation-id
-  content: string;
-  author: string;
-  createdAt: Date;
-  updatedAt?: Date;
-  resolved: boolean;
-  position: { x: number; y: number }; // 相对于目标元素的位置
-  replies?: AnnotationReply[];
-}
+// ==================== 类型定义 ====================
 
 export interface AnnotationReply {
   id: string;
   content: string;
   author: string;
-  createdAt: Date;
+  authorId: string;
+  createdAt: string;
 }
 
-// 批注上下文
+export interface Annotation {
+  id: string;
+  targetId: string;
+  content: string;
+  author: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt?: string | null;
+  resolved: boolean;
+  position: { x: number; y: number };
+  replies?: AnnotationReply[];
+}
+
+type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error';
+
 interface AnnotationContextType {
   annotations: Annotation[];
   isAnnotationMode: boolean;
   showAnnotations: boolean;
   activeAnnotationId: string | null;
+  syncStatus: SyncStatus;
+  currentUser: { name: string; id: string } | null;
   setAnnotationMode: (mode: boolean) => void;
   setShowAnnotations: (show: boolean) => void;
   setActiveAnnotationId: (id: string | null) => void;
-  addAnnotation: (annotation: Omit<Annotation, 'id' | 'createdAt' | 'resolved' | 'replies'>) => void;
-  updateAnnotation: (id: string, content: string) => void;
-  deleteAnnotation: (id: string) => void;
-  resolveAnnotation: (id: string) => void;
-  addReply: (annotationId: string, content: string, author: string) => void;
+  addAnnotation: (annotation: Omit<Annotation, 'id' | 'createdAt' | 'resolved' | 'replies' | 'authorId'>) => Promise<void>;
+  updateAnnotation: (id: string, content: string) => Promise<void>;
+  deleteAnnotation: (id: string) => Promise<void>;
+  resolveAnnotation: (id: string) => Promise<void>;
+  addReply: (annotationId: string, content: string) => Promise<void>;
   exportAnnotations: () => void;
   importAnnotations: (data: string) => void;
+  refreshAnnotations: () => Promise<void>;
+  setCurrentUser: (user: { name: string; id: string }) => void;
+  showNicknameDialog: boolean;
+  setShowNicknameDialog: (show: boolean) => void;
 }
+
+// ==================== API 服务 ====================
+
+const API_BASE = '/api/annotations';
+
+const annotationApi = {
+  // 获取所有批注
+  async getAll(): Promise<{ annotations: Annotation[]; meta: { lastUpdated: number }; timestamp: number }> {
+    const res = await fetch(API_BASE);
+    if (!res.ok) throw new Error('Failed to fetch annotations');
+    return res.json();
+  },
+
+  // 创建批注
+  async create(data: Partial<Annotation>): Promise<Annotation> {
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create annotation');
+    return res.json();
+  },
+
+  // 更新批注
+  async update(id: string, data: Partial<Annotation>): Promise<Annotation> {
+    const res = await fetch(`${API_BASE}?id=${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update annotation');
+    return res.json();
+  },
+
+  // 删除批注
+  async delete(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}?id=${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete annotation');
+  },
+
+  // 添加回复
+  async addReply(annotationId: string, data: { content: string; author: string; authorId: string }): Promise<Annotation> {
+    const res = await fetch(`${API_BASE}?action=reply&id=${annotationId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to add reply');
+    return res.json();
+  },
+
+  // 解决批注
+  async resolve(id: string, resolved: boolean): Promise<Annotation> {
+    const res = await fetch(`${API_BASE}?action=resolve&id=${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resolved }),
+    });
+    if (!res.ok) throw new Error('Failed to resolve annotation');
+    return res.json();
+  },
+};
+
+// ==================== 工具函数 ====================
+
+const STORAGE_KEY_USER = 'prd_annotation_user_v1';
+const STORAGE_KEY_LOCAL = 'prd_annotations_v1'; // 保留用于导入旧数据
+
+// 生成用户 ID
+const generateUserId = () => {
+  return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// 从本地存储获取用户信息
+const getStoredUser = (): { name: string; id: string } | null => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_USER);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.warn('Failed to get stored user:', e);
+  }
+  return null;
+};
+
+// 保存用户信息到本地存储
+const saveUser = (user: { name: string; id: string }) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+  } catch (e) {
+    console.warn('Failed to save user:', e);
+  }
+};
+
+// ==================== Context ====================
 
 const AnnotationContext = createContext<AnnotationContextType | null>(null);
 
-const STORAGE_KEY = 'prd_annotations_v1';
+// ==================== Provider ====================
 
-// 批注提供者
 export const AnnotationProvider = ({ children }: { children: ReactNode }) => {
-  const [annotations, setAnnotations] = useState<Annotation[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed.map((a: any) => ({
-          ...a,
-          createdAt: new Date(a.createdAt),
-          updatedAt: a.updatedAt ? new Date(a.updatedAt) : undefined,
-          replies: a.replies?.map((r: any) => ({
-            ...r,
-            createdAt: new Date(r.createdAt),
-          })),
-        }));
-      }
-    } catch (e) {
-      console.warn('Failed to load annotations:', e);
-    }
-    return [];
-  });
-  
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [isAnnotationMode, setAnnotationMode] = useState(false);
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('syncing');
+  const [currentUser, setCurrentUserState] = useState<{ name: string; id: string } | null>(getStoredUser);
+  const [showNicknameDialog, setShowNicknameDialog] = useState(false);
+  
+  const lastFetchRef = useRef<number>(0);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 保存到 localStorage
-  useEffect(() => {
+  // 设置当前用户
+  const setCurrentUser = useCallback((user: { name: string; id: string }) => {
+    setCurrentUserState(user);
+    saveUser(user);
+    setShowNicknameDialog(false);
+  }, []);
+
+  // 获取批注
+  const fetchAnnotations = useCallback(async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(annotations));
-    } catch (e) {
-      console.warn('Failed to save annotations:', e);
+      setSyncStatus('syncing');
+      const data = await annotationApi.getAll();
+      setAnnotations(data.annotations);
+      lastFetchRef.current = data.timestamp;
+      setSyncStatus('synced');
+    } catch (error) {
+      console.error('Failed to fetch annotations:', error);
+      setSyncStatus('error');
     }
-  }, [annotations]);
+  }, []);
 
-  const addAnnotation = (annotation: Omit<Annotation, 'id' | 'createdAt' | 'resolved' | 'replies'>) => {
-    const newAnnotation: Annotation = {
-      ...annotation,
-      id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      createdAt: new Date(),
+  // 刷新批注
+  const refreshAnnotations = useCallback(async () => {
+    await fetchAnnotations();
+  }, [fetchAnnotations]);
+
+  // 初始化和轮询
+  useEffect(() => {
+    // 初次加载
+    fetchAnnotations();
+
+    // 设置轮询（5秒间隔）
+    const startPolling = () => {
+      pollingRef.current = setInterval(() => {
+        // 只在页面可见时轮询
+        if (document.visibilityState === 'visible') {
+          fetchAnnotations();
+        }
+      }, 5000);
+    };
+
+    // 页面可见性变化时的处理
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // 页面重新可见时立即刷新
+        fetchAnnotations();
+      }
+    };
+
+    // 在线/离线状态处理
+    const handleOnline = () => {
+      setSyncStatus('syncing');
+      fetchAnnotations();
+    };
+
+    const handleOffline = () => {
+      setSyncStatus('offline');
+    };
+
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // 检查初始网络状态
+    if (!navigator.onLine) {
+      setSyncStatus('offline');
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [fetchAnnotations]);
+
+  // 检查用户是否已设置昵称
+  useEffect(() => {
+    if (!currentUser && isAnnotationMode) {
+      setShowNicknameDialog(true);
+    }
+  }, [currentUser, isAnnotationMode]);
+
+  // 添加批注
+  const addAnnotation = useCallback(async (data: Omit<Annotation, 'id' | 'createdAt' | 'resolved' | 'replies' | 'authorId'>) => {
+    if (!currentUser) {
+      setShowNicknameDialog(true);
+      return;
+    }
+
+    // 乐观更新
+    const optimisticId = `temp_${Date.now()}`;
+    const optimisticAnnotation: Annotation = {
+      ...data,
+      id: optimisticId,
+      authorId: currentUser.id,
+      createdAt: new Date().toISOString(),
       resolved: false,
       replies: [],
     };
-    setAnnotations(prev => [...prev, newAnnotation]);
-    setActiveAnnotationId(newAnnotation.id);
-  };
+    
+    setAnnotations(prev => [...prev, optimisticAnnotation]);
+    setActiveAnnotationId(optimisticId);
 
-  const updateAnnotation = (id: string, content: string) => {
+    try {
+      const created = await annotationApi.create({
+        ...data,
+        author: currentUser.name,
+        authorId: currentUser.id,
+      });
+      
+      // 替换乐观更新的数据
+      setAnnotations(prev => prev.map(a => a.id === optimisticId ? created : a));
+      setActiveAnnotationId(created.id);
+    } catch (error) {
+      console.error('Failed to create annotation:', error);
+      // 回滚乐观更新
+      setAnnotations(prev => prev.filter(a => a.id !== optimisticId));
+      setActiveAnnotationId(null);
+    }
+  }, [currentUser]);
+
+  // 更新批注
+  const updateAnnotation = useCallback(async (id: string, content: string) => {
+    // 乐观更新
     setAnnotations(prev => prev.map(a => 
-      a.id === id 
-        ? { ...a, content, updatedAt: new Date() }
-        : a
+      a.id === id ? { ...a, content, updatedAt: new Date().toISOString() } : a
     ));
-  };
 
-  const deleteAnnotation = (id: string) => {
+    try {
+      await annotationApi.update(id, { content });
+    } catch (error) {
+      console.error('Failed to update annotation:', error);
+      // 刷新获取最新数据
+      fetchAnnotations();
+    }
+  }, [fetchAnnotations]);
+
+  // 删除批注
+  const deleteAnnotation = useCallback(async (id: string) => {
+    // 乐观更新
+    const deleted = annotations.find(a => a.id === id);
     setAnnotations(prev => prev.filter(a => a.id !== id));
     if (activeAnnotationId === id) {
       setActiveAnnotationId(null);
     }
-  };
 
-  const resolveAnnotation = (id: string) => {
+    try {
+      await annotationApi.delete(id);
+    } catch (error) {
+      console.error('Failed to delete annotation:', error);
+      // 回滚
+      if (deleted) {
+        setAnnotations(prev => [...prev, deleted]);
+      }
+    }
+  }, [annotations, activeAnnotationId]);
+
+  // 解决批注
+  const resolveAnnotation = useCallback(async (id: string) => {
+    const annotation = annotations.find(a => a.id === id);
+    if (!annotation) return;
+
+    const newResolved = !annotation.resolved;
+
+    // 乐观更新
     setAnnotations(prev => prev.map(a => 
-      a.id === id 
-        ? { ...a, resolved: !a.resolved }
-        : a
+      a.id === id ? { ...a, resolved: newResolved } : a
     ));
-  };
 
-  const addReply = (annotationId: string, content: string, author: string) => {
-    const reply: AnnotationReply = {
-      id: `reply_${Date.now()}`,
+    try {
+      await annotationApi.resolve(id, newResolved);
+    } catch (error) {
+      console.error('Failed to resolve annotation:', error);
+      // 回滚
+      setAnnotations(prev => prev.map(a => 
+        a.id === id ? { ...a, resolved: !newResolved } : a
+      ));
+    }
+  }, [annotations]);
+
+  // 添加回复
+  const addReply = useCallback(async (annotationId: string, content: string) => {
+    if (!currentUser) {
+      setShowNicknameDialog(true);
+      return;
+    }
+
+    // 乐观更新
+    const optimisticReply: AnnotationReply = {
+      id: `temp_reply_${Date.now()}`,
       content,
-      author,
-      createdAt: new Date(),
+      author: currentUser.name,
+      authorId: currentUser.id,
+      createdAt: new Date().toISOString(),
     };
+
     setAnnotations(prev => prev.map(a => 
       a.id === annotationId 
-        ? { ...a, replies: [...(a.replies || []), reply] }
+        ? { ...a, replies: [...(a.replies || []), optimisticReply] }
         : a
     ));
-  };
 
-  const exportAnnotations = () => {
+    try {
+      const updated = await annotationApi.addReply(annotationId, {
+        content,
+        author: currentUser.name,
+        authorId: currentUser.id,
+      });
+      
+      // 替换为服务器返回的数据
+      setAnnotations(prev => prev.map(a => a.id === annotationId ? updated : a));
+    } catch (error) {
+      console.error('Failed to add reply:', error);
+      // 回滚
+      setAnnotations(prev => prev.map(a => 
+        a.id === annotationId 
+          ? { ...a, replies: (a.replies || []).filter(r => r.id !== optimisticReply.id) }
+          : a
+      ));
+    }
+  }, [currentUser]);
+
+  // 导出批注
+  const exportAnnotations = useCallback(() => {
     const data = JSON.stringify(annotations, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -159,26 +428,32 @@ export const AnnotationProvider = ({ children }: { children: ReactNode }) => {
     a.download = `prd-annotations-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  };
+  }, [annotations]);
 
-  const importAnnotations = (data: string) => {
+  // 导入批注（仅用于迁移旧数据）
+  const importAnnotations = useCallback(async (data: string) => {
     try {
-      const parsed = JSON.parse(data);
-      const imported = parsed.map((a: any) => ({
-        ...a,
-        createdAt: new Date(a.createdAt),
-        updatedAt: a.updatedAt ? new Date(a.updatedAt) : undefined,
-        replies: a.replies?.map((r: any) => ({
-          ...r,
-          createdAt: new Date(r.createdAt),
-        })),
-      }));
-      setAnnotations(prev => [...prev, ...imported]);
+      const parsed = JSON.parse(data) as Annotation[];
+      
+      // 逐个创建批注
+      for (const ann of parsed) {
+        await annotationApi.create({
+          targetId: ann.targetId,
+          content: ann.content,
+          author: ann.author || currentUser?.name || '导入用户',
+          authorId: currentUser?.id || generateUserId(),
+          position: ann.position,
+        });
+      }
+      
+      // 刷新列表
+      await fetchAnnotations();
+      alert(`成功导入 ${parsed.length} 条批注`);
     } catch (e) {
       console.error('Failed to import annotations:', e);
       alert('导入失败，请检查文件格式');
     }
-  };
+  }, [currentUser, fetchAnnotations]);
 
   return (
     <AnnotationContext.Provider value={{
@@ -186,6 +461,8 @@ export const AnnotationProvider = ({ children }: { children: ReactNode }) => {
       isAnnotationMode,
       showAnnotations,
       activeAnnotationId,
+      syncStatus,
+      currentUser,
       setAnnotationMode,
       setShowAnnotations,
       setActiveAnnotationId,
@@ -196,13 +473,19 @@ export const AnnotationProvider = ({ children }: { children: ReactNode }) => {
       addReply,
       exportAnnotations,
       importAnnotations,
+      refreshAnnotations,
+      setCurrentUser,
+      showNicknameDialog,
+      setShowNicknameDialog,
     }}>
       {children}
+      <NicknameDialog />
     </AnnotationContext.Provider>
   );
 };
 
-// 使用批注上下文的 Hook
+// ==================== Hooks ====================
+
 export const useAnnotations = () => {
   const context = useContext(AnnotationContext);
   if (!context) {
@@ -211,7 +494,130 @@ export const useAnnotations = () => {
   return context;
 };
 
-// 批注工具栏
+// ==================== 昵称输入弹窗 ====================
+
+const NicknameDialog = () => {
+  const { showNicknameDialog, setShowNicknameDialog, setCurrentUser, currentUser } = useAnnotations();
+  const [nickname, setNickname] = useState(currentUser?.name || '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showNicknameDialog && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showNicknameDialog]);
+
+  const handleSubmit = () => {
+    if (nickname.trim()) {
+      setCurrentUser({
+        name: nickname.trim(),
+        id: currentUser?.id || generateUserId(),
+      });
+    }
+  };
+
+  if (!showNicknameDialog) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      onClick={() => setShowNicknameDialog(false)}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="h-1 bg-gradient-to-r from-[#007AFF] via-[#5856D6] to-[#AF52DE]" />
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-[#1D1D1F]">设置昵称</h3>
+              <p className="text-sm text-[#86868B]">用于标识您的批注</p>
+            </div>
+          </div>
+          
+          <input
+            ref={inputRef}
+            type="text"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="请输入您的昵称..."
+            className="w-full px-4 py-3 text-base border border-[#E5E5EA] rounded-xl focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/10 mb-4"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && nickname.trim()) {
+                handleSubmit();
+              }
+            }}
+          />
+          
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowNicknameDialog(false)}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-[#86868B] hover:bg-[#F5F5F7] rounded-xl transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!nickname.trim()}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-[#007AFF] hover:bg-[#0066D6] rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              确认
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ==================== 同步状态指示器 ====================
+
+const SyncStatusIndicator = () => {
+  const { syncStatus, refreshAnnotations } = useAnnotations();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshAnnotations();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  const statusConfig = {
+    synced: { icon: Cloud, color: 'text-[#34C759]', bg: 'bg-[#E8F5E9]', label: '已同步' },
+    syncing: { icon: RefreshCw, color: 'text-[#007AFF]', bg: 'bg-[#F0F7FF]', label: '同步中' },
+    offline: { icon: CloudOff, color: 'text-[#FF9500]', bg: 'bg-[#FFF3E0]', label: '离线' },
+    error: { icon: AlertCircle, color: 'text-[#FF3B30]', bg: 'bg-[#FFEBEE]', label: '同步失败' },
+  };
+
+  const config = statusConfig[syncStatus];
+  const Icon = config.icon;
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={handleRefresh}
+        className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-lg transition-all ${config.bg} ${config.color}`}
+        title={`${config.label} - 点击刷新`}
+      >
+        <Icon className={`w-3.5 h-3.5 ${syncStatus === 'syncing' || isRefreshing ? 'animate-spin' : ''}`} />
+        <span className="hidden sm:inline">{config.label}</span>
+      </button>
+    </div>
+  );
+};
+
+// ==================== 批注工具栏 ====================
+
 export const AnnotationToolbar = () => {
   const { 
     isAnnotationMode, 
@@ -221,6 +627,8 @@ export const AnnotationToolbar = () => {
     annotations,
     exportAnnotations,
     importAnnotations,
+    currentUser,
+    setShowNicknameDialog,
   } = useAnnotations();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -238,11 +646,36 @@ export const AnnotationToolbar = () => {
     }
   };
 
+  const handleAnnotationModeClick = () => {
+    if (!currentUser && !isAnnotationMode) {
+      setShowNicknameDialog(true);
+    } else {
+      setAnnotationMode(!isAnnotationMode);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
+      {/* 同步状态 */}
+      <SyncStatusIndicator />
+      
+      {/* 当前用户 */}
+      {currentUser && (
+        <button
+          onClick={() => setShowNicknameDialog(true)}
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-lg bg-[#F5F5F7] text-[#86868B] hover:bg-[#E5E5EA] transition-colors"
+          title="点击修改昵称"
+        >
+          <User className="w-3.5 h-3.5" />
+          <span className="max-w-[80px] truncate">{currentUser.name}</span>
+        </button>
+      )}
+      
+      <div className="w-px h-5 bg-[#E5E5EA]" />
+
       {/* 批注模式切换 */}
       <button
-        onClick={() => setAnnotationMode(!isAnnotationMode)}
+        onClick={handleAnnotationModeClick}
         className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-all ${
           isAnnotationMode 
             ? 'bg-[#FF9500] text-white shadow-lg shadow-[#FF9500]/25' 
@@ -304,7 +737,8 @@ export const AnnotationToolbar = () => {
   );
 };
 
-// 可批注区域包装器
+// ==================== 可批注区域 ====================
+
 interface AnnotatableProps {
   id: string;
   children: ReactNode;
@@ -319,31 +753,36 @@ export const Annotatable = ({ id, children, className = '' }: AnnotatableProps) 
     addAnnotation,
     activeAnnotationId,
     setActiveAnnotationId,
+    currentUser,
+    setShowNicknameDialog,
   } = useAnnotations();
   
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   
-  // 获取该区域的批注
   const areaAnnotations = annotations.filter(a => a.targetId === id);
   const hasAnnotations = areaAnnotations.length > 0;
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = async (e: React.MouseEvent) => {
     if (!isAnnotationMode) return;
+    
+    if (!currentUser) {
+      setShowNicknameDialog(true);
+      return;
+    }
     
     e.stopPropagation();
     
-    // 计算点击位置相对于元素的位置
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
-    addAnnotation({
+    await addAnnotation({
       targetId: id,
       content: '',
-      author: '用户',
+      author: currentUser.name,
       position: { x, y },
     });
   };
@@ -363,7 +802,6 @@ export const Annotatable = ({ id, children, className = '' }: AnnotatableProps) 
     >
       {children}
       
-      {/* 批注指示器 */}
       {showAnnotations && hasAnnotations && (
         <div className="absolute -top-2 -right-2 z-20">
           <button
@@ -378,7 +816,6 @@ export const Annotatable = ({ id, children, className = '' }: AnnotatableProps) 
         </div>
       )}
       
-      {/* 批注点标记 */}
       {showAnnotations && areaAnnotations.map(annotation => (
         <AnnotationMarker 
           key={annotation.id} 
@@ -386,7 +823,6 @@ export const Annotatable = ({ id, children, className = '' }: AnnotatableProps) 
         />
       ))}
       
-      {/* 批注模式提示 */}
       {isAnnotationMode && isHovered && !hasAnnotations && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
           <div className="px-3 py-1.5 bg-[#FF9500] text-white text-xs rounded-lg whitespace-nowrap shadow-lg">
@@ -398,14 +834,14 @@ export const Annotatable = ({ id, children, className = '' }: AnnotatableProps) 
   );
 };
 
-// 批注标记点
+// ==================== 批注标记 ====================
+
 const AnnotationMarker = ({ annotation }: { annotation: Annotation }) => {
   const { activeAnnotationId, setActiveAnnotationId } = useAnnotations();
   const isActive = activeAnnotationId === annotation.id;
 
   return (
     <>
-      {/* 标记点 */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -425,7 +861,6 @@ const AnnotationMarker = ({ annotation }: { annotation: Annotation }) => {
         <MessageCircle className="w-3 h-3 text-white" />
       </button>
       
-      {/* 批注卡片 */}
       <AnimatePresence>
         {isActive && (
           <AnnotationCard annotation={annotation} />
@@ -435,7 +870,8 @@ const AnnotationMarker = ({ annotation }: { annotation: Annotation }) => {
   );
 };
 
-// 批注卡片
+// ==================== 批注卡片 ====================
+
 const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
   const { 
     updateAnnotation, 
@@ -443,6 +879,7 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
     resolveAnnotation,
     addReply,
     setActiveAnnotationId,
+    currentUser,
   } = useAnnotations();
   
   const [isEditing, setIsEditing] = useState(!annotation.content);
@@ -457,23 +894,24 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
     }
   }, [isEditing]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editContent.trim()) {
-      updateAnnotation(annotation.id, editContent.trim());
+      await updateAnnotation(annotation.id, editContent.trim());
       setIsEditing(false);
     } else if (!annotation.content) {
-      deleteAnnotation(annotation.id);
+      await deleteAnnotation(annotation.id);
     }
   };
 
-  const handleAddReply = () => {
+  const handleAddReply = async () => {
     if (replyContent.trim()) {
-      addReply(annotation.id, replyContent.trim(), '用户');
+      await addReply(annotation.id, replyContent.trim());
       setReplyContent('');
     }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
@@ -485,6 +923,8 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
     if (hours < 24) return `${hours}小时前`;
     return `${days}天前`;
   };
+
+  const isOwner = currentUser?.id === annotation.authorId;
 
   return (
     <motion.div
@@ -501,11 +941,9 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
       <div className={`bg-white rounded-2xl shadow-xl border overflow-hidden ${
         annotation.resolved ? 'border-[#34C759]/30' : 'border-[#FF9500]/30'
       }`}>
-        {/* 顶部状态条 */}
         <div className={`h-1 ${annotation.resolved ? 'bg-[#34C759]' : 'bg-[#FF9500]'}`} />
         
         <div className="p-4">
-          {/* 头部信息 */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-[#007AFF] text-white text-xs flex items-center justify-center font-medium">
@@ -535,7 +973,6 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
             </div>
           </div>
           
-          {/* 内容区 */}
           {isEditing ? (
             <div className="space-y-2">
               <textarea
@@ -546,7 +983,7 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
                 className="w-full px-3 py-2 text-sm border border-[#E5E5EA] rounded-xl resize-none focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/10"
                 rows={3}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.metaKey) {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                     handleSave();
                   }
                   if (e.key === 'Escape') {
@@ -560,7 +997,7 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
                 }}
               />
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-[#86868B]">Cmd+Enter 保存，Esc 取消</span>
+                <span className="text-[10px] text-[#86868B]">Ctrl+Enter 保存</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
@@ -589,15 +1026,16 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
             <div>
               <p className="text-sm text-[#1D1D1F] whitespace-pre-wrap">{annotation.content}</p>
               
-              {/* 操作按钮 */}
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#E5E5EA]">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-[#86868B] hover:bg-[#F5F5F7] rounded-lg transition-colors"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  编辑
-                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#86868B] hover:bg-[#F5F5F7] rounded-lg transition-colors"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    编辑
+                  </button>
+                )}
                 <button
                   onClick={() => resolveAnnotation(annotation.id)}
                   className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-colors ${
@@ -609,18 +1047,19 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
                   <Check className="w-3 h-3" />
                   {annotation.resolved ? '重新打开' : '标记解决'}
                 </button>
-                <button
-                  onClick={() => deleteAnnotation(annotation.id)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-[#FF3B30] hover:bg-[#FFEBEE] rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  删除
-                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => deleteAnnotation(annotation.id)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#FF3B30] hover:bg-[#FFEBEE] rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    删除
+                  </button>
+                )}
               </div>
             </div>
           )}
           
-          {/* 回复区 */}
           {!isEditing && annotation.content && (
             <div className="mt-3">
               {annotation.replies && annotation.replies.length > 0 && (
@@ -654,7 +1093,6 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
                 )}
               </AnimatePresence>
               
-              {/* 回复输入 */}
               <div className="flex items-center gap-2">
                 <input
                   value={replyContent}
@@ -684,14 +1122,16 @@ const AnnotationCard = ({ annotation }: { annotation: Annotation }) => {
   );
 };
 
-// 批注侧边栏（可选，显示所有批注列表）
+// ==================== 批注侧边栏 ====================
+
 export const AnnotationSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { annotations, activeAnnotationId, setActiveAnnotationId } = useAnnotations();
+  const { annotations, activeAnnotationId, setActiveAnnotationId, syncStatus } = useAnnotations();
   
   const unresolvedAnnotations = annotations.filter(a => !a.resolved);
   const resolvedAnnotations = annotations.filter(a => a.resolved);
 
-  const formatTime = (date: Date) => {
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
     return date.toLocaleDateString('zh-CN', { 
       month: 'short', 
       day: 'numeric',
@@ -699,6 +1139,9 @@ export const AnnotationSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClos
       minute: '2-digit'
     });
   };
+
+  // 获取唯一的作者数量
+  const uniqueAuthors = new Set(annotations.map(a => a.authorId)).size;
 
   return (
     <AnimatePresence>
@@ -710,12 +1153,19 @@ export const AnnotationSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClos
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           className="fixed right-0 top-16 bottom-0 w-80 bg-white border-l border-[#E5E5EA] shadow-xl z-40 overflow-hidden flex flex-col"
         >
-          {/* 头部 */}
           <div className="px-4 py-3 border-b border-[#E5E5EA] flex items-center justify-between">
-            <h3 className="font-semibold text-[#1D1D1F]">
-              批注列表
-              <span className="ml-2 text-sm font-normal text-[#86868B]">({annotations.length})</span>
-            </h3>
+            <div>
+              <h3 className="font-semibold text-[#1D1D1F]">
+                批注列表
+                <span className="ml-2 text-sm font-normal text-[#86868B]">({annotations.length})</span>
+              </h3>
+              {uniqueAuthors > 0 && (
+                <div className="flex items-center gap-1 text-xs text-[#86868B] mt-0.5">
+                  <Users className="w-3 h-3" />
+                  <span>{uniqueAuthors} 位参与者</span>
+                </div>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-1.5 hover:bg-[#F5F5F7] rounded-lg transition-colors"
@@ -724,7 +1174,6 @@ export const AnnotationSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClos
             </button>
           </div>
           
-          {/* 列表 */}
           <div className="flex-1 overflow-y-auto">
             {annotations.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6">
@@ -736,7 +1185,6 @@ export const AnnotationSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClos
               </div>
             ) : (
               <div className="p-2">
-                {/* 未解决 */}
                 {unresolvedAnnotations.length > 0 && (
                   <div className="mb-4">
                     <div className="px-2 py-1 text-xs font-medium text-[#FF9500] flex items-center gap-1">
@@ -771,7 +1219,6 @@ export const AnnotationSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClos
                   </div>
                 )}
                 
-                {/* 已解决 */}
                 {resolvedAnnotations.length > 0 && (
                   <div>
                     <div className="px-2 py-1 text-xs font-medium text-[#34C759] flex items-center gap-1">
