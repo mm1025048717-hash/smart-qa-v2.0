@@ -1,9 +1,34 @@
 // Vercel Serverless Function for Annotations API
 // 使用 Vercel KV (Upstash Redis) 存储批注数据
-import { kv } from '@vercel/kv';
 
 const ANNOTATIONS_KEY = 'prd_annotations';
 const META_KEY = 'prd_annotations_meta';
+
+// 动态检查 KV 是否可用
+let kv = null;
+let kvAvailable = false;
+
+const initKV = async () => {
+  if (kv !== null) return kvAvailable;
+  
+  // 检查环境变量是否存在
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    console.warn('Vercel KV 环境变量未配置');
+    kvAvailable = false;
+    return false;
+  }
+  
+  try {
+    const kvModule = await import('@vercel/kv');
+    kv = kvModule.kv;
+    kvAvailable = true;
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize KV:', error);
+    kvAvailable = false;
+    return false;
+  }
+};
 
 // CORS 头部设置
 const setCorsHeaders = (res) => {
@@ -19,6 +44,8 @@ const generateId = () => {
 
 // 获取所有批注
 const getAnnotations = async () => {
+  if (!kvAvailable) return [];
+  
   try {
     const annotations = await kv.hgetall(ANNOTATIONS_KEY);
     if (!annotations) return [];
@@ -38,6 +65,8 @@ const getAnnotations = async () => {
 
 // 获取元数据（最后更新时间）
 const getMeta = async () => {
+  if (!kvAvailable) return { lastUpdated: 0 };
+  
   try {
     const meta = await kv.hgetall(META_KEY);
     return meta || { lastUpdated: 0 };
@@ -48,6 +77,8 @@ const getMeta = async () => {
 
 // 更新元数据
 const updateMeta = async () => {
+  if (!kvAvailable) return;
+  
   try {
     await kv.hset(META_KEY, { lastUpdated: Date.now() });
   } catch (error) {
@@ -57,6 +88,10 @@ const updateMeta = async () => {
 
 // 创建批注
 const createAnnotation = async (data) => {
+  if (!kvAvailable) {
+    throw new Error('KV_NOT_CONFIGURED');
+  }
+  
   const annotation = {
     id: generateId(),
     targetId: data.targetId,
@@ -82,6 +117,10 @@ const createAnnotation = async (data) => {
 
 // 更新批注
 const updateAnnotation = async (id, updates) => {
+  if (!kvAvailable) {
+    throw new Error('KV_NOT_CONFIGURED');
+  }
+  
   try {
     const existing = await kv.hget(ANNOTATIONS_KEY, id);
     if (!existing) {
@@ -107,6 +146,10 @@ const updateAnnotation = async (id, updates) => {
 
 // 删除批注
 const deleteAnnotation = async (id) => {
+  if (!kvAvailable) {
+    throw new Error('KV_NOT_CONFIGURED');
+  }
+  
   try {
     await kv.hdel(ANNOTATIONS_KEY, id);
     await updateMeta();
@@ -119,6 +162,10 @@ const deleteAnnotation = async (id) => {
 
 // 添加回复
 const addReply = async (annotationId, replyData) => {
+  if (!kvAvailable) {
+    throw new Error('KV_NOT_CONFIGURED');
+  }
+  
   try {
     const existing = await kv.hget(ANNOTATIONS_KEY, annotationId);
     if (!existing) {
@@ -162,9 +209,10 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // 初始化 KV
+  await initKV();
+
   const { method, query } = req;
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = url.pathname;
 
   try {
     // GET /api/annotations - 获取所有批注
@@ -172,13 +220,21 @@ export default async function handler(req, res) {
       const annotations = await getAnnotations();
       const meta = await getMeta();
       
-      // 支持增量更新：只返回 since 之后更新的批注
-      const since = query.since ? parseInt(query.since) : 0;
-      
       return res.status(200).json({
         annotations,
         meta,
         timestamp: Date.now(),
+        kvConfigured: kvAvailable,
+      });
+    }
+
+    // GET /api/annotations?action=status - 检查 KV 配置状态
+    if (method === 'GET' && query.action === 'status') {
+      return res.status(200).json({
+        kvConfigured: kvAvailable,
+        message: kvAvailable 
+          ? 'Vercel KV 已配置，多人批注功能可用' 
+          : '请在 Vercel Dashboard 中配置 KV 存储以启用多人批注功能',
       });
     }
 
@@ -221,6 +277,16 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Annotations API Error:', error);
+    
+    // 特殊处理 KV 未配置的错误
+    if (error.message === 'KV_NOT_CONFIGURED') {
+      return res.status(503).json({ 
+        error: 'Service Unavailable',
+        message: '多人批注功能需要配置 Vercel KV。请在 Vercel Dashboard > Storage 中创建 KV 数据库并连接到此项目。',
+        kvConfigured: false,
+      });
+    }
+    
     return res.status(500).json({ 
       error: 'Internal Server Error',
       message: error.message 
