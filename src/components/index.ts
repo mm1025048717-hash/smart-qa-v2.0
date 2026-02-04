@@ -37,4 +37,13 @@ export type { FilterCondition } from './DataVisualizer';
 export { ScenarioPanel } from './ScenarioPanel';
 export { WorkflowExecutionPanel } from './WorkflowExecutionPanel';
 export { FloatingGuideAssistant } from './FloatingGuideAssistant';
+export { OnboardingTour, resetOnboardingTour, hasCompletedOnboarding } from './OnboardingTour';
+export { 
+  AnnotationProvider, 
+  AnnotationToolbar, 
+  Annotatable, 
+  AnnotationSidebar,
+  useAnnotations 
+} from './AnnotationSystem';
+export type { Annotation, AnnotationReply } from './AnnotationSystem';
 

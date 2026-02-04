@@ -37,8 +37,16 @@ import {
   AlertCircle,
   UserCheck,
   Zap,
-  FileBarChart
+  FileBarChart,
+  MessageSquare
 } from 'lucide-react';
+import { 
+  AnnotationProvider, 
+  AnnotationToolbar, 
+  Annotatable, 
+  AnnotationSidebar,
+  useAnnotations 
+} from '../components/AnnotationSystem';
 
 // 章节定义
 interface Section {
@@ -86,6 +94,7 @@ const sections: Section[] = [
       { id: 'main-content', title: '主内容区' },
       { id: 'role-picker', title: '角色选择弹窗' },
       { id: 'floating-guide', title: '浮动引导助手' },
+      { id: 'onboarding-tour', title: '新手引导（游戏式）' },
     ]
   },
   { 
@@ -94,6 +103,7 @@ const sections: Section[] = [
     icon: <Workflow className="w-4 h-4" />,
     subsections: [
       { id: 'first-visit', title: '首次访问流程' },
+      { id: 'onboarding-flow', title: '新手引导流程' },
       { id: 'question-flow', title: '提问交互流程' },
       { id: 'scenario-flow', title: '场景卡片点击流程' },
       { id: 'agent-switch', title: '数字员工切换流程' },
@@ -222,14 +232,16 @@ const colorSystem = [
   { name: '选中背景', value: '#F0F7FF', usage: '蓝色选中背景' },
 ];
 
-// PRD页面组件
-export default function PRDPage() {
+// PRD页面内容组件（需要在 AnnotationProvider 内部使用）
+function PRDContent() {
   const [activeSection, setActiveSection] = useState('overview');
   const [expandedSections, setExpandedSections] = useState<string[]>(['overview', 'features']);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [previewType, setPreviewType] = useState<'homepage' | 'role-picker' | 'input'>('homepage');
+  const [showAnnotationSidebar, setShowAnnotationSidebar] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { annotations } = useAnnotations();
 
   // 滚动到指定章节
   const scrollToSection = (sectionId: string) => {
@@ -298,6 +310,31 @@ export default function PRDPage() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* 批注工具栏 */}
+            <AnnotationToolbar />
+            
+            {/* 批注列表侧边栏开关 */}
+            <button
+              onClick={() => setShowAnnotationSidebar(!showAnnotationSidebar)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-all ${
+                showAnnotationSidebar 
+                  ? 'bg-[#007AFF] text-white' 
+                  : 'bg-[#F5F5F7] text-[#86868B] hover:bg-[#E5E5EA]'
+              }`}
+              title="批注列表"
+            >
+              <MessageSquare className="w-4 h-4" />
+              {annotations.length > 0 && (
+                <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                  showAnnotationSidebar ? 'bg-white/20 text-white' : 'bg-[#007AFF] text-white'
+                }`}>
+                  {annotations.length}
+                </span>
+              )}
+            </button>
+            
+            <div className="w-px h-6 bg-[#E5E5EA]" />
+            
             <button
               onClick={() => openPreview('homepage')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#007AFF] bg-[#F0F7FF] hover:bg-[#E0EFFF] rounded-xl transition-colors"
@@ -419,6 +456,7 @@ export default function PRDPage() {
           <div className="max-w-4xl mx-auto px-6 py-12">
             
             {/* 第一章：产品概述 */}
+            <Annotatable id="section-overview">
             <section id="overview" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center">
@@ -428,6 +466,7 @@ export default function PRDPage() {
               </div>
               
               {/* 产品定位 */}
+              <Annotatable id="section-positioning">
               <div id="positioning" className="mb-8">
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#007AFF]"></span>
@@ -449,8 +488,10 @@ export default function PRDPage() {
                   </div>
                 </div>
               </div>
+              </Annotatable>
 
               {/* 设计理念 */}
+              <Annotatable id="section-design-philosophy">
               <div id="design-philosophy" className="mb-8">
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#007AFF]"></span>
@@ -472,8 +513,10 @@ export default function PRDPage() {
                   ))}
                 </div>
               </div>
+              </Annotatable>
 
               {/* 核心价值主张 */}
+              <Annotatable id="section-value-proposition">
               <div id="value-proposition" className="mb-8">
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#007AFF]"></span>
@@ -503,9 +546,12 @@ export default function PRDPage() {
                   </table>
                 </div>
               </div>
+              </Annotatable>
             </section>
+            </Annotatable>
 
             {/* 第二章：目标用户 */}
+            <Annotatable id="section-users">
             <section id="users" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#34C759] to-[#30B050] flex items-center justify-center">
@@ -581,8 +627,10 @@ export default function PRDPage() {
                 </div>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第三章：页面结构与布局 */}
+            <Annotatable id="section-layout">
             <section id="layout" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#5856D6] to-[#AF52DE] flex items-center justify-center">
@@ -736,8 +784,10 @@ export default function PRDPage() {
                 </div>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第四章：功能模块详解 */}
+            <Annotatable id="section-features">
             <section id="features" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF9500] to-[#FF6B00] flex items-center justify-center">
@@ -938,9 +988,160 @@ export default function PRDPage() {
                   </ul>
                 </div>
               </div>
+
+              {/* 新手引导（游戏式） */}
+              <div id="onboarding-tour" className="mb-8">
+                <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF9500]"></span>
+                  4.5 新手引导（游戏式聚光灯引导）
+                </h3>
+                
+                {/* 引导效果示意图 */}
+                <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm mb-4">
+                  <h4 className="font-semibold text-[#1D1D1F] mb-4">引导效果示意</h4>
+                  <div className="relative bg-[#000000]/75 rounded-xl p-8 overflow-hidden">
+                    {/* 模拟高亮区域 */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                      <div className="relative">
+                        <div className="w-48 h-16 bg-white rounded-2xl border-2 border-[#007AFF] shadow-[0_0_0_4px_rgba(0,122,255,0.15),0_0_30px_rgba(0,122,255,0.2)]">
+                          <div className="p-3 text-xs text-[#86868B]">说说你想分析什么…</div>
+                        </div>
+                        {/* 脉冲动画指示 */}
+                        <div className="absolute inset-0 rounded-2xl border-2 border-[#007AFF] animate-pulse opacity-50"></div>
+                      </div>
+                    </div>
+                    
+                    {/* 箭头指示 */}
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[#007AFF] animate-bounce">
+                      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+                        <path d="M12 5V19M12 19L5 12M12 19L19 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    
+                    {/* 提示卡片 */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-64 bg-white rounded-2xl shadow-xl overflow-hidden">
+                      <div className="h-1 bg-gradient-to-r from-[#007AFF] via-[#5856D6] to-[#AF52DE]"></div>
+                      <div className="p-4">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center">
+                            <Search className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="font-semibold text-[#1D1D1F] text-sm">智能输入框</span>
+                        </div>
+                        <p className="text-xs text-[#86868B]">这是你与 AI 对话的核心区域</p>
+                        <div className="flex items-center justify-between mt-3">
+                          <div className="flex gap-1">
+                            {[1,2,3,4,5,6,7,8].map((_, i) => (
+                              <div key={i} className={`h-1 rounded-full ${i === 1 ? 'w-4 bg-[#007AFF]' : 'w-1 bg-[#E5E5EA]'}`}></div>
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-[#86868B]">2 / 8</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-[#86868B] mt-4 text-center">类似游戏新手教程的聚光灯式引导，高亮当前区域，其他区域变暗</p>
+                </div>
+
+                {/* 引导步骤表格 */}
+                <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm mb-4">
+                  <h4 className="font-semibold text-[#1D1D1F] mb-4">引导步骤（共8步）</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-[#F9F9FB]">
+                          <th className="px-4 py-3 text-left font-semibold">步骤</th>
+                          <th className="px-4 py-3 text-left font-semibold">目标区域</th>
+                          <th className="px-4 py-3 text-left font-semibold">标题</th>
+                          <th className="px-4 py-3 text-left font-semibold">说明</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E5E5EA]">
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">1</td><td className="px-4 py-3">全屏（中央）</td><td className="px-4 py-3">欢迎使用</td><td className="px-4 py-3 text-[#86868B]">30秒快速了解核心功能</td></tr>
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">2</td><td className="px-4 py-3">[data-tour="input-area"]</td><td className="px-4 py-3">智能输入框</td><td className="px-4 py-3 text-[#86868B]">核心对话区域</td></tr>
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">3</td><td className="px-4 py-3">[data-tour="agent-selector"]</td><td className="px-4 py-3">数字员工选择</td><td className="px-4 py-3 text-[#86868B]">切换不同AI助手</td></tr>
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">4</td><td className="px-4 py-3">[data-tour="capability-actions"]</td><td className="px-4 py-3">快速能力入口</td><td className="px-4 py-3 text-[#86868B]">常见分析场景快捷入口</td></tr>
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">5</td><td className="px-4 py-3">[data-tour="scenario-tabs"]</td><td className="px-4 py-3">业务场景切换</td><td className="px-4 py-3 text-[#86868B]">不同业务场景Tab</td></tr>
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">6</td><td className="px-4 py-3">[data-tour="employee-cards"]</td><td className="px-4 py-3">数字员工卡片</td><td className="px-4 py-3 text-[#86868B]">推荐的AI员工展示</td></tr>
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">7</td><td className="px-4 py-3">[data-tour="sidebar"]</td><td className="px-4 py-3">任务记录与导航</td><td className="px-4 py-3 text-[#86868B]">左侧边栏功能介绍</td></tr>
+                        <tr><td className="px-4 py-3 text-[#007AFF] font-medium">8</td><td className="px-4 py-3">全屏（中央）</td><td className="px-4 py-3">准备就绪</td><td className="px-4 py-3 text-[#86868B]">引导完成，开始使用</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 交互方式 */}
+                <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm mb-4">
+                  <h4 className="font-semibold text-[#1D1D1F] mb-4">交互方式</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-[#F9F9FB] rounded-xl">
+                      <h5 className="font-medium text-[#1D1D1F] mb-2 flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-[#007AFF] flex items-center justify-center">
+                          <span className="text-white text-xs">🖱</span>
+                        </div>
+                        按钮操作
+                      </h5>
+                      <ul className="text-sm text-[#86868B] space-y-1">
+                        <li>• 下一步 / 上一步 切换步骤</li>
+                        <li>• 跳过引导 直接关闭</li>
+                        <li>• X 按钮 关闭引导</li>
+                      </ul>
+                    </div>
+                    <div className="p-4 bg-[#F9F9FB] rounded-xl">
+                      <h5 className="font-medium text-[#1D1D1F] mb-2 flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-[#5856D6] flex items-center justify-center">
+                          <span className="text-white text-xs">⌨</span>
+                        </div>
+                        键盘支持
+                      </h5>
+                      <ul className="text-sm text-[#86868B] space-y-1">
+                        <li>• <kbd className="px-1.5 py-0.5 bg-white rounded text-xs">←</kbd> <kbd className="px-1.5 py-0.5 bg-white rounded text-xs">→</kbd> 切换步骤</li>
+                        <li>• <kbd className="px-1.5 py-0.5 bg-white rounded text-xs">Enter</kbd> 下一步</li>
+                        <li>• <kbd className="px-1.5 py-0.5 bg-white rounded text-xs">Esc</kbd> 跳过引导</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 技术实现 */}
+                <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm">
+                  <h4 className="font-semibold text-[#1D1D1F] mb-4">技术实现要点</h4>
+                  <div className="space-y-3">
+                    {[
+                      { title: 'SVG 遮罩', desc: '使用 SVG path 的 fillRule="evenodd" 实现镂空效果，外部全屏矩形 + 内部圆角矩形镂空' },
+                      { title: '目标定位', desc: '通过 data-tour 属性选择目标元素，使用 getBoundingClientRect() 获取位置' },
+                      { title: '响应式', desc: '监听 resize 和 scroll 事件，实时更新高亮区域位置' },
+                      { title: '动画效果', desc: '使用 framer-motion 实现淡入淡出、缩放动画，脉冲边框使用 CSS animation' },
+                      { title: '状态持久化', desc: 'localStorage 存储完成状态，key: yiwen_onboarding_completed_v1' },
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 bg-[#F9F9FB] rounded-xl">
+                        <div className="w-6 h-6 rounded-lg bg-[#007AFF] text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <span className="font-medium text-[#1D1D1F]">{item.title}：</span>
+                          <span className="text-[#86868B]">{item.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* 代码示例 */}
+                  <div className="mt-4">
+                    <h5 className="font-medium text-[#1D1D1F] mb-2">重新触发引导（开发调试）</h5>
+                    <pre className="bg-[#1D1D1F] text-[#F5F5F7] p-4 rounded-xl overflow-x-auto text-sm font-mono">
+{`// 在浏览器控制台执行
+localStorage.removeItem('yiwen_onboarding_completed_v1');
+location.reload();`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
             </section>
+            </Annotatable>
 
             {/* 第五章：交互流程 */}
+            <Annotatable id="section-interactions">
             <section id="interactions" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF2D55] to-[#FF6B8A] flex items-center justify-center">
@@ -964,7 +1165,7 @@ export default function PRDPage() {
                       { step: '系统记录角色', icon: Database, color: '#FF9500' },
                       { step: '自动匹配推荐数字员工', icon: Sparkles, color: '#FF2D55' },
                       { step: '关闭弹窗', icon: X, color: '#8E8E93' },
-                      { step: '500ms后弹出引导助手', icon: Clock, color: '#5AC8FA' },
+                      { step: '启动新手引导', icon: Target, color: '#AF52DE' },
                       { step: '用户可开始提问', icon: Search, color: '#007AFF' },
                     ].map((item, index, arr) => (
                       <div key={index} className="flex items-center gap-2">
@@ -984,11 +1185,70 @@ export default function PRDPage() {
                 </div>
               </div>
 
+              {/* 新手引导流程 */}
+              <div id="onboarding-flow" className="mb-8">
+                <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF2D55]"></span>
+                  5.2 新手引导流程（OnboardingTour）
+                </h3>
+                <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm">
+                  <div className="space-y-4">
+                    {/* 流程图 */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {[
+                        { step: '角色选择完成', color: '#007AFF' },
+                        { step: '检查 localStorage', color: '#5856D6' },
+                        { step: '未完成引导?', color: '#FF9500' },
+                        { step: '800ms 延迟后启动', color: '#34C759' },
+                        { step: '显示步骤1: 欢迎', color: '#007AFF' },
+                        { step: '用户点击下一步', color: '#5AC8FA' },
+                        { step: '高亮目标区域', color: '#AF52DE' },
+                        { step: '循环至步骤8', color: '#FF2D55' },
+                        { step: '存储完成状态', color: '#34C759' },
+                      ].map((item, index, arr) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <span 
+                            className="px-3 py-1.5 rounded-lg text-white text-sm"
+                            style={{ backgroundColor: item.color }}
+                          >
+                            {item.step}
+                          </span>
+                          {index < arr.length - 1 && (
+                            <ArrowRight className="w-4 h-4 text-[#C7C7CC]" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* 条件判断说明 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div className="p-4 bg-[#E8F5E9] rounded-xl">
+                        <h5 className="font-medium text-[#34C759] mb-2">显示引导的条件</h5>
+                        <ul className="text-sm text-[#1D1D1F] space-y-1">
+                          <li>• localStorage 中无 yiwen_onboarding_completed_v1</li>
+                          <li>• 或 forceShow prop 为 true</li>
+                          <li>• 角色选择弹窗已关闭</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-[#FFF3E0] rounded-xl">
+                        <h5 className="font-medium text-[#FF9500] mb-2">跳过引导的情况</h5>
+                        <ul className="text-sm text-[#1D1D1F] space-y-1">
+                          <li>• 用户点击"跳过引导"按钮</li>
+                          <li>• 用户按 Esc 键</li>
+                          <li>• 用户点击右上角关闭按钮</li>
+                          <li>• 以上操作都会存储完成状态</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* 其他流程 */}
               <div id="question-flow" className="mb-8">
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF2D55]"></span>
-                  5.2 提问交互流程
+                  5.3 提问交互流程
                 </h3>
                 <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm">
                   <div className="space-y-3">
@@ -1019,7 +1279,7 @@ export default function PRDPage() {
               <div id="scenario-flow" className="mb-8">
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF2D55]"></span>
-                  5.3 场景卡片点击流程
+                  5.4 场景卡片点击流程
                 </h3>
                 <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1036,7 +1296,7 @@ export default function PRDPage() {
               <div id="agent-switch" className="mb-8">
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF2D55]"></span>
-                  5.4 数字员工切换流程
+                  5.5 数字员工切换流程
                 </h3>
                 <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1050,8 +1310,10 @@ export default function PRDPage() {
                 </div>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第六章：UI规范 */}
+            <Annotatable id="section-ui-spec">
             <section id="ui-spec" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#AF52DE] to-[#5856D6] flex items-center justify-center">
@@ -1193,8 +1455,10 @@ export default function PRDPage() {
                 </div>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第七章：状态管理 */}
+            <Annotatable id="section-state">
             <section id="state" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#5AC8FA] to-[#007AFF] flex items-center justify-center">
@@ -1234,21 +1498,32 @@ export default function PRDPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-[#5AC8FA]"></span>
                   7.2 本地存储
                 </h3>
-                <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm">
+                <div className="bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-sm space-y-4">
                   <div className="flex items-center gap-4 p-4 bg-[#F9F9FB] rounded-xl">
                     <div className="w-10 h-10 rounded-lg bg-[#5AC8FA] flex items-center justify-center">
                       <Database className="w-5 h-5 text-white" />
                     </div>
                     <div>
                       <div className="font-mono text-sm text-[#007AFF]">yiwen_recent_queries_v1</div>
-                      <div className="text-sm text-[#86868B]">JSON 数组，最多6条</div>
+                      <div className="text-sm text-[#86868B]">最近查询记录，JSON 数组，最多6条</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 p-4 bg-[#F0F7FF] rounded-xl">
+                    <div className="w-10 h-10 rounded-lg bg-[#007AFF] flex items-center justify-center">
+                      <Target className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-mono text-sm text-[#007AFF]">yiwen_onboarding_completed_v1</div>
+                      <div className="text-sm text-[#86868B]">新手引导完成状态，值为 "true" 表示已完成</div>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第八章：组件依赖 */}
+            <Annotatable id="section-dependencies">
             <section id="dependencies" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B6B] to-[#FF9500] flex items-center justify-center">
@@ -1273,8 +1548,10 @@ export default function PRDPage() {
                 </div>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第九章：接口定义 */}
+            <Annotatable id="section-interfaces">
             <section id="interfaces" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#34C759] to-[#30D158] flex items-center justify-center">
@@ -1308,8 +1585,10 @@ export default function PRDPage() {
                 </pre>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第十章：原型截图参考 */}
+            <Annotatable id="section-screenshots">
             <section id="screenshots" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF9500] to-[#FFCC00] flex items-center justify-center">
@@ -1360,8 +1639,10 @@ export default function PRDPage() {
                 </div>
               </div>
             </section>
+            </Annotatable>
 
             {/* 第十一章：未来规划 */}
+            <Annotatable id="section-roadmap">
             <section id="roadmap" className="mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#5856D6] to-[#AF52DE] flex items-center justify-center">
@@ -1407,8 +1688,10 @@ export default function PRDPage() {
                 ))}
               </div>
             </section>
+            </Annotatable>
 
             {/* 底部CTA */}
+            <Annotatable id="section-cta">
             <div className="bg-gradient-to-br from-[#007AFF] to-[#5856D6] rounded-3xl p-8 text-center text-white">
               <h3 className="text-2xl font-bold mb-2">开始体验亿问 Data Agent</h3>
               <p className="text-white/80 mb-6">用一句话获取指标、趋势与归因结论</p>
@@ -1420,6 +1703,7 @@ export default function PRDPage() {
                 <span>立即体验首页</span>
               </a>
             </div>
+            </Annotatable>
           </div>
         </main>
       </div>
@@ -1475,6 +1759,21 @@ export default function PRDPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 批注侧边栏 */}
+      <AnnotationSidebar 
+        isOpen={showAnnotationSidebar} 
+        onClose={() => setShowAnnotationSidebar(false)} 
+      />
     </div>
+  );
+}
+
+// PRD页面组件（带批注系统）
+export default function PRDPage() {
+  return (
+    <AnnotationProvider>
+      <PRDContent />
+    </AnnotationProvider>
   );
 }

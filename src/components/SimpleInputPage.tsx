@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { EnhancedGuidePanel } from './EnhancedGuidePanel';
 import { FloatingGuideAssistant } from './FloatingGuideAssistant';
+import { OnboardingTour } from './OnboardingTour';
 
 interface SimpleInputPageProps {
   onQuestionSubmit: (question: string, options?: { agentId?: string; enableWebSearch?: boolean }) => void;
@@ -418,7 +419,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   return (
     <div className="h-screen w-full bg-[#FFFFFF] flex overflow-hidden">
       {/* 左侧栏（仅桌面端展示）- 固定高度，独立滚动 */}
-      <aside className="hidden lg:flex w-[280px] h-screen flex-col border-r border-[#E5E5EA] bg-[#F9F9FB] flex-shrink-0">
+      <aside data-tour="sidebar" className="hidden lg:flex w-[280px] h-screen flex-col border-r border-[#E5E5EA] bg-[#F9F9FB] flex-shrink-0">
         <div className="h-14 px-4 flex items-center">
           <div className="w-7 h-7 rounded-lg bg-white border border-[#E5E5EA] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="w-2 h-2 rounded-full bg-[#007AFF]" />
@@ -568,6 +569,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           onSubmit={handleSubmit}
           className="relative mb-5 w-full max-w-5xl"
+          data-tour="input-area"
         >
           <div className="relative bg-white rounded-3xl border border-[#E5E5EA] focus-within:border-[#007AFF]/40 focus-within:shadow-[0_0_0_1px_rgba(0,122,255,0.18),0_16px_50px_rgba(0,0,0,0.08)] transition-all duration-300 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
             <textarea
@@ -599,7 +601,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             {/* 控制按钮 - 放在对话框内部左下角，顶级苹果设计 */}
             <div className="flex items-center gap-2 px-6 pb-4">
               {/* 切换数字员工 */}
-              <div className="relative" ref={agentDropdownRef}>
+              <div className="relative" ref={agentDropdownRef} data-tour="agent-selector">
                 <button
                   type="button"
                   onClick={() => {
@@ -735,7 +737,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           className="w-full max-w-6xl mt-6"
         >
           {/* 能力胶囊（和截图同一层级/密度） */}
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="flex flex-wrap justify-center gap-2" data-tour="capability-actions">
             {CAPABILITY_ACTIONS.map((item) => {
               const Icon = item.icon;
               return (
@@ -783,7 +785,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                     ? (userRole ? `为${userRole.label}推荐的数字员工` : '数字员工') 
                     : '常见问题'}
                 </h3>
-                <div className="flex p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]">
+                <div className="flex p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]" data-tour="scenario-tabs">
                   {SCENARIO_TABS.map((t) => (
                     <button
                       key={t.id}
@@ -843,7 +845,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                 : SCENARIO_TAGLINE[activeScenarioTab]}
             </div>
 
-            <div ref={employeesScrollRef} className="mt-3 flex gap-3 overflow-x-auto scrollbar-hidden pb-2">
+            <div ref={employeesScrollRef} className="mt-3 flex gap-3 overflow-x-auto scrollbar-hidden pb-2" data-tour="employee-cards">
               {activeScenarioTab === 'digital_employees' ? (
                 // 数字员工卡片 - 根据用户角色推荐
                 (() => {
@@ -1081,6 +1083,16 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         onAutoOpenComplete={() => setTriggerGuideAfterRole(false)}
         userRole={userRole?.label}
       />
+
+      {/* 新手引导 - 游戏风格聚光灯式引导 */}
+      {!showRolePicker && (
+        <OnboardingTour
+          onComplete={() => {
+            // 引导完成后可以执行额外操作
+            console.log('Onboarding tour completed');
+          }}
+        />
+      )}
     </div>
   );
 };
