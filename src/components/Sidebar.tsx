@@ -1,13 +1,6 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  MessageSquarePlus, 
-  History, 
-  Settings, 
-  Database,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal
-} from 'lucide-react';
+import { Plus, Search, Sparkles, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import clsx from 'clsx';
 
 interface SidebarProps {
@@ -17,12 +10,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ onNewChat, collapsed, onToggle }: SidebarProps) => {
-
-  const menuItems = [
-    { id: 'history', icon: History, label: '历史对话' },
-    { id: 'data', icon: Database, label: '数据源' },
-    { id: 'settings', icon: Settings, label: '设置' },
-  ];
+  const [searchValue, setSearchValue] = useState('');
 
   const historyItems = [
     { id: '1', title: '今年销售额分析', time: '刚刚' },
@@ -30,100 +18,137 @@ export const Sidebar = ({ onNewChat, collapsed, onToggle }: SidebarProps) => {
     { id: '3', title: '11月销售额异常', time: '昨天' },
   ];
 
+  const filteredHistory = searchValue.trim()
+    ? historyItems.filter((item) => item.title.includes(searchValue.trim()))
+    : historyItems;
+
   return (
     <motion.div
       initial={false}
       animate={{ width: collapsed ? 80 : 280 }}
-      className="h-full bg-white border-r border-[#E8F0FF] flex flex-col flex-shrink-0 z-30 relative"
+      className="h-full bg-[#F9F9FB] border-r border-[#E5E5EA] flex flex-col flex-shrink-0 z-30 relative"
     >
       {/* 顶部Logo区域 */}
-      <div className="h-16 flex items-center px-6 border-b border-[#E8F0FF]">
-        <div className="w-8 h-8 rounded-xl bg-primary-500 flex items-center justify-center flex-shrink-0">
-          <MessageSquarePlus className="w-5 h-5 text-white" />
+      <div className="h-14 px-4 flex items-center">
+        <div className="w-7 h-7 rounded-lg bg-white border border-[#E5E5EA] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="w-2 h-2 rounded-full bg-[#007AFF]" />
         </div>
-        <motion.span 
-          animate={{ opacity: collapsed ? 0 : 1, width: collapsed ? 0 : 'auto' }}
-          className="ml-3 font-semibold text-apple-text text-lg whitespace-nowrap overflow-hidden"
-        >
-          智能问答
-        </motion.span>
+        {!collapsed && (
+          <motion.span
+            animate={{ opacity: collapsed ? 0 : 1, width: collapsed ? 0 : 'auto' }}
+            className="ml-2 text-[13px] font-semibold text-[#1D1D1F] tracking-tight whitespace-nowrap overflow-hidden"
+          >
+            亿问 Data Agent
+          </motion.span>
+        )}
       </div>
 
-      {/* 新建对话按钮 */}
-      <div className="p-4">
+      {/* 新建任务 + 搜索 */}
+      <div className="px-4 pt-2 pb-3">
         <button
           onClick={onNewChat}
           className={clsx(
-            "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-            "bg-primary-50 hover:bg-primary-100 text-primary-600"
+            "w-full inline-flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all duration-200",
+            "bg-white border border-[#E5E5EA] hover:border-[#007AFF]/30 hover:bg-[#F5F5F7] text-[#1D1D1F]"
           )}
         >
-          <div className="w-5 h-5 flex items-center justify-center">
-            <MessageSquarePlus className="w-5 h-5" />
-          </div>
-          {!collapsed && (
-            <span className="font-medium">新建对话</span>
-          )}
+          <Plus className="w-4 h-4" />
+          {!collapsed && <span className="font-medium text-[13px]">新建任务</span>}
         </button>
+
+        {!collapsed && (
+          <div className="mt-3 relative">
+            <Search className="w-4 h-4 text-[#C7C7CC] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              placeholder="搜索"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E5E5EA] text-[13px] text-[#1D1D1F] placeholder:text-[#C7C7CC] focus:outline-none focus:border-[#007AFF]/40 focus:ring-2 focus:ring-[#007AFF]/10 transition-all"
+            />
+          </div>
+        )}
       </div>
 
-      {/* 导航菜单 */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-        {!collapsed && (
-          <div className="px-3 py-2 text-xs font-medium text-[#4E5969]">最近历史</div>
-        )}
+      {/* 探索数字员工 */}
+      <div className="px-4 space-y-2">
+        <button
+          type="button"
+          className="w-full inline-flex items-center justify-between px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EA] hover:border-[#007AFF]/30 hover:bg-[#F5F5F7] transition-all"
+        >
+          <span className="inline-flex items-center gap-2 text-[13px] text-[#1D1D1F]">
+            <Sparkles className="w-4 h-4 text-[#007AFF]" />
+            {!collapsed && (
+              <>
+                探索数字员工
+                <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-[#F0F7FF] text-[#007AFF] border border-[#007AFF]/15">
+                  New
+                </span>
+              </>
+            )}
+          </span>
+          {!collapsed && <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />}
+        </button>
         
-        {historyItems.map((item) => (
+        {/* PRD文档入口 */}
+        <a
+          href="?page=prd"
+          className="w-full inline-flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-[#F0F7FF] to-[#F5F0FF] border border-[#E5E5EA] hover:border-[#5856D6]/30 hover:shadow-sm transition-all"
+        >
+          <span className="inline-flex items-center gap-2 text-[13px] text-[#1D1D1F]">
+            <FileText className="w-4 h-4 text-[#5856D6]" />
+            {!collapsed && (
+              <>
+                PRD 文档
+                <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/15">
+                  交互式
+                </span>
+              </>
+            )}
+          </span>
+          {!collapsed && <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />}
+        </a>
+      </div>
+
+      {/* 任务记录 */}
+      {!collapsed && (
+        <div className="mt-5 px-4 text-[12px] text-[#86868B] flex-shrink-0">
+          任务记录
+        </div>
+      )}
+
+      <nav className="px-2 pb-4 mt-2 flex-1 overflow-y-auto scrollbar-hidden">
+        {filteredHistory.map((item) => (
           <button
             key={item.id}
             className={clsx(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors group",
-              "hover:bg-[#F5F9FF]"
+              "w-full text-left px-3 py-2 rounded-xl transition-colors",
+              "hover:bg-white text-[#1D1D1F]"
             )}
           >
-            <MessageSquarePlus className="w-4 h-4 text-[#86909C] group-hover:text-[#1664FF]" />
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <div className="text-sm text-[#1D2129] truncate">{item.title}</div>
-                <div className="text-xs text-[#86909C]">{item.time}</div>
+                <div className="text-[13px] truncate">{item.title}</div>
               </div>
             )}
           </button>
         ))}
-      </div>
+      </nav>
 
-      {/* 底部菜单 */}
-      <div className="p-3 border-t border-[#E8F0FF] space-y-1">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            className={clsx(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors",
-              "text-[#4E5969] hover:text-[#1664FF] hover:bg-[#F5F9FF]"
-            )}
-          >
-            <item.icon className="w-5 h-5" />
-            {!collapsed && (
-              <span className="text-sm font-medium">{item.label}</span>
-            )}
-          </button>
-        ))}
-        
-        {/* 用户信息 */}
-        <div className="mt-2 pt-2 border-t border-[#E8F0FF] flex items-center gap-3 px-2 py-2">
-          <div className="w-8 h-8 rounded-full bg-[#E8F0FF] flex items-center justify-center text-[#1664FF] font-semibold text-sm">
-            AC
+      {/* 用户信息 */}
+      <div className="mt-auto px-4 py-4 border-t border-[#E5E5EA] flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] text-white flex items-center justify-center text-xs font-semibold">
+            我
           </div>
           {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-[#1D2129]">Alex Chen</div>
-              <div className="text-xs text-[#86909C]">Pro Plan</div>
+            <div className="min-w-0">
+              <div className="text-[13px] text-[#1D1D1F] font-medium truncate">
+                业务负责人
+              </div>
+              <div className="text-[11px] text-[#86868B] truncate">
+                看业务表现、对比增长机会
+              </div>
             </div>
-          )}
-          {!collapsed && (
-            <button className="p-1 hover:bg-[#F5F9FF] rounded-lg text-[#86909C]">
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
           )}
         </div>
       </div>
@@ -131,7 +156,7 @@ export const Sidebar = ({ onNewChat, collapsed, onToggle }: SidebarProps) => {
       {/* 折叠按钮 */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-white border border-[#E8F0FF] shadow-sm rounded-full flex items-center justify-center text-[#86909C] hover:text-[#1664FF] hover:scale-110 transition-all z-40"
+        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-white border border-[#E5E5EA] shadow-sm rounded-full flex items-center justify-center text-[#C7C7CC] hover:text-[#007AFF] hover:scale-110 transition-all z-40"
       >
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>

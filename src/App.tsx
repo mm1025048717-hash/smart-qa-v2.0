@@ -9,6 +9,7 @@ import { TestScenarioPanel } from './components/TestScenarioPanel';
 import { ScenarioPanel } from './components/ScenarioPanel';
 import { SimpleInputPage } from './components/SimpleInputPage';
 import { InlineGuidePanel } from './components/InlineGuidePanel';
+import { FloatingGuideAssistant } from './components/FloatingGuideAssistant';
 // 移除 QueryConfirmationDialog 导入，改为在对话中展示
 import { MobileTestPage } from './pages/MobileTestPage';
 import { GestureControlPage } from './pages/GestureControlPage';
@@ -17,6 +18,7 @@ import AIDashboard from './pages/AIDashboard';
 import DashboardList from './pages/DashboardList';
 import { VoiceChatPage } from './pages/VoiceChatPage';
 import KPICardShowcase from './pages/KPICardShowcase';
+import PRDPage from './pages/PRDPage';
 import { 
   createUserMessage,
   generateNarrativeResponse,
@@ -64,7 +66,7 @@ function App() {
   // 业务场景相关状态
   const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false);
   const [, setActiveScenario] = useState<BusinessScenario | null>(null);
-  const [currentPage, setCurrentPage] = useState<'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase'>(() => {
+  const [currentPage, setCurrentPage] = useState<'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase' | 'prd'>(() => {
     // 初始化时检查URL参数
     const params = new URLSearchParams(window.location.search);
     const page = params.get('page');
@@ -80,6 +82,7 @@ function App() {
       return (dashboardId || addAction) ? 'dashboard' : 'dashboard-list';
     }
     if (page === 'kpi-showcase') return 'kpi-showcase';
+    if (page === 'prd') return 'prd';
     return 'main';
   });
 
@@ -91,7 +94,7 @@ function App() {
       const dashboardId = params.get('id');
       const addAction = params.get('add');
       
-      let newPage: 'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase' = 'main';
+      let newPage: 'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase' | 'prd' = 'main';
       
       if (page === 'mobile') newPage = 'mobile';
       else if (page === 'gesture') newPage = 'gesture';
@@ -101,6 +104,7 @@ function App() {
         newPage = (dashboardId || addAction) ? 'dashboard' : 'dashboard-list';
       } else if (page === 'voice-chat') newPage = 'voice-chat';
       else if (page === 'kpi-showcase') newPage = 'kpi-showcase';
+      else if (page === 'prd') newPage = 'prd';
       
       setCurrentPage(prevPage => {
         if (prevPage !== newPage) {
@@ -2140,6 +2144,11 @@ function App() {
     return <KPICardShowcase />;
   }
 
+  // 路由：PRD文档页面
+  if (currentPage === 'prd') {
+    return <PRDPage />;
+  }
+
   // 主页面渲染 - 根据是否有消息决定显示简约输入界面还是问答界面
   return (
     <AnimatePresence mode="wait">
@@ -2151,6 +2160,7 @@ function App() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.3 }}
+          className="relative"
         >
           <SimpleInputPage 
             onQuestionSubmit={(question, options) => {
@@ -2167,6 +2177,7 @@ function App() {
             onAgentChange={handleAgentChange}
             currentAgentId={currentAgentId}
           />
+          {/* 浮动引导助手已移至 SimpleInputPage 内部，支持角色选择后自动引导 */}
         </motion.div>
       ) : (
         // 问答界面 - 完整功能
@@ -2342,6 +2353,13 @@ function App() {
             isOpen={scenarioPanelOpen}
             onClose={() => setScenarioPanelOpen(false)}
             onScenarioStart={handleScenarioStart}
+          />
+
+          {/* 浮动引导助手 - 右下角 */}
+          <FloatingGuideAssistant
+            onQuestionSelect={(question) => handleSend(question)}
+            agentName={currentAgent.name}
+            agentAvatar={currentAgent.avatar}
           />
         </motion.div>
       )}

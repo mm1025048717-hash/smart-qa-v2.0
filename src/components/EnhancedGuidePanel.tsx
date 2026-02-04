@@ -360,9 +360,9 @@ export const EnhancedGuidePanel = ({
       className="w-full max-w-6xl mx-auto bg-white rounded-2xl shadow-xl border border-[#E5E5EA] overflow-hidden"
     >
       {/* 头部 */}
-      <div className="px-6 py-4 border-b border-[#E5E5EA] bg-gradient-to-r from-[#F5F9FF] to-white flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-[#E5E5EA] bg-[#F5F9FF] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1664FF] to-[#4E8CFF] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-[#1664FF] flex items-center justify-center">
             <Lightbulb className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -433,7 +433,7 @@ export const EnhancedGuidePanel = ({
                           className="w-5 h-5 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#1664FF] to-[#4E8CFF] flex items-center justify-center text-white text-[10px] font-semibold">
+                        <div className="w-5 h-5 rounded-full bg-[#1664FF] flex items-center justify-center text-white text-[10px] font-semibold">
                           {agent.name.slice(0, 1)}
                         </div>
                       )}
@@ -638,7 +638,7 @@ export const EnhancedGuidePanel = ({
                                       className="w-4 h-4 rounded-full object-cover"
                                     />
                                   ) : (
-                                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#1664FF] to-[#4E8CFF] flex items-center justify-center text-white text-[8px] font-semibold">
+                                    <div className="w-4 h-4 rounded-full bg-[#1664FF] flex items-center justify-center text-white text-[8px] font-semibold">
                                       {agent.name.slice(0, 1)}
                                     </div>
                                   )}
@@ -694,7 +694,7 @@ export const EnhancedGuidePanel = ({
                       className={clsx(
                         'rounded-xl border p-4 transition-all',
                         isAvailable
-                          ? 'border-[#1664FF] bg-gradient-to-br from-[#F0F7FF] to-white'
+                          ? 'border-[#1664FF] bg-[#F0F7FF]'
                           : 'border-[#E5E5EA] bg-white opacity-75'
                       )}
                     >

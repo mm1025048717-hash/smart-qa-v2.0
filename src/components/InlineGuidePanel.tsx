@@ -249,7 +249,7 @@ export const InlineGuidePanel = ({
                           className="w-5 h-5 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#1664FF] to-[#4E8CFF] flex items-center justify-center text-white text-[10px] font-semibold">
+                        <div className="w-5 h-5 rounded-full bg-[#1664FF] flex items-center justify-center text-white text-[10px] font-semibold">
                           {agent.name.slice(0, 1)}
                         </div>
                       )}
@@ -467,7 +467,7 @@ export const InlineGuidePanel = ({
                                 className="w-4 h-4 rounded-full object-cover"
                               />
                             ) : (
-                              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#1664FF] to-[#4E8CFF] flex items-center justify-center text-white text-[8px] font-semibold">
+                              <div className="w-4 h-4 rounded-full bg-[#1664FF] flex items-center justify-center text-white text-[8px] font-semibold">
                                 {agent.name.slice(0, 1)}
                               </div>
                             )}

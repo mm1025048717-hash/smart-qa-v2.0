@@ -36,4 +36,5 @@ export { DataVisualizer, createConditions, sampleVisualizerConditions } from './
 export type { FilterCondition } from './DataVisualizer';
 export { ScenarioPanel } from './ScenarioPanel';
 export { WorkflowExecutionPanel } from './WorkflowExecutionPanel';
+export { FloatingGuideAssistant } from './FloatingGuideAssistant';
 

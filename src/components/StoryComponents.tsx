@@ -265,7 +265,7 @@ export const ReportHeroCard = ({ category, title, description, tags, stats }: { 
   </div>
 );
 
-export const ReportLayerCard = ({ items }: { items: any[] }) => (
+export const ReportLayerCard = ({ items = [] }: { items?: any[] }) => (
   <div className="flex flex-col gap-3 my-8">
     {items.map((item, i) => (
       <div key={i} className="flex items-center gap-4 p-5 bg-white rounded-[24px] border border-[#E5E7EB] shadow-sm hover:translate-x-2 transition-transform cursor-default group">
@@ -298,7 +298,7 @@ export const CalloutCard = ({ title, content, type = 'info' }: { title: string, 
   );
 };
 
-export const StrategyCard = ({ title, actions }: { title: string, actions: string[] }) => (
+export const StrategyCard = ({ title, actions = [] }: { title: string, actions?: string[] }) => (
   <div className="bg-[#111827] rounded-[32px] p-8 text-white my-10 shadow-2xl relative overflow-hidden group">
     <div className="absolute left-0 top-0 w-full h-1 bg-[#0055FF] opacity-0 group-hover:opacity-100 transition-opacity" />
     <div className="mb-8">
