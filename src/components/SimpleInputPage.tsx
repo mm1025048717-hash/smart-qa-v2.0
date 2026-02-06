@@ -27,6 +27,7 @@ import {
 import { EnhancedGuidePanel } from './EnhancedGuidePanel';
 import { EmployeeCreatePanel, type DraftEmployee } from './EmployeeCreatePanel';
 import { FloatingGuideAssistant } from './FloatingGuideAssistant';
+import { MeetingNarrativeBubble, type NarrativeNavigateTarget } from './MeetingNarrativeBubble';
 import { OnboardingTour, hasCompletedOnboarding, resetOnboardingTour } from './OnboardingTour';
 
 const CUSTOM_AGENTS_KEY = 'yiwen_custom_agents_v1';
@@ -291,11 +292,20 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [userRole, setUserRole] = useState<typeof ROLE_OPTIONS[number] | null>(null);
   // 点击浮动引导助手时显示聚光灯式新手引导（PRD 4.5）
   const [showSpotlightTour, setShowSpotlightTour] = useState(false);
+  // 亿问小助手帮助面板（口述稿「前往小助手」或点击右下角按钮打开）
+  const [showHelperPanel, setShowHelperPanel] = useState(false);
   // 点击「探索数字员工」后展示的探索视图（类似 MiniMax 专家页，极简苹果风）
   const [showExploreView, setShowExploreView] = useState(false);
   const [exploreTab, setExploreTab] = useState<'recommended' | 'all' | 'mine'>('recommended');
   const [exploreSort, setExploreSort] = useState<'default' | 'name'>('default');
   const [showCreateEmployee, setShowCreateEmployee] = useState(false);
+  /** 会议口述稿「演示」：主输入框自动打字并发送的句子，非空时执行打字机效果 */
+  const [demoTypingPhrase, setDemoTypingPhrase] = useState<string | null>(null);
+  /** 打字完成后触发一次提交（演示完整提问流程） */
+  const [triggerDemoSubmit, setTriggerDemoSubmit] = useState(false);
+  /** 当前正在「演示高亮」的区域，用于短暂脉冲高亮 */
+  const [demoHighlightSection, setDemoHighlightSection] = useState<'capability-actions' | 'employee-cards' | null>(null);
+  const demoTypingIndexRef = useRef(0);
   const [customAgents, setCustomAgents] = useState<AgentProfile[]>(() => {
     try {
       const raw = localStorage.getItem(CUSTOM_AGENTS_KEY);
@@ -382,6 +392,47 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
       setInputValue('');
     }
   };
+
+  /** 会议口述稿「主输入框」演示：打字机效果 + 自动发送 */
+  useEffect(() => {
+    const phrase = demoTypingPhrase;
+    if (!phrase) return;
+    setShowExploreView(false);
+    demoTypingIndexRef.current = 0;
+    document.getElementById('yiwen-input-area')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const t1 = setTimeout(() => inputRef.current?.focus(), 400);
+    let submitTimeout: ReturnType<typeof setTimeout>;
+    const id = setInterval(() => {
+      demoTypingIndexRef.current += 1;
+      const idx = demoTypingIndexRef.current;
+      setInputValue(phrase.slice(0, idx));
+      if (idx >= phrase.length) {
+        clearInterval(id);
+        setDemoTypingPhrase(null);
+        submitTimeout = setTimeout(() => setTriggerDemoSubmit(true), 350);
+      }
+    }, 70);
+    return () => {
+      clearTimeout(t1);
+      clearInterval(id);
+      if (typeof submitTimeout !== 'undefined') clearTimeout(submitTimeout);
+    };
+  }, [demoTypingPhrase]);
+
+  /** 打字完成后触发一次提交（演示完整流程） */
+  useEffect(() => {
+    if (!triggerDemoSubmit) return;
+    if (inputValue.trim()) {
+      writeRecentQuery(inputValue.trim());
+      setRecentQueries(safeReadRecentQueries());
+      onQuestionSubmit(inputValue.trim(), {
+        agentId: selectedAgentId !== agent.id ? selectedAgentId : undefined,
+        enableWebSearch,
+      });
+      setInputValue('');
+    }
+    setTriggerDemoSubmit(false);
+  }, [triggerDemoSubmit]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -474,6 +525,55 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     if (!el) return;
     const delta = Math.max(320, Math.floor(el.clientWidth * 0.8));
     el.scrollBy({ left: direction === 'left' ? -delta : delta, behavior: 'smooth' });
+  };
+
+  /** 会议口述稿内「跳转」链接：系统自动跳转并演示对应交互过程（非仅进入静态功能） */
+  const handleNarrativeNavigateTo = (target: NarrativeNavigateTarget) => {
+    switch (target) {
+      case 'role-picker':
+        setShowExploreView(false);
+        setShowRolePicker(true);
+        break;
+      case 'input':
+        setInputValue('');
+        setDemoTypingPhrase('上周销售额是多少？');
+        break;
+      case 'agent-selector':
+        setShowExploreView(false);
+        document.getElementById('yiwen-agent-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => setShowAgentDropdown(true), 700);
+        break;
+      case 'deep-mode':
+        setShowExploreView(false);
+        document.getElementById('yiwen-agent-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => setShowWebSearchDropdown(true), 700);
+        break;
+      case 'capability-actions':
+        setShowExploreView(false);
+        document.getElementById('yiwen-capability-actions')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setDemoHighlightSection('capability-actions');
+        setTimeout(() => setDemoHighlightSection(null), 2200);
+        break;
+      case 'employee-cards':
+        setShowExploreView(false);
+        document.getElementById('yiwen-employee-cards')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setDemoHighlightSection('employee-cards');
+        setTimeout(() => setDemoHighlightSection(null), 2200);
+        break;
+      case 'explore-employees':
+        setShowExploreView(true);
+        break;
+      case 'helper':
+        setShowExploreView(false);
+        setShowSpotlightTour(true);
+        break;
+      case 'helper-panel':
+        setShowExploreView(false);
+        setShowHelperPanel(true);
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -800,6 +900,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
 
         {/* 大输入框 - 顶级苹果设计，略放大 */}
         <motion.form
+          id="yiwen-input-area"
           data-tour="input-area"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -835,7 +936,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             </div>
             
             {/* 控制按钮 - 放在对话框内部左下角，顶级苹果设计 */}
-            <div className="flex items-center gap-2 px-6 pb-4">
+            <div id="yiwen-agent-row" className="flex items-center gap-2 px-6 pb-4">
               {/* 切换数字员工 */}
               <div className="relative" ref={agentDropdownRef} data-tour="agent-selector">
                 <button
@@ -972,8 +1073,12 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           transition={{ delay: 0.45, duration: 0.6 }}
           className="w-full mt-6"
         >
-          {/* 能力胶囊（和截图同一层级/密度） */}
-          <div data-tour="capability-actions" className="flex flex-wrap justify-center gap-2">
+          {/* 能力胶囊（和截图同一层级/密度）；口述稿演示时短暂高亮 */}
+          <div
+            id="yiwen-capability-actions"
+            data-tour="capability-actions"
+            className={`flex flex-wrap justify-center gap-2 rounded-2xl transition-all duration-300 ${demoHighlightSection === 'capability-actions' ? 'ring-2 ring-[#007AFF] ring-offset-2 bg-[#F0F7FF]/50' : ''}`}
+          >
             {CAPABILITY_ACTIONS.map((item) => {
               const Icon = item.icon;
               return (
@@ -1012,8 +1117,13 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             </div>
           )}
 
-          {/* 业务问题场景（tab + 横向卡片） */}
-          <div data-tour="employee-cards" className="mt-6" ref={employeesSectionRef}>
+          {/* 业务问题场景（tab + 横向卡片）；口述稿演示时短暂高亮 */}
+          <div
+            id="yiwen-employee-cards"
+            data-tour="employee-cards"
+            className={`mt-6 rounded-2xl transition-all duration-300 ${demoHighlightSection === 'employee-cards' ? 'ring-2 ring-[#007AFF] ring-offset-2 bg-[#F0F7FF]/50' : ''}`}
+            ref={employeesSectionRef}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h3 className="text-[14px] text-[#86868B]">
@@ -1329,8 +1439,13 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         key={`guide-${selectedAgentId}`}
         agentName={selectedAgent.name}
         agentAvatar={selectedAgent.avatar}
+        open={showHelperPanel}
+        onOpenChange={setShowHelperPanel}
         onTriggerGuide={() => setShowSpotlightTour(true)}
       />
+
+      {/* 会议口述稿气泡 - 开会时可打开，口述 PRD 设计思路与想法；点击「→ 前往XXX」可跳转首页对应功能 */}
+      <MeetingNarrativeBubble onNavigateTo={handleNarrativeNavigateTo} />
     </div>
   );
 };

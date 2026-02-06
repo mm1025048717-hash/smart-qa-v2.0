@@ -74,3 +74,4 @@ UPDATE_*.md
 
 # Other projects (should not be in this repo)
 pipecat-main/
+.env*.local

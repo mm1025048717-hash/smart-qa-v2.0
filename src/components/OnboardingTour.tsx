@@ -135,16 +135,37 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
     setTimeout(() => setIsAnimating(false), 300);
   };
 
-  // 完成引导
-  const handleComplete = () => {
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+  const [isMorphing, setIsMorphing] = useState(false);
+
+  // 完成引导（最后一步可带动效：蒙版缩到右下角变成小助手）
+  const handleComplete = useCallback(() => {
+    const lastStep = currentStep >= steps.length - 1;
+    if (lastStep && !isMorphing) {
+      setIsMorphing(true);
+      return;
+    }
     localStorage.setItem(TOUR_STORAGE_KEY, 'true');
     setIsVisible(false);
     onComplete?.();
-  };
+  }, [currentStep, steps.length, isMorphing, onComplete]);
 
-  // 跳过引导（PRD 4.5：直接关闭并存储完成状态）
-  const handleSkip = () => {
+  // 变形动画结束后真正关闭
+  useEffect(() => {
+    if (!isMorphing) return;
+    const t = setTimeout(() => {
+      localStorage.setItem(TOUR_STORAGE_KEY, 'true');
+      setIsVisible(false);
+      onComplete?.();
+    }, 800);
+    return () => clearTimeout(t);
+  }, [isMorphing, onComplete]);
+
+  // 跳过引导：先弹出二次确认（PRD：挽留式跳过）
+  const handleSkipClick = () => setShowSkipConfirm(true);
+  const handleSkipConfirm = () => {
     localStorage.setItem(TOUR_STORAGE_KEY, 'true');
+    setShowSkipConfirm(false);
     setIsVisible(false);
     onComplete?.();
   };
@@ -256,17 +277,25 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
     <AnimatePresence>
       <motion.div
         ref={overlayRef}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        initial={false}
+        animate={
+          isMorphing
+            ? { opacity: 1, top: 'auto', left: 'auto', right: 24, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgb(29, 29, 31)' }
+            : { opacity: 1, top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', borderRadius: 0, backgroundColor: 'transparent' }
+        }
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="fixed inset-0 z-[100]"
+        transition={{ duration: isMorphing ? 0.5 : 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed z-[100] bg-transparent"
         style={{ pointerEvents: 'auto' }}
+        onClick={(e) => e.stopPropagation()}
       >
+        {/* 遮罩层 - 使用 SVG 实现镂空效果；变形时隐藏 */}
+        <div className={isMorphing ? 'opacity-0 pointer-events-none' : ''}>
         {/* 遮罩层 - 使用 SVG 实现镂空效果 */}
         <svg
           className="absolute inset-0 w-full h-full"
           style={{ pointerEvents: 'none' }}
+          aria-hidden
         >
           {isCenterStep ? (
             <rect
@@ -416,7 +445,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
                 )}
                 {!isLastStep && (
                   <button
-                    onClick={handleSkip}
+                    onClick={handleSkipClick}
                     className="px-4 py-2.5 text-[13px] font-medium text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition-colors"
                   >
                     跳过引导
@@ -433,14 +462,54 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
           </div>
         </motion.div>
 
-        {/* 关闭引导（PRD 4.5：X 按钮直接关闭） */}
+        {/* 关闭引导：先二次确认（PRD：挽留式跳过） */}
         <button
-          onClick={handleSkip}
+          onClick={handleSkipClick}
           className="absolute top-6 right-6 w-9 h-9 rounded-full border border-white/30 text-white/90 hover:text-white hover:border-white/50 flex items-center justify-center transition-colors text-[20px] leading-none font-light"
           aria-label="关闭引导"
         >
           ×
         </button>
+
+        {/* 跳过二次确认 Modal（PRD：确定要放弃？狠心跳过 / 继续学习） */}
+        <AnimatePresence>
+          {showSkipConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center z-[101] bg-black/30"
+              onClick={() => setShowSkipConfirm(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl border border-[#E5E5EA] shadow-xl p-6 w-[320px]"
+              >
+                <p className="text-[15px] text-[#1D1D1F] font-medium">确定要放弃新手引导吗？</p>
+                <p className="mt-2 text-[13px] text-[#86868B]">可能会错过核心功能说明。</p>
+                <div className="mt-6 flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowSkipConfirm(false)}
+                    className="px-4 py-2.5 text-[13px] font-medium text-[#007AFF] hover:bg-[#F0F7FF] rounded-xl transition-colors"
+                  >
+                    继续学习
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkipConfirm}
+                    className="px-4 py-2.5 text-[13px] font-medium text-white bg-[#1D1D1F] hover:bg-[#000] rounded-xl transition-colors"
+                  >
+                    狠心跳过
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* 键盘提示（桌面端）- PRD 4.5：← → 切换步骤，Enter 下一步，Esc 跳过引导 */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-4 text-white/45 text-[12px]">
@@ -453,6 +522,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
             <span className="text-white/55">Esc</span>
             <span className="ml-0.5">跳过引导</span>
           </span>
+        </div>
         </div>
       </motion.div>
     </AnimatePresence>

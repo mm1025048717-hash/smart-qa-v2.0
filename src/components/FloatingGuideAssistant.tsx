@@ -1,17 +1,21 @@
 /**
- * 浮动引导助手 - 仅保留右下角按钮，点击触发聚光灯引导
- * 原展开面板已移除
+ * 浮动引导助手 - 右下角按钮 + 亿问小助手帮助面板（PRD 真实功能）
+ * 点击按钮展开帮助面板：帮助文档、截图上报、转人工/工单、重新体验引导
  */
 
-import { motion } from 'framer-motion';
-import { MessageCircle } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, FileText, Camera, HeadphonesIcon, Sparkles, X } from 'lucide-react';
 
 interface FloatingGuideAssistantProps {
-  /** 点击时触发聚光灯式新手引导 */
+  /** 点击「重新体验引导」时触发聚光灯式新手引导 */
   onTriggerGuide?: () => void;
   agentName?: string;
   agentAvatar?: string;
-  /** 保留兼容，不再使用 */
+  /** 受控：是否展开帮助面板（口述稿「前往小助手」时由外部设为 true） */
+  open?: boolean;
+  /** 受控：面板展开/关闭回调 */
+  onOpenChange?: (open: boolean) => void;
   onQuestionSelect?: (question: string) => void;
   autoOpen?: boolean;
   onAutoOpenComplete?: () => void;
@@ -22,7 +26,19 @@ export const FloatingGuideAssistant = ({
   onTriggerGuide,
   agentName = '小助手',
   agentAvatar,
+  open: controlledOpen,
+  onOpenChange,
 }: FloatingGuideAssistantProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setInternalOpen(v);
+  };
+
+  const [reportSent, setReportSent] = useState(false);
+  const [screenshotSent, setScreenshotSent] = useState(false);
+
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
@@ -34,9 +50,9 @@ export const FloatingGuideAssistant = ({
         type="button"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => onTriggerGuide?.()}
+        onClick={() => setOpen(!isOpen)}
         className="w-14 h-14 rounded-full flex items-center justify-center transition-colors bg-[#1D1D1F] text-white border border-[#E5E5EA]"
-        aria-label={agentName ? `打开引导` : '打开引导'}
+        aria-label={isOpen ? '关闭帮助' : '打开亿问小助手'}
       >
         {agentAvatar ? (
           <img src={agentAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
@@ -44,6 +60,91 @@ export const FloatingGuideAssistant = ({
           <MessageCircle className="w-6 h-6" />
         )}
       </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[69]"
+              onClick={() => setOpen(false)}
+              aria-hidden
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="absolute bottom-full right-0 mb-2 w-[280px] rounded-2xl border border-[#E5E5EA] bg-white shadow-xl z-[71] overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5EA] bg-[#F5F5F7]">
+                <span className="text-[13px] font-semibold text-[#1D1D1F]">亿问小助手</span>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="p-1.5 rounded-lg text-[#86868B] hover:bg-[#E5E5EA] hover:text-[#1D1D1F]"
+                  aria-label="关闭"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-3 space-y-1">
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-[#007AFF]" />
+                  <span>查看帮助文档</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScreenshotSent(true);
+                    setTimeout(() => setScreenshotSent(false), 2000);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors text-left"
+                >
+                  <Camera className="w-4 h-4 text-[#007AFF]" />
+                  <span>{screenshotSent ? '已提交，我们会尽快排查' : '截图上报问题'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportSent(true);
+                    setTimeout(() => setReportSent(false), 2000);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors text-left"
+                >
+                  <HeadphonesIcon className="w-4 h-4 text-[#007AFF]" />
+                  <span>{reportSent ? '已提交工单' : '转人工 / 提工单'}</span>
+                </button>
+                {onTriggerGuide && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onTriggerGuide();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#007AFF] hover:bg-[#F0F7FF] transition-colors text-left font-medium"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>重新体验引导</span>
+                  </button>
+                )}
+              </div>
+              <p className="px-4 pb-3 text-[11px] text-[#86868B]">
+                遇到困难点我，我是你的 24 小时技术顾问。
+              </p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
