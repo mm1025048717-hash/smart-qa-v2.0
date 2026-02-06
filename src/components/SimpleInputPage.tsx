@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { EnhancedGuidePanel } from './EnhancedGuidePanel';
+import { HelpDocPanel } from './HelpDocPanel';
 import { EmployeeCreatePanel, type DraftEmployee } from './EmployeeCreatePanel';
 import { FloatingGuideAssistant } from './FloatingGuideAssistant';
 import { MeetingNarrativeBubble, type NarrativeNavigateTarget } from './MeetingNarrativeBubble';
@@ -280,6 +281,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
   const [showWebSearchDropdown, setShowWebSearchDropdown] = useState(false);
   const [showGuidePanel, setShowGuidePanel] = useState(false);
+  const [showHelpDoc, setShowHelpDoc] = useState(false);
   const [recentQueries, setRecentQueries] = useState<string[]>(() => safeReadRecentQueries());
   const [activeScenarioTab, setActiveScenarioTab] = useState<ScenarioTab>('digital_employees');
   const [showMoreCapabilities, setShowMoreCapabilities] = useState(false);
@@ -1290,7 +1292,30 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
       </div>
       </main>
 
-      {/* 增强引导面板 */}
+      {/* 帮助文档面板（真实文档，非智能引导） */}
+      <AnimatePresence>
+        {showHelpDoc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowHelpDoc(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full flex justify-center"
+            >
+              <HelpDocPanel onClose={() => setShowHelpDoc(false)} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 增强引导面板（智能引导：指标/示例问题/路线图） */}
       <AnimatePresence>
         {showGuidePanel && (
           <motion.div
@@ -1443,7 +1468,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         onOpenChange={setShowHelperPanel}
         onOpenHelpDoc={() => {
           setShowHelperPanel(false);
-          setShowGuidePanel(true);
+          setShowHelpDoc(true);
         }}
         onTriggerGuide={() => setShowSpotlightTour(true)}
       />
