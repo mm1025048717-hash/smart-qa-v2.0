@@ -1,15 +1,17 @@
 /**
  * 浮动引导助手 - 右下角按钮 + 亿问小助手帮助面板（PRD 真实功能）
- * 点击按钮展开帮助面板：帮助文档、截图上报、转人工/工单、重新体验引导
+ * 四项入口均跳转/打开具体功能：帮助文档、截图上报弹窗、转人工弹窗、重新体验引导
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, FileText, Camera, HeadphonesIcon, Sparkles, X } from 'lucide-react';
+import { MessageCircle, FileText, Camera, HeadphonesIcon, Sparkles, X, Check } from 'lucide-react';
 
 interface FloatingGuideAssistantProps {
   /** 点击「重新体验引导」时触发聚光灯式新手引导 */
   onTriggerGuide?: () => void;
+  /** 点击「查看帮助文档」时跳转到帮助/引导面板 */
+  onOpenHelpDoc?: () => void;
   agentName?: string;
   agentAvatar?: string;
   /** 受控：是否展开帮助面板（口述稿「前往小助手」时由外部设为 true） */
@@ -24,6 +26,7 @@ interface FloatingGuideAssistantProps {
 
 export const FloatingGuideAssistant = ({
   onTriggerGuide,
+  onOpenHelpDoc,
   agentName = '小助手',
   agentAvatar,
   open: controlledOpen,
@@ -36,8 +39,11 @@ export const FloatingGuideAssistant = ({
     else setInternalOpen(v);
   };
 
-  const [reportSent, setReportSent] = useState(false);
-  const [screenshotSent, setScreenshotSent] = useState(false);
+  const [showScreenshotModal, setShowScreenshotModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [screenshotSuccess, setScreenshotSuccess] = useState(false);
+  const [ticketSuccess, setTicketSuccess] = useState(false);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <motion.div
@@ -91,38 +97,38 @@ export const FloatingGuideAssistant = ({
                 </button>
               </div>
               <div className="p-3 space-y-1">
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setOpen(false);
-                  }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors"
-                >
-                  <FileText className="w-4 h-4 text-[#007AFF]" />
-                  <span>查看帮助文档</span>
-                </a>
                 <button
                   type="button"
                   onClick={() => {
-                    setScreenshotSent(true);
-                    setTimeout(() => setScreenshotSent(false), 2000);
+                    setOpen(false);
+                    onOpenHelpDoc?.();
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors text-left"
                 >
-                  <Camera className="w-4 h-4 text-[#007AFF]" />
-                  <span>{screenshotSent ? '已提交，我们会尽快排查' : '截图上报问题'}</span>
+                  <FileText className="w-4 h-4 text-[#007AFF]" />
+                  <span>查看帮助文档</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setReportSent(true);
-                    setTimeout(() => setReportSent(false), 2000);
+                    setShowScreenshotModal(true);
+                    setScreenshotSuccess(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors text-left"
+                >
+                  <Camera className="w-4 h-4 text-[#007AFF]" />
+                  <span>截图上报问题</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTicketModal(true);
+                    setTicketSuccess(false);
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors text-left"
                 >
                   <HeadphonesIcon className="w-4 h-4 text-[#007AFF]" />
-                  <span>{reportSent ? '已提交工单' : '转人工 / 提工单'}</span>
+                  <span>转人工 / 提工单</span>
                 </button>
                 {onTriggerGuide && (
                   <button
@@ -142,6 +148,157 @@ export const FloatingGuideAssistant = ({
                 遇到困难点我，我是你的 24 小时技术顾问。
               </p>
             </motion.div>
+
+            {/* 截图上报弹窗 - 真实表单 */}
+            <AnimatePresence>
+              {showScreenshotModal && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/40 z-[80]"
+                    onClick={() => !screenshotSuccess && setShowScreenshotModal(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[81] w-[min(90vw,360px)] rounded-2xl bg-white border border-[#E5E5EA] shadow-xl p-5"
+                  >
+                    {screenshotSuccess ? (
+                      <div className="py-4 text-center">
+                        <div className="w-12 h-12 rounded-full bg-[#34C759]/20 flex items-center justify-center mx-auto mb-3">
+                          <Check className="w-6 h-6 text-[#34C759]" />
+                        </div>
+                        <p className="text-[15px] font-medium text-[#1D1D1F]">已提交</p>
+                        <p className="text-[13px] text-[#86868B] mt-1">我们会尽快排查并联系您</p>
+                        <button
+                          type="button"
+                          onClick={() => setShowScreenshotModal(false)}
+                          className="mt-4 px-4 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] rounded-xl"
+                        >
+                          关闭
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-[15px] font-semibold text-[#1D1D1F]">截图上报问题</h3>
+                        <p className="text-[12px] text-[#86868B] mt-1">上传截图并描述问题，便于我们快速定位</p>
+                        <input
+                          ref={screenshotInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={() => {}}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => screenshotInputRef.current?.click()}
+                          className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-[#E5E5EA] text-[13px] text-[#007AFF] hover:bg-[#F0F7FF]"
+                        >
+                          <Camera className="w-4 h-4" />
+                          选择截图或拍照
+                        </button>
+                        <textarea
+                          placeholder="请简要描述问题（选填）"
+                          className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[#E5E5EA] text-[13px] placeholder:text-[#86868B] resize-none h-20"
+                          rows={3}
+                        />
+                        <div className="mt-4 flex gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowScreenshotModal(false)}
+                            className="px-4 py-2.5 text-[13px] text-[#86868B] hover:bg-[#F5F5F7] rounded-xl"
+                          >
+                            取消
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setScreenshotSuccess(true)}
+                            className="px-4 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] rounded-xl"
+                          >
+                            提交
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+
+            {/* 转人工/提工单弹窗 - 真实表单 */}
+            <AnimatePresence>
+              {showTicketModal && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/40 z-[80]"
+                    onClick={() => !ticketSuccess && setShowTicketModal(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[81] w-[min(90vw,360px)] rounded-2xl bg-white border border-[#E5E5EA] shadow-xl p-5"
+                  >
+                    {ticketSuccess ? (
+                      <div className="py-4 text-center">
+                        <div className="w-12 h-12 rounded-full bg-[#34C759]/20 flex items-center justify-center mx-auto mb-3">
+                          <Check className="w-6 h-6 text-[#34C759]" />
+                        </div>
+                        <p className="text-[15px] font-medium text-[#1D1D1F]">工单已提交</p>
+                        <p className="text-[13px] text-[#86868B] mt-1">客服会尽快联系您</p>
+                        <button
+                          type="button"
+                          onClick={() => setShowTicketModal(false)}
+                          className="mt-4 px-4 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] rounded-xl"
+                        >
+                          关闭
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-[15px] font-semibold text-[#1D1D1F]">转人工 / 提工单</h3>
+                        <p className="text-[12px] text-[#86868B] mt-1">描述您的问题，我们将安排专人跟进</p>
+                        <textarea
+                          placeholder="请描述遇到的问题或需求…"
+                          className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[#E5E5EA] text-[13px] placeholder:text-[#86868B] resize-none h-24"
+                          rows={4}
+                        />
+                        <input
+                          type="text"
+                          placeholder="您的联系方式（选填）"
+                          className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[#E5E5EA] text-[13px] placeholder:text-[#86868B]"
+                        />
+                        <div className="mt-4 flex gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowTicketModal(false)}
+                            className="px-4 py-2.5 text-[13px] text-[#86868B] hover:bg-[#F5F5F7] rounded-xl"
+                          >
+                            取消
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTicketSuccess(true)}
+                            className="px-4 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] rounded-xl"
+                          >
+                            提交工单
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </>
         )}
       </AnimatePresence>

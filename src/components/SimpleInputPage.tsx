@@ -1441,6 +1441,10 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         agentAvatar={selectedAgent.avatar}
         open={showHelperPanel}
         onOpenChange={setShowHelperPanel}
+        onOpenHelpDoc={() => {
+          setShowHelperPanel(false);
+          setShowGuidePanel(true);
+        }}
         onTriggerGuide={() => setShowSpotlightTour(true)}
       />
 
