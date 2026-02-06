@@ -32,7 +32,6 @@ import { MeetingNarrativeBubble, type NarrativeNavigateTarget } from './MeetingN
 import { OnboardingTour, hasCompletedOnboarding, resetOnboardingTour } from './OnboardingTour';
 
 const CUSTOM_AGENTS_KEY = 'yiwen_custom_agents_v1';
-const FIRST_VISIT_KEY = 'yiwen_first_visit';
 const EXPLORE_GUIDE_SEEN_KEY = 'yiwen_explore_guide_seen';
 
 interface SimpleInputPageProps {
@@ -349,14 +348,8 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [canScrollEmployeesLeft, setCanScrollEmployeesLeft] = useState(false);
   const [canScrollEmployeesRight, setCanScrollEmployeesRight] = useState(false);
-  // PRD F.1.1：首次访问先显示全屏欢迎，点击「开始探索」后再进角色选择
-  const [showWelcomeMask, setShowWelcomeMask] = useState(() =>
-    typeof window !== 'undefined' ? !localStorage.getItem(FIRST_VISIT_KEY) : false
-  );
-  // 首次访问时先不显示角色选择（等欢迎页点「开始探索」后再显示）；非首次直接显示
-  const [showRolePicker, setShowRolePicker] = useState(() =>
-    typeof window !== 'undefined' ? !!localStorage.getItem(FIRST_VISIT_KEY) : true
-  );
+  // 进入首页先选角色（不再显示欢迎封面）
+  const [showRolePicker, setShowRolePicker] = useState(true);
   const [userRole, setUserRole] = useState<typeof ROLE_OPTIONS[number] | null>(null);
   // PRD F.1.2：角色选择器默认预选「一线业务」(业务执行)
   const [rolePickerSelectedId, setRolePickerSelectedId] = useState<string>('ops');
@@ -1617,61 +1610,6 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                 onClose={() => setShowGuidePanel(false)}
                 currentAgentId={currentAgentId || agent.id}
               />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* PRD F.1.1：首次访问全屏欢迎蒙版（Logo + 欢迎语 + 开始探索） */}
-      <AnimatePresence>
-        {showWelcomeMask && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[65] flex items-center justify-center p-4"
-            style={{ background: 'linear-gradient(135deg, rgba(0,122,255,0.08) 0%, rgba(88,86,214,0.06) 100%)' }}
-          >
-            <div className="absolute inset-0 backdrop-blur-md bg-white/70" aria-hidden />
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              className="relative text-center max-w-md"
-            >
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-2xl text-white font-bold shadow-lg">
-                亿
-              </div>
-              <h1 className="mt-6 text-2xl sm:text-3xl font-semibold text-[#1D1D1F] tracking-tight">
-                欢迎来到亿问 Data Agent
-              </h1>
-              <p className="mt-2 text-[15px] text-[#86868B]">
-                您的企业级数据大脑
-              </p>
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') localStorage.setItem(FIRST_VISIT_KEY, '1');
-                    setShowWelcomeMask(false);
-                    setShowRolePicker(true);
-                  }}
-                  className="px-8 py-3 text-[15px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-colors"
-                >
-                  开始探索
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') localStorage.setItem(FIRST_VISIT_KEY, '1');
-                    setShowWelcomeMask(false);
-                    setShowRolePicker(true);
-                  }}
-                  className="px-6 py-2.5 text-[14px] font-medium text-[#007AFF] hover:bg-[#F0F7FF] rounded-xl transition-colors"
-                >
-                  这是什么？
-                </button>
-              </div>
             </motion.div>
           </motion.div>
         )}
