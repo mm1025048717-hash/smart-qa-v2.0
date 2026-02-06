@@ -11,11 +11,22 @@ let kvAvailable = false;
 const initKV = async () => {
   if (kv !== null) return kvAvailable;
   
-  // 检查环境变量是否存在
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+  // 检查环境变量是否存在（支持默认 KV_ 前缀和自定义 STORAGE_ 前缀）
+  const hasDefaultKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+  const hasStorageKV = process.env.STORAGE_REST_API_URL && process.env.STORAGE_REST_API_TOKEN;
+  
+  if (!hasDefaultKV && !hasStorageKV) {
     console.warn('Vercel KV 环境变量未配置');
     kvAvailable = false;
     return false;
+  }
+  
+  // 如果使用 STORAGE_ 前缀，需要设置别名
+  if (!hasDefaultKV && hasStorageKV) {
+    process.env.KV_REST_API_URL = process.env.STORAGE_REST_API_URL;
+    process.env.KV_REST_API_TOKEN = process.env.STORAGE_REST_API_TOKEN;
+    process.env.KV_REST_API_READ_ONLY_TOKEN = process.env.STORAGE_REST_API_READ_ONLY_TOKEN;
+    process.env.KV_URL = process.env.STORAGE_URL;
   }
   
   try {

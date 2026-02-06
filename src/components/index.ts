@@ -36,6 +36,8 @@ export { DataVisualizer, createConditions, sampleVisualizerConditions } from './
 export type { FilterCondition } from './DataVisualizer';
 export { ScenarioPanel } from './ScenarioPanel';
 export { WorkflowExecutionPanel } from './WorkflowExecutionPanel';
+export { EmployeeCreatePanel } from './EmployeeCreatePanel';
+export type { DraftEmployee } from './EmployeeCreatePanel';
 export { FloatingGuideAssistant } from './FloatingGuideAssistant';
 export { OnboardingTour, resetOnboardingTour, hasCompletedOnboarding } from './OnboardingTour';
 export { 

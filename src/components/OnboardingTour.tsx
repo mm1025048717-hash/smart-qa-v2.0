@@ -5,109 +5,26 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ChevronRight, 
-  ChevronLeft, 
-  X, 
-  Sparkles,
-  MessageSquare,
-  Users,
-  Zap,
-  LayoutGrid,
-  Search,
-  ArrowRight,
-  CheckCircle2
-} from 'lucide-react';
-
-// 引导步骤配置
+// 引导步骤配置（无 icon，纯文字极简）
 interface TourStep {
   id: string;
-  target: string; // CSS 选择器，用于定位目标元素
+  target: string;
   title: string;
   description: string;
-  icon: React.ElementType;
   position: 'top' | 'bottom' | 'left' | 'right' | 'center';
-  highlight?: 'rect' | 'circle'; // 高亮形状
-  padding?: number; // 高亮区域padding
+  highlight?: 'rect' | 'circle';
+  padding?: number;
 }
 
 const TOUR_STEPS: TourStep[] = [
-  {
-    id: 'welcome',
-    target: '', // 空表示全屏欢迎
-    title: '欢迎使用亿问 Data Agent',
-    description: '让我用 30 秒带你快速了解核心功能，帮助你高效分析数据。',
-    icon: Sparkles,
-    position: 'center',
-  },
-  {
-    id: 'input-area',
-    target: '[data-tour="input-area"]',
-    title: '智能输入框',
-    description: '这是你与 AI 对话的核心区域。直接输入你想分析的问题，例如"今年销售额是多少"、"为什么11月销售下降了"。',
-    icon: MessageSquare,
-    position: 'bottom',
-    highlight: 'rect',
-    padding: 12,
-  },
-  {
-    id: 'agent-selector',
-    target: '[data-tour="agent-selector"]',
-    title: '数字员工选择',
-    description: '点击这里可以切换不同的数字员工。每位员工有不同的专长：Alisa 擅长精准查询，Nora 擅长深度分析，归因哥专注问题诊断。',
-    icon: Users,
-    position: 'bottom',
-    highlight: 'rect',
-    padding: 8,
-  },
-  {
-    id: 'capability-actions',
-    target: '[data-tour="capability-actions"]',
-    title: '快速能力入口',
-    description: '不知道问什么？点击这些快捷按钮，快速进入指标查询、趋势分析、归因诊断等常见分析场景。',
-    icon: Zap,
-    position: 'top',
-    highlight: 'rect',
-    padding: 8,
-  },
-  {
-    id: 'scenario-tabs',
-    target: '[data-tour="scenario-tabs"]',
-    title: '业务场景切换',
-    description: '根据不同的业务场景（销售概览、异常诊断、用户分析等），系统会推荐最适合的数字员工和常见问题。',
-    icon: LayoutGrid,
-    position: 'top',
-    highlight: 'rect',
-    padding: 8,
-  },
-  {
-    id: 'employee-cards',
-    target: '[data-tour="employee-cards"]',
-    title: '数字员工卡片',
-    description: '这里展示推荐的数字员工。点击卡片可以快速切换到该员工，并获得针对性的分析帮助。',
-    icon: Users,
-    position: 'top',
-    highlight: 'rect',
-    padding: 8,
-  },
-  {
-    id: 'sidebar',
-    target: '[data-tour="sidebar"]',
-    title: '任务记录与导航',
-    description: '左侧边栏可以查看历史任务记录、搜索之前的分析、探索更多数字员工，以及快速开始新任务。',
-    icon: Search,
-    position: 'right',
-    highlight: 'rect',
-    padding: 8,
-  },
-  {
-    id: 'complete',
-    target: '',
-    title: '准备就绪！',
-    description: '现在你已经了解了核心功能。开始输入你的第一个问题吧！如果需要帮助，可以随时点击右下角的引导助手。',
-    icon: CheckCircle2,
-    position: 'center',
-  },
+  { id: 'welcome', target: '', title: '欢迎使用亿问 Data Agent', description: '让我用 30 秒带你快速了解核心功能，帮助你高效分析数据。', position: 'center' },
+  { id: 'input-area', target: '[data-tour="input-area"]', title: '智能输入框', description: '这是你与 AI 对话的核心区域。直接输入你想分析的问题，例如"今年销售额是多少"、"为什么11月销售下降了"。', position: 'bottom', highlight: 'rect', padding: 12 },
+  { id: 'agent-selector', target: '[data-tour="agent-selector"]', title: '数字员工选择', description: '点击这里可以切换不同的数字员工。每位员工有不同的专长：Alisa 擅长精准查询，Nora 擅长深度分析，归因哥专注问题诊断。', position: 'bottom', highlight: 'rect', padding: 8 },
+  { id: 'capability-actions', target: '[data-tour="capability-actions"]', title: '快速能力入口', description: '不知道问什么？点击这些快捷按钮，快速进入指标查询、趋势分析、归因诊断等常见分析场景。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'scenario-tabs', target: '[data-tour="scenario-tabs"]', title: '业务场景切换', description: '根据不同的业务场景（销售概览、异常诊断、用户分析等），系统会推荐最适合的数字员工和常见问题。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'employee-cards', target: '[data-tour="employee-cards"]', title: '数字员工卡片', description: '这里展示推荐的数字员工。点击卡片可以快速切换到该员工，并获得针对性的分析帮助。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'sidebar', target: '[data-tour="sidebar"]', title: '任务记录与导航', description: '左侧边栏可以查看历史任务记录、搜索之前的分析、探索更多数字员工，以及快速开始新任务。', position: 'right', highlight: 'rect', padding: 8 },
+  { id: 'complete', target: '', title: '准备就绪', description: '现在你已经了解了核心功能。开始输入你的第一个问题吧。如需帮助可随时点击右下角引导助手。', position: 'center' },
 ];
 
 const TOUR_STORAGE_KEY = 'yiwen_onboarding_completed_v1';
@@ -237,7 +154,6 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
   if (!isVisible) return null;
 
   const step = TOUR_STEPS[currentStep];
-  const Icon = step.icon;
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === TOUR_STEPS.length - 1;
   const isCenterStep = step.position === 'center';
@@ -354,67 +270,45 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
           className="absolute inset-0 w-full h-full"
           style={{ pointerEvents: 'none' }}
         >
-          <defs>
-            <filter id="tour-blur">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
-            </filter>
-          </defs>
           {isCenterStep ? (
             <rect
               x="0"
               y="0"
               width="100%"
               height="100%"
-              fill="rgba(0, 0, 0, 0.75)"
+              fill="rgba(0, 0, 0, 0.55)"
             />
           ) : (
             <path
               d={getMaskPath()}
-              fill="rgba(0, 0, 0, 0.75)"
+              fill="rgba(0, 0, 0, 0.55)"
               fillRule="evenodd"
             />
           )}
         </svg>
 
-        {/* 高亮区域边框动画 */}
+        {/* 高亮区域边框 - 极简：单线描边，无阴影 */}
         {targetRect && !isCenterStep && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="absolute pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="absolute pointer-events-none rounded-2xl border-2 border-[#007AFF]"
             style={{
               left: targetRect.left - padding,
               top: targetRect.top - padding,
               width: targetRect.width + padding * 2,
               height: targetRect.height + padding * 2,
-              borderRadius: 16,
-              border: '2px solid rgba(0, 122, 255, 0.6)',
-              boxShadow: '0 0 0 4px rgba(0, 122, 255, 0.15), 0 0 30px rgba(0, 122, 255, 0.2)',
             }}
-          >
-            {/* 脉冲动画 */}
-            <motion.div
-              animate={{
-                scale: [1, 1.02, 1],
-                opacity: [0.6, 0.3, 0.6],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-              className="absolute inset-0 rounded-2xl border-2 border-[#007AFF]"
-            />
-          </motion.div>
+          />
         )}
 
-        {/* 箭头指示器 */}
+        {/* 箭头指示器 - 极简，无缩放动画 */}
         {targetRect && arrowDirection && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
             className="absolute pointer-events-none z-10"
             style={{
               ...(() => {
@@ -447,18 +341,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
               })(),
             }}
           >
-            <motion.div
-              animate={{
-                y: arrowDirection === 'up' ? [0, -6, 0] : arrowDirection === 'down' ? [0, 6, 0] : 0,
-                x: arrowDirection === 'left' ? [0, -6, 0] : arrowDirection === 'right' ? [0, 6, 0] : 0,
-              }}
-              transition={{
-                duration: 1,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-              className="w-6 h-6 text-[#007AFF]"
-            >
+            <div className="w-6 h-6 text-[#007AFF]">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -480,38 +363,28 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
                   strokeLinejoin="round"
                 />
               </svg>
-            </motion.div>
+            </div>
           </motion.div>
         )}
 
-        {/* 提示卡片 */}
+        {/* 提示卡片 - 极简：白底 + 细边框，无阴影 */}
         <motion.div
           key={currentStep}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute w-[380px] bg-white rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.25),0_0_1px_rgba(0,0,0,0.1)] overflow-hidden"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute w-[380px] bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden"
           style={getTooltipPosition()}
         >
-          {/* 顶部渐变条 */}
-          <div className="h-1.5 bg-gradient-to-r from-[#007AFF] via-[#5856D6] to-[#AF52DE]" />
-
           <div className="p-6">
-            {/* 图标和标题 */}
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#007AFF]/20">
-                <Icon className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-[#1D1D1F] leading-tight">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-[14px] text-[#86868B] leading-relaxed">
-                  {step.description}
-                </p>
-              </div>
-            </div>
+            {/* 纯文字：标题 + 说明，无 icon */}
+            <h3 className="text-[17px] font-semibold text-[#1D1D1F] tracking-tight">
+              {step.title}
+            </h3>
+            <p className="mt-3 text-[15px] text-[#86868B] leading-relaxed">
+              {step.description}
+            </p>
 
             {/* 进度指示器 */}
             <div className="mt-6 flex items-center gap-2">
@@ -532,67 +405,55 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
               </span>
             </div>
 
-            {/* 操作按钮 */}
-            <div className="mt-5 flex items-center justify-between">
+            {/* 操作按钮 - 纯文字，无 icon */}
+            <div className="mt-6 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {!isFirstStep && (
                   <button
                     onClick={handlePrev}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition-all"
+                    className="px-4 py-2.5 text-[13px] font-medium text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4" />
                     上一步
                   </button>
                 )}
                 {!isLastStep && (
                   <button
                     onClick={handleSkip}
-                    className="px-4 py-2.5 text-[13px] font-medium text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition-all"
+                    className="px-4 py-2.5 text-[13px] font-medium text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition-colors"
                   >
                     跳过引导
                   </button>
                 )}
               </div>
-
               <button
                 onClick={handleNext}
-                className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-all shadow-lg shadow-[#007AFF]/25 active:scale-[0.98]"
+                className="px-5 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-colors active:opacity-90"
               >
-                {isLastStep ? (
-                  <>
-                    开始使用
-                    <Sparkles className="w-4 h-4" />
-                  </>
-                ) : (
-                  <>
-                    下一步
-                    <ChevronRight className="w-4 h-4" />
-                  </>
-                )}
+                {isLastStep ? '开始使用' : '下一步'}
               </button>
             </div>
           </div>
         </motion.div>
 
-        {/* 关闭按钮（右上角） */}
+        {/* 关闭：纯文字 ×，无 icon */}
         <button
           onClick={handleSkip}
-          className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white transition-all"
+          className="absolute top-6 right-6 w-9 h-9 rounded-full border border-white/30 text-white/90 hover:text-white hover:border-white/50 flex items-center justify-center transition-colors text-[20px] leading-none font-light"
           aria-label="关闭引导"
         >
-          <X className="w-5 h-5" />
+          ×
         </button>
 
-        {/* 键盘提示（桌面端） */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-4 text-white/50 text-[12px]">
+        {/* 键盘提示（桌面端）- 纯文字，无底框 */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-4 text-white/45 text-[12px]">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-[11px]">←</kbd>
-            <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-[11px]">→</kbd>
-            <span className="ml-1">切换步骤</span>
+            <span className="text-white/55">←</span>
+            <span className="text-white/55">→</span>
+            <span className="ml-0.5">切换步骤</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-[11px]">Esc</kbd>
-            <span className="ml-1">跳过引导</span>
+            <span className="text-white/55">Esc</span>
+            <span className="ml-0.5">跳过引导</span>
           </span>
         </div>
       </motion.div>

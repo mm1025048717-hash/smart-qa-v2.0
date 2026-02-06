@@ -25,8 +25,11 @@ import {
   X,
 } from 'lucide-react';
 import { EnhancedGuidePanel } from './EnhancedGuidePanel';
+import { EmployeeCreatePanel, type DraftEmployee } from './EmployeeCreatePanel';
 import { FloatingGuideAssistant } from './FloatingGuideAssistant';
-import { OnboardingTour } from './OnboardingTour';
+import { OnboardingTour, hasCompletedOnboarding } from './OnboardingTour';
+
+const CUSTOM_AGENTS_KEY = 'yiwen_custom_agents_v1';
 
 interface SimpleInputPageProps {
   onQuestionSubmit: (question: string, options?: { agentId?: string; enableWebSearch?: boolean }) => void;
@@ -286,15 +289,33 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   // 每次页面刷新/加载都重新显示角色选择器（始终 true，选择后才变 false）
   const [showRolePicker, setShowRolePicker] = useState(true);
   const [userRole, setUserRole] = useState<typeof ROLE_OPTIONS[number] | null>(null);
-  // 角色选择完成后自动显示引导
-  const [triggerGuideAfterRole, setTriggerGuideAfterRole] = useState(false);
+  // 点击浮动引导助手时显示聚光灯式新手引导（PRD 4.5）
+  const [showSpotlightTour, setShowSpotlightTour] = useState(false);
+  // 点击「探索数字员工」后展示的探索视图（类似 MiniMax 专家页，极简苹果风）
+  const [showExploreView, setShowExploreView] = useState(false);
+  const [exploreTab, setExploreTab] = useState<'recommended' | 'all' | 'mine'>('recommended');
+  const [exploreSort, setExploreSort] = useState<'default' | 'name'>('default');
+  const [showCreateEmployee, setShowCreateEmployee] = useState(false);
+  const [customAgents, setCustomAgents] = useState<AgentProfile[]>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_AGENTS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw) as Array<{ id: string; name: string; title: string; description?: string }>;
+      return Array.isArray(arr) ? arr.map((a) => ({ ...a, title: a.title || '自定义员工' })) : [];
+    } catch {
+      return [];
+    }
+  });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const employeesSectionRef = useRef<HTMLDivElement>(null);
   const employeesScrollRef = useRef<HTMLDivElement>(null);
   const agentDropdownRef = useRef<HTMLDivElement>(null);
   const webSearchDropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedAgent = AGENTS.find(a => a.id === selectedAgentId) || agent;
+  const selectedAgent =
+    AGENTS.find((a) => a.id === selectedAgentId) ||
+    customAgents.find((a) => a.id === selectedAgentId) ||
+    agent;
 
   // 同步父组件的 currentAgentId 变化到本地状态
   useEffect(() => {
@@ -319,6 +340,34 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const pickRecommendedAgent = (role: RoleOption) => {
     const recommended = getRecommendedAgentsForRole(role);
     return recommended[0]?.agent || AGENTS[0] || agent;
+  };
+
+  useEffect(() => {
+    try {
+      if (customAgents.length) {
+        localStorage.setItem(
+          CUSTOM_AGENTS_KEY,
+          JSON.stringify(customAgents.map((a) => ({ id: a.id, name: a.name, title: a.title, description: a.description })))
+        );
+      } else {
+        localStorage.removeItem(CUSTOM_AGENTS_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [customAgents]);
+
+  const handleCreateEmployee = (draft: DraftEmployee) => {
+    const id = `custom-${Date.now()}`;
+    const newAgent: AgentProfile = {
+      id,
+      name: draft.name,
+      title: draft.description.slice(0, 40) || '自定义员工',
+      description: draft.description,
+    };
+    setCustomAgents((prev) => [newAgent, ...prev]);
+    setExploreTab('mine');
+    setShowCreateEmployee(false);
   };
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -371,6 +420,17 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     if (!showRolePicker) {
       inputRef.current?.focus();
     }
+  }, [showRolePicker]);
+
+  // PRD 5.2：角色选择完成后，若未完成过新手引导，800ms 后自动启动聚光灯引导
+  useEffect(() => {
+    if (showRolePicker) return;
+    const timer = setTimeout(() => {
+      if (!hasCompletedOnboarding()) {
+        setShowSpotlightTour(true);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
   }, [showRolePicker]);
 
   // 点击外部关闭下拉菜单
@@ -433,6 +493,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           <button
             type="button"
             onClick={() => {
+              setShowExploreView(false);
               setInputValue('');
               setTimeout(() => inputRef.current?.focus(), 0);
             }}
@@ -453,13 +514,17 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           </div>
         </div>
 
-        <div className="px-4 space-y-2">
+        <div className="px-4">
           <button
             type="button"
-            onClick={() => employeesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="w-full inline-flex items-center justify-between px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EA] hover:border-[#007AFF]/30 hover:bg-[#F5F5F7] transition-all"
+            onClick={() => setShowExploreView(true)}
+            className={`w-full inline-flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-left ${
+              showExploreView
+                ? 'bg-[#F0F7FF] border-[#007AFF]/30 text-[#007AFF]'
+                : 'bg-white border-[#E5E5EA] hover:border-[#007AFF]/30 hover:bg-[#F5F5F7] text-[#1D1D1F]'
+            }`}
           >
-            <span className="inline-flex items-center gap-2 text-[13px] text-[#1D1D1F]">
+            <span className="inline-flex items-center gap-2 text-[13px]">
               <Sparkles className="w-4 h-4 text-[#007AFF]" />
               探索数字员工
               <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-[#F0F7FF] text-[#007AFF] border border-[#007AFF]/15">
@@ -468,21 +533,6 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             </span>
             <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />
           </button>
-          
-          {/* PRD文档入口 */}
-          <a
-            href="?page=prd"
-            className="w-full inline-flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-[#F0F7FF] to-[#F5F0FF] border border-[#E5E5EA] hover:border-[#5856D6]/30 hover:shadow-sm transition-all"
-          >
-            <span className="inline-flex items-center gap-2 text-[13px] text-[#1D1D1F]">
-              <FileText className="w-4 h-4 text-[#5856D6]" />
-              PRD 文档
-              <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/15">
-                交互式
-              </span>
-            </span>
-            <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />
-          </a>
         </div>
 
         <div className="mt-5 px-4 text-[12px] text-[#86868B] flex-shrink-0">
@@ -535,41 +585,227 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         </div>
       </aside>
 
-      {/* 主内容 */}
-      <main className="flex-1 h-screen overflow-y-auto">
-      <div className="min-h-full flex flex-col items-center justify-center pt-12 sm:pt-16 px-4 sm:px-6 pb-10">
+      {/* 主内容 - 比例参考：侧栏约 280px，右侧内容区居中、左右留白对称，不贴边 */}
+      <main className="flex-1 h-screen overflow-y-auto flex justify-center">
+      <div className="min-h-full w-full max-w-[min(100%,72rem)] flex flex-col pt-8 sm:pt-12 px-6 sm:px-10 lg:px-14 pb-16">
+        {showExploreView ? (
+          /* 员工市场 - MiniMax 式布局，极简苹果风，无图标无阴影 */
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25 }}
+            className="w-full max-w-4xl mx-auto"
+          >
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <button
+                type="button"
+                onClick={() => setShowExploreView(false)}
+                className="text-[13px] text-[#86868B] hover:text-[#1D1D1F] transition-colors"
+              >
+                返回
+              </button>
+              <div className="flex items-center gap-3">
+                {exploreTab === 'all' && (
+                  <div className="flex p-0.5 bg-[#F5F5F7] rounded-lg border border-[#E5E5EA]">
+                    <button
+                      type="button"
+                      onClick={() => setExploreSort('default')}
+                      className={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors ${
+                        exploreSort === 'default' ? 'bg-white text-[#1D1D1F]' : 'text-[#86868B] hover:text-[#1D1D1F]'
+                      }`}
+                    >
+                      推荐优先
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExploreSort('name')}
+                      className={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors ${
+                        exploreSort === 'name' ? 'bg-white text-[#1D1D1F]' : 'text-[#86868B] hover:text-[#1D1D1F]'
+                      }`}
+                    >
+                      名称
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowCreateEmployee(true)}
+                  className="px-4 py-2 text-[13px] font-medium text-white bg-[#1D1D1F] hover:bg-[#000000] rounded-xl transition-colors"
+                >
+                  创建
+                </button>
+              </div>
+            </div>
+            <p className="text-[12px] text-[#86868B] uppercase tracking-wider mb-1">
+              探索数字员工
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-semibold text-[#1D1D1F] tracking-tight">
+              数字员工
+            </h1>
+            <p className="mt-2 text-[15px] text-[#86868B]">
+              探索数据分析专家，用一句话获取指标、趋势与归因结论。
+            </p>
+            <div className="mt-6 flex items-center gap-4 flex-wrap">
+              <div className="flex p-0.5 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]">
+                <button
+                  type="button"
+                  onClick={() => setExploreTab('recommended')}
+                  className={`px-4 py-2.5 text-[13px] font-medium rounded-lg transition-colors ${
+                    exploreTab === 'recommended' ? 'bg-white text-[#1D1D1F]' : 'text-[#86868B] hover:text-[#1D1D1F]'
+                  }`}
+                >
+                  为你推荐
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExploreTab('all')}
+                  className={`px-4 py-2.5 text-[13px] font-medium rounded-lg transition-colors ${
+                    exploreTab === 'all' ? 'bg-white text-[#1D1D1F]' : 'text-[#86868B] hover:text-[#1D1D1F]'
+                  }`}
+                >
+                  全部
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExploreTab('mine')}
+                  className={`px-4 py-2.5 text-[13px] font-medium rounded-lg transition-colors ${
+                    exploreTab === 'mine' ? 'bg-white text-[#1D1D1F]' : 'text-[#86868B] hover:text-[#1D1D1F]'
+                  }`}
+                >
+                  我的专家
+                </button>
+              </div>
+              {exploreTab === 'recommended' && userRole && (
+                <p className="text-[12px] text-[#86868B]">
+                  基于角色「{userRole.label}」推荐
+                </p>
+              )}
+              {exploreTab === 'mine' && (
+                <p className="text-[12px] text-[#86868B]">
+                  你创建的数字员工（仅本机）
+                </p>
+              )}
+            </div>
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(() => {
+                const list =
+                  exploreTab === 'recommended'
+                    ? getRecommendedAgentsForRole(userRole)
+                    : exploreTab === 'mine'
+                      ? customAgents.map((a) => ({ agent: a, reason: '', priority: 0 }))
+                      : (exploreSort === 'name'
+                          ? [...AGENTS].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+                          : AGENTS
+                        ).map((agent) => ({ agent, reason: '', priority: 0 }));
+                if (exploreTab === 'mine' && list.length === 0) {
+                  return (
+                    <div className="col-span-full py-16 text-center border border-[#E5E5EA] rounded-2xl bg-[#F9F9FB]">
+                      <p className="text-[15px] text-[#86868B]">暂无自定义数字员工</p>
+                      <p className="mt-2 text-[13px] text-[#86868B]">点击右上角「创建」添加你的第一个专家</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateEmployee(true)}
+                        className="mt-6 px-5 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] rounded-xl"
+                      >
+                        创建
+                      </button>
+                    </div>
+                  );
+                }
+                return list.map(({ agent: agentItem, reason }) => (
+                  <button
+                    key={agentItem.id}
+                    type="button"
+                    onClick={() => {
+                      handleEmployeePick(agentItem.id);
+                      setShowExploreView(false);
+                    }}
+                    className={`w-full rounded-2xl border bg-white p-5 text-left transition-colors ${
+                      selectedAgentId === agentItem.id
+                        ? 'border-[#007AFF]'
+                        : 'border-[#E5E5EA] hover:border-[#007AFF]/40'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-full overflow-hidden border border-[#E5E5EA] bg-[#F5F5F7] flex-shrink-0">
+                        {agentItem.avatar ? (
+                          <img src={agentItem.avatar} alt={agentItem.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-white bg-[#007AFF]">
+                            {agentItem.name.slice(0, 1)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[15px] font-semibold text-[#1D1D1F]">
+                            {agentItem.name}
+                          </span>
+                          {(agentItem.badge || (agentItem.id.startsWith('custom-') ? '自定义' : null)) && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F5F5F7] text-[#86868B] border border-[#E5E5EA]">
+                              {agentItem.id.startsWith('custom-') ? '自定义' : agentItem.badge}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[12px] text-[#86868B] mt-0.5">
+                          {agentItem.title}
+                        </div>
+                        {agentItem.description && (
+                          <p className="mt-2 text-[12px] text-[#86868B] leading-relaxed line-clamp-2">
+                            {agentItem.description}
+                          </p>
+                        )}
+                        {reason && (
+                          <p className="mt-2 text-[11px] text-[#007AFF]">
+                            {reason}
+                          </p>
+                        )}
+                        <p className="mt-3 pt-3 border-t border-[#F0F0F0] text-[11px] text-[#C7C7CC]">
+                          {agentItem.id.startsWith('custom-') ? '自定义 · 本机' : '亿问 · 数据分析'}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ));
+              })()}
+            </div>
+            <p className="mt-10 text-center text-[12px] text-[#C7C7CC]">
+              到底了
+            </p>
+          </motion.div>
+        ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-5xl flex flex-col items-center"
+          className="w-full flex flex-col items-center justify-center pt-4 sm:pt-8"
         >
         {/* 欢迎标题 - 顶级苹果设计 */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-8 w-full"
+          className="text-center mb-10 w-full"
         >
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold text-[#000000] mb-2 tracking-[-0.02em] leading-[1.08]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[3.25rem] font-semibold text-[#000000] mb-2 tracking-[-0.02em] leading-[1.08]">
             欢迎来到
           </h1>
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-semibold text-[#007AFF] tracking-[-0.02em] leading-[1.08]">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-[3.25rem] font-semibold text-[#007AFF] tracking-[-0.02em] leading-[1.08]">
             亿问 Data Agent
           </h2>
-          <p className="mt-3 text-[14px] text-[#86868B]">
+          <p className="mt-3 text-[15px] text-[#86868B]">
             用一句话获取指标、趋势与归因结论
           </p>
         </motion.div>
 
-        {/* 大输入框 - 顶级苹果设计，层次感叠加 */}
+        {/* 大输入框 - 顶级苹果设计，略放大 */}
         <motion.form
+          data-tour="input-area"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           onSubmit={handleSubmit}
-          className="relative mb-5 w-full max-w-5xl"
-          data-tour="input-area"
+          className="relative mb-6 w-full"
         >
           <div className="relative bg-white rounded-3xl border border-[#E5E5EA] focus-within:border-[#007AFF]/40 focus-within:shadow-[0_0_0_1px_rgba(0,122,255,0.18),0_16px_50px_rgba(0,0,0,0.08)] transition-all duration-300 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
             <textarea
@@ -578,7 +814,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="说说你想分析什么…"
-              className="w-full px-6 pt-5 pb-4 pr-24 text-[16px] text-[#000000] placeholder:text-[#8E8E93] bg-transparent border-none outline-none resize-none min-h-[80px] max-h-[200px] font-light"
+              className="w-full px-6 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5 pr-24 text-[16px] sm:text-[17px] text-[#000000] placeholder:text-[#8E8E93] bg-transparent border-none outline-none resize-none min-h-[88px] max-h-[220px] font-light"
               rows={1}
               style={{ 
                 height: 'auto',
@@ -729,15 +965,15 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           </div>
         </motion.form>
 
-        {/* 次级内容 - 复刻 MiniMax 的结构节奏：能力胶囊行 + 数字员工（tab + 卡片） */}
+        {/* 次级内容 - 能力胶囊行 + 数字员工（tab + 卡片），与上方同宽 */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.45, duration: 0.6 }}
-          className="w-full max-w-6xl mt-6"
+          className="w-full mt-6"
         >
           {/* 能力胶囊（和截图同一层级/密度） */}
-          <div className="flex flex-wrap justify-center gap-2" data-tour="capability-actions">
+          <div data-tour="capability-actions" className="flex flex-wrap justify-center gap-2">
             {CAPABILITY_ACTIONS.map((item) => {
               const Icon = item.icon;
               return (
@@ -777,7 +1013,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           )}
 
           {/* 业务问题场景（tab + 横向卡片） */}
-          <div className="mt-6" ref={employeesSectionRef}>
+          <div data-tour="employee-cards" className="mt-6" ref={employeesSectionRef}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h3 className="text-[14px] text-[#86868B]">
@@ -785,7 +1021,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                     ? (userRole ? `为${userRole.label}推荐的数字员工` : '数字员工') 
                     : '常见问题'}
                 </h3>
-                <div className="flex p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]" data-tour="scenario-tabs">
+                <div data-tour="scenario-tabs" className="flex p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]">
                   {SCENARIO_TABS.map((t) => (
                     <button
                       key={t.id}
@@ -845,7 +1081,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                 : SCENARIO_TAGLINE[activeScenarioTab]}
             </div>
 
-            <div ref={employeesScrollRef} className="mt-3 flex gap-3 overflow-x-auto scrollbar-hidden pb-2" data-tour="employee-cards">
+            <div ref={employeesScrollRef} className="mt-3 flex gap-3 overflow-x-auto scrollbar-hidden pb-2">
               {activeScenarioTab === 'digital_employees' ? (
                 // 数字员工卡片 - 根据用户角色推荐
                 (() => {
@@ -940,6 +1176,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           </div>
         </motion.div>
       </motion.div>
+        )}
       </div>
       </main>
 
@@ -958,7 +1195,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-6xl"
+              className="w-full"
             >
               <EnhancedGuidePanel
                 onQuestionSelect={(question, recommendedAgentId) => {
@@ -1034,10 +1271,6 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                         setSelectedAgentId(recommended.id);
                         // 3. 关闭角色选择弹窗
                         setShowRolePicker(false);
-                        // 4. 延迟触发右下角引导助手，显示符合用户角色的引导内容
-                        setTimeout(() => {
-                          setTriggerGuideAfterRole(true);
-                        }, 500);
                       }}
                       className="rounded-2xl border border-[#E5E5EA] bg-white p-4 text-left hover:border-[#007AFF]/30 hover:bg-[#F9F9FB] transition-all"
                     >
@@ -1071,28 +1304,31 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         )}
       </AnimatePresence>
 
-      {/* 右下角浮动引导助手 - 角色选择后自动显示，使用 key 确保 agent 切换时重新渲染 */}
-      <FloatingGuideAssistant
-        key={`guide-${selectedAgentId}`}
-        onQuestionSelect={(question) => {
-          handleScenarioClick(question);
-        }}
-        agentName={selectedAgent.name}
-        agentAvatar={selectedAgent.avatar}
-        autoOpen={triggerGuideAfterRole}
-        onAutoOpenComplete={() => setTriggerGuideAfterRole(false)}
-        userRole={userRole?.label}
-      />
+      {/* 员工创建面板 - 双栏：左侧引导输入，右侧配置表单 */}
+      <AnimatePresence>
+        {showCreateEmployee && (
+          <EmployeeCreatePanel
+            onClose={() => setShowCreateEmployee(false)}
+            onCreate={handleCreateEmployee}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* 新手引导 - 游戏风格聚光灯式引导 */}
-      {!showRolePicker && (
+      {/* 聚光灯式新手引导（PRD 4.5）- 点击浮动引导助手或首次进入时触发 */}
+      {showSpotlightTour && (
         <OnboardingTour
-          onComplete={() => {
-            // 引导完成后可以执行额外操作
-            console.log('Onboarding tour completed');
-          }}
+          forceShow
+          onComplete={() => setShowSpotlightTour(false)}
         />
       )}
+
+      {/* 右下角浮动引导助手 - 仅按钮，点击触发聚光灯引导，无展开面板 */}
+      <FloatingGuideAssistant
+        key={`guide-${selectedAgentId}`}
+        agentName={selectedAgent.name}
+        agentAvatar={selectedAgent.avatar}
+        onTriggerGuide={() => setShowSpotlightTour(true)}
+      />
     </div>
   );
 };
