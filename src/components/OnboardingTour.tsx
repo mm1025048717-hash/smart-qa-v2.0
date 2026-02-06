@@ -1,11 +1,11 @@
 /**
- * 游戏风格新手引导组件
- * 类似游戏教程的聚光灯式引导，高亮当前介绍区域，其他区域变暗
+ * 新手引导（游戏式聚光灯引导）- PRD 4.5
+ * 共 8 步，高亮当前区域；下一步/上一步切换，跳过引导/X 直接关闭并存储完成状态。
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// 引导步骤配置（无 icon，纯文字极简）
+
 interface TourStep {
   id: string;
   target: string;
@@ -16,25 +16,27 @@ interface TourStep {
   padding?: number;
 }
 
+// PRD 4.5 引导步骤（共8步）
 const TOUR_STEPS: TourStep[] = [
-  { id: 'welcome', target: '', title: '欢迎使用亿问 Data Agent', description: '让我用 30 秒带你快速了解核心功能，帮助你高效分析数据。', position: 'center' },
-  { id: 'input-area', target: '[data-tour="input-area"]', title: '智能输入框', description: '这是你与 AI 对话的核心区域。直接输入你想分析的问题，例如"今年销售额是多少"、"为什么11月销售下降了"。', position: 'bottom', highlight: 'rect', padding: 12 },
-  { id: 'agent-selector', target: '[data-tour="agent-selector"]', title: '数字员工选择', description: '点击这里可以切换不同的数字员工。每位员工有不同的专长：Alisa 擅长精准查询，Nora 擅长深度分析，归因哥专注问题诊断。', position: 'bottom', highlight: 'rect', padding: 8 },
-  { id: 'capability-actions', target: '[data-tour="capability-actions"]', title: '快速能力入口', description: '不知道问什么？点击这些快捷按钮，快速进入指标查询、趋势分析、归因诊断等常见分析场景。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'welcome', target: '', title: '欢迎使用', description: '30 秒快速了解核心功能，帮助你高效分析数据。', position: 'center' },
+  { id: 'input-area', target: '[data-tour="input-area"]', title: '智能输入框', description: '这是你与 AI 对话的核心区域。直接输入你想分析的问题即可。', position: 'bottom', highlight: 'rect', padding: 12 },
+  { id: 'agent-selector', target: '[data-tour="agent-selector"]', title: '数字员工选择', description: '点击这里可以切换不同的 AI 助手，每位员工有不同专长。', position: 'bottom', highlight: 'rect', padding: 8 },
+  { id: 'capability-actions', target: '[data-tour="capability-actions"]', title: '快速能力入口', description: '不知道问什么？点击这些快捷按钮，快速进入指标查询、趋势分析等常见场景。', position: 'top', highlight: 'rect', padding: 8 },
   { id: 'scenario-tabs', target: '[data-tour="scenario-tabs"]', title: '业务场景切换', description: '根据不同的业务场景（销售概览、异常诊断、用户分析等），系统会推荐最适合的数字员工和常见问题。', position: 'top', highlight: 'rect', padding: 8 },
-  { id: 'employee-cards', target: '[data-tour="employee-cards"]', title: '数字员工卡片', description: '这里展示推荐的数字员工。点击卡片可以快速切换到该员工，并获得针对性的分析帮助。', position: 'top', highlight: 'rect', padding: 8 },
-  { id: 'sidebar', target: '[data-tour="sidebar"]', title: '任务记录与导航', description: '左侧边栏可以查看历史任务记录、搜索之前的分析、探索更多数字员工，以及快速开始新任务。', position: 'right', highlight: 'rect', padding: 8 },
-  { id: 'complete', target: '', title: '准备就绪', description: '现在你已经了解了核心功能。开始输入你的第一个问题吧。如需帮助可随时点击右下角引导助手。', position: 'center' },
+  { id: 'employee-cards', target: '[data-tour="employee-cards"]', title: '数字员工卡片', description: '这里展示推荐的数字员工。点击卡片可快速切换到该员工，获得针对性分析帮助。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'sidebar', target: '[data-tour="sidebar"]', title: '任务记录与导航', description: '左侧边栏可查看历史任务记录、搜索之前的分析、探索更多数字员工，以及快速开始新任务。', position: 'right', highlight: 'rect', padding: 8 },
+  { id: 'complete', target: '', title: '准备就绪', description: '现在你已经了解了核心功能。开始输入你的第一个问题吧，如需帮助可随时点击右下角引导助手。', position: 'center' },
 ];
 
 const TOUR_STORAGE_KEY = 'yiwen_onboarding_completed_v1';
 
-interface OnboardingTourProps {
+export interface OnboardingTourProps {
   onComplete?: () => void;
-  forceShow?: boolean; // 强制显示（用于重新引导）
+  forceShow?: boolean;
 }
 
 export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTourProps) => {
+  const steps = TOUR_STEPS;
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -50,30 +52,26 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
 
     const completed = localStorage.getItem(TOUR_STORAGE_KEY);
     if (!completed) {
-      // 延迟显示，等待页面渲染完成
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 800);
+      const timer = setTimeout(() => setIsVisible(true), 800);
       return () => clearTimeout(timer);
     }
   }, [forceShow]);
 
   // 更新目标元素位置
   const updateTargetPosition = useCallback(() => {
-    const step = TOUR_STEPS[currentStep];
-    if (!step.target) {
+    const step = steps[currentStep];
+    if (!step?.target) {
       setTargetRect(null);
       return;
     }
 
     const element = document.querySelector(step.target);
     if (element) {
-      const rect = element.getBoundingClientRect();
-      setTargetRect(rect);
+      setTargetRect(element.getBoundingClientRect());
     } else {
       setTargetRect(null);
     }
-  }, [currentStep]);
+  }, [currentStep, steps]);
 
   // 监听窗口大小变化和步骤变化
   useEffect(() => {
@@ -120,7 +118,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
     if (isAnimating) return;
     setIsAnimating(true);
 
-    if (currentStep < TOUR_STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
       handleComplete();
@@ -144,7 +142,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
     onComplete?.();
   };
 
-  // 跳过引导
+  // 跳过引导（PRD 4.5：直接关闭并存储完成状态）
   const handleSkip = () => {
     localStorage.setItem(TOUR_STORAGE_KEY, 'true');
     setIsVisible(false);
@@ -153,9 +151,9 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
 
   if (!isVisible) return null;
 
-  const step = TOUR_STEPS[currentStep];
+  const step = steps[currentStep];
   const isFirstStep = currentStep === 0;
-  const isLastStep = currentStep === TOUR_STEPS.length - 1;
+  const isLastStep = currentStep === steps.length - 1;
   const isCenterStep = step.position === 'center';
   const padding = step.padding || 8;
 
@@ -386,9 +384,9 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
               {step.description}
             </p>
 
-            {/* 进度指示器 */}
+            {/* 进度指示器（PRD：如 1/5 让用户有心理预期） */}
             <div className="mt-6 flex items-center gap-2">
-              {TOUR_STEPS.map((_, index) => (
+              {steps.map((_, index) => (
                 <div
                   key={index}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -401,7 +399,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
                 />
               ))}
               <span className="ml-auto text-[12px] text-[#86868B]">
-                {currentStep + 1} / {TOUR_STEPS.length}
+                {currentStep + 1} / {steps.length}
               </span>
             </div>
 
@@ -435,7 +433,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
           </div>
         </motion.div>
 
-        {/* 关闭：纯文字 ×，无 icon */}
+        {/* 关闭引导（PRD 4.5：X 按钮直接关闭） */}
         <button
           onClick={handleSkip}
           className="absolute top-6 right-6 w-9 h-9 rounded-full border border-white/30 text-white/90 hover:text-white hover:border-white/50 flex items-center justify-center transition-colors text-[20px] leading-none font-light"
@@ -444,7 +442,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
           ×
         </button>
 
-        {/* 键盘提示（桌面端）- 纯文字，无底框 */}
+        {/* 键盘提示（桌面端）- PRD 4.5：← → 切换步骤，Enter 下一步，Esc 跳过引导 */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-4 text-white/45 text-[12px]">
           <span className="flex items-center gap-1.5">
             <span className="text-white/55">←</span>

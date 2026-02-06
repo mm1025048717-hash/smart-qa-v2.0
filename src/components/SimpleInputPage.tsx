@@ -27,7 +27,7 @@ import {
 import { EnhancedGuidePanel } from './EnhancedGuidePanel';
 import { EmployeeCreatePanel, type DraftEmployee } from './EmployeeCreatePanel';
 import { FloatingGuideAssistant } from './FloatingGuideAssistant';
-import { OnboardingTour, hasCompletedOnboarding } from './OnboardingTour';
+import { OnboardingTour, hasCompletedOnboarding, resetOnboardingTour } from './OnboardingTour';
 
 const CUSTOM_AGENTS_KEY = 'yiwen_custom_agents_v1';
 
@@ -892,7 +892,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
               </div>
 
               {/* 联网搜索 */}
-              <div className="relative" ref={webSearchDropdownRef}>
+              <div className="relative" ref={webSearchDropdownRef} data-tour="deep-mode">
                 <button
                   type="button"
                   onClick={() => {
@@ -1269,7 +1269,9 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                         setUserRole(role);
                         // 2. 自动选择推荐的数字员工（只更新本地状态，保留在首页不跳转）
                         setSelectedAgentId(recommended.id);
-                        // 3. 关闭角色选择弹窗
+                        // 3. 重置引导完成标记，使本次「选择角色后」能自动弹出分角色引导（PRD 4.2）
+                        resetOnboardingTour();
+                        // 4. 关闭角色选择弹窗 -> 约 800ms 后 effect 会触发 setShowSpotlightTour(true)
                         setShowRolePicker(false);
                       }}
                       className="rounded-2xl border border-[#E5E5EA] bg-white p-4 text-left hover:border-[#007AFF]/30 hover:bg-[#F9F9FB] transition-all"
