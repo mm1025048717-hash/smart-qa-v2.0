@@ -1,5 +1,5 @@
 /**
- * 浮动引导助手 - 左上角按钮 + 亿问小助手帮助面板（PRD 真实功能）
+ * 浮动引导助手 - 右下角按钮 + 亿问小助手帮助面板（PRD 真实功能）
  * 四项入口均跳转/打开具体功能：帮助文档、截图上报弹窗、转人工弹窗、重新体验引导
  */
 
@@ -60,7 +60,7 @@ export const FloatingGuideAssistant = ({
         scale: { delay: 0.5, type: 'spring', stiffness: 200 },
         opacity: { duration: 0.35 },
       }}
-      className="fixed top-6 left-6 z-[70]"
+      className="fixed bottom-6 right-6 z-[70]"
     >
       <motion.button
         type="button"
@@ -94,7 +94,7 @@ export const FloatingGuideAssistant = ({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="absolute top-full left-0 mt-2 w-[280px] rounded-2xl border border-[#E5E5EA] bg-white shadow-xl z-[71] overflow-hidden"
+              className="absolute bottom-full right-0 mb-2 w-[280px] rounded-2xl border border-[#E5E5EA] bg-white shadow-xl z-[71] overflow-hidden"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5EA] bg-[#F5F5F7]">
                 <div>

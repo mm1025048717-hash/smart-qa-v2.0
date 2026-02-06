@@ -2385,7 +2385,7 @@ function App() {
             onScenarioStart={handleScenarioStart}
           />
 
-          {/* 浮动引导助手 - 左上角 */}
+          {/* 浮动引导助手 - 右下角 */}
           <FloatingGuideAssistant
             onQuestionSelect={(question) => handleSend(question)}
             agentName={currentAgent.name}

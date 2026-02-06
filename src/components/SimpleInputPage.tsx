@@ -28,7 +28,6 @@ import { EnhancedGuidePanel } from './EnhancedGuidePanel';
 import { HelpDocPanel } from './HelpDocPanel';
 import { EmployeeCreatePanel, type DraftEmployee } from './EmployeeCreatePanel';
 import { FloatingGuideAssistant } from './FloatingGuideAssistant';
-import { MeetingNarrativeBubble, type NarrativeNavigateTarget } from './MeetingNarrativeBubble';
 import { OnboardingTour, hasCompletedOnboarding, resetOnboardingTour } from './OnboardingTour';
 
 const CUSTOM_AGENTS_KEY = 'yiwen_custom_agents_v1';
@@ -364,7 +363,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [showSpotlightTour, setShowSpotlightTour] = useState(false);
   // PRD F.3.1：引导结束（气泡消失）后 5 秒内小助手头像半透明驻留
   const [assistantDimmed, setAssistantDimmed] = useState(false);
-  // 亿问小助手帮助面板（口述稿「前往小助手」或点击左上角按钮打开）
+  // 亿问小助手帮助面板（口述稿「前往小助手」或点击右下角按钮打开）
   const [showHelperPanel, setShowHelperPanel] = useState(false);
   // 点击「探索数字员工」后展示的探索视图（类似 MiniMax 专家页，极简苹果风）
   const [showExploreView, setShowExploreView] = useState(false);
@@ -376,7 +375,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   /** 打字完成后触发一次提交（演示完整提问流程） */
   const [triggerDemoSubmit, setTriggerDemoSubmit] = useState(false);
   /** 当前正在「演示高亮」的区域，用于短暂脉冲高亮 */
-  const [demoHighlightSection, setDemoHighlightSection] = useState<'capability-actions' | 'employee-cards' | null>(null);
+  const [demoHighlightSection, _setDemoHighlightSection] = useState<'capability-actions' | 'employee-cards' | null>(null);
   /** PRD F.2.4 Lazy：首次点击数据源/建模/指标卡片时触发的引导 */
   const [lazyDevGuide, setLazyDevGuide] = useState<'datasource' | 'modeling' | 'indicators' | null>(null);
   const demoTypingIndexRef = useRef(0);
@@ -645,55 +644,6 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     if (!el) return;
     const delta = Math.max(320, Math.floor(el.clientWidth * 0.8));
     el.scrollBy({ left: direction === 'left' ? -delta : delta, behavior: 'smooth' });
-  };
-
-  /** 会议口述稿内「跳转」链接：系统自动跳转并演示对应交互过程（非仅进入静态功能） */
-  const handleNarrativeNavigateTo = (target: NarrativeNavigateTarget) => {
-    switch (target) {
-      case 'role-picker':
-        setShowExploreView(false);
-        setShowRolePicker(true);
-        break;
-      case 'input':
-        setInputValue('');
-        setDemoTypingPhrase('上周销售额是多少？');
-        break;
-      case 'agent-selector':
-        setShowExploreView(false);
-        document.getElementById('yiwen-agent-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => setShowAgentDropdown(true), 700);
-        break;
-      case 'deep-mode':
-        setShowExploreView(false);
-        document.getElementById('yiwen-agent-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => setShowWebSearchDropdown(true), 700);
-        break;
-      case 'capability-actions':
-        setShowExploreView(false);
-        document.getElementById('yiwen-capability-actions')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setDemoHighlightSection('capability-actions');
-        setTimeout(() => setDemoHighlightSection(null), 2200);
-        break;
-      case 'employee-cards':
-        setShowExploreView(false);
-        document.getElementById('yiwen-employee-cards')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setDemoHighlightSection('employee-cards');
-        setTimeout(() => setDemoHighlightSection(null), 2200);
-        break;
-      case 'explore-employees':
-        setShowExploreView(true);
-        break;
-      case 'helper':
-        setShowExploreView(false);
-        setShowSpotlightTour(true);
-        break;
-      case 'helper-panel':
-        setShowExploreView(false);
-        setShowHelperPanel(true);
-        break;
-      default:
-        break;
-    }
   };
 
   return (
@@ -1813,7 +1763,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         </div>
       )}
 
-      {/* 左上角浮动引导助手 - PRD 4.4 页面感知 + 帮助中心兜底 */}
+      {/* 右下角浮动引导助手 - PRD 4.4 页面感知 + 帮助中心兜底 */}
       <FloatingGuideAssistant
         key={`guide-${selectedAgentId}`}
         agentName={selectedAgent.name}
@@ -1829,8 +1779,6 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         dimmed={assistantDimmed}
       />
 
-      {/* 会议口述稿气泡 - 开会时可打开，口述 PRD 设计思路与想法；点击「→ 前往XXX」可跳转首页对应功能 */}
-      <MeetingNarrativeBubble onNavigateTo={handleNarrativeNavigateTo} />
     </div>
   );
 };

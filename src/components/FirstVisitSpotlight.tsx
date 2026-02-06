@@ -1,13 +1,13 @@
 /**
- * 首次进入聚光灯 - 遮罩镂空左上角，引导用户点击浮动头像
+ * 首次进入聚光灯 - 遮罩镂空右下角，引导用户点击浮动头像
  * 仅首次访问展示一次，点击遮罩或头像后不再显示
  */
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
-const AVATAR_OFFSET_LEFT = 24;
-const AVATAR_OFFSET_TOP = 24;
+const AVATAR_OFFSET_RIGHT = 24;
+const AVATAR_OFFSET_BOTTOM = 24;
 const AVATAR_SIZE = 56;
 const HOLE_RADIUS = 48;
 
@@ -28,8 +28,8 @@ export function FirstVisitSpotlight({ onDismiss }: FirstVisitSpotlightProps) {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  const cx = AVATAR_OFFSET_LEFT + AVATAR_SIZE / 2;
-  const cy = AVATAR_OFFSET_TOP + AVATAR_SIZE / 2;
+  const cx = size.w - AVATAR_OFFSET_RIGHT - AVATAR_SIZE / 2;
+  const cy = size.h - AVATAR_OFFSET_BOTTOM - AVATAR_SIZE / 2;
   const pathD = `
     M 0 0 L ${size.w} 0 L ${size.w} ${size.h} L 0 ${size.h} Z
     M ${cx + HOLE_RADIUS} ${cy}
@@ -47,7 +47,7 @@ export function FirstVisitSpotlight({ onDismiss }: FirstVisitSpotlightProps) {
       aria-hidden
     >
       <svg className="absolute inset-0 w-full h-full">
-        {/* 遮罩：全屏暗色 + 左上角镂空，仅遮罩区域可点（点击即关闭） */}
+        {/* 遮罩：全屏暗色 + 右下角镂空，仅遮罩区域可点（点击即关闭） */}
         <path
           d={pathD}
           fill="rgba(0,0,0,0.55)"
@@ -68,12 +68,13 @@ export function FirstVisitSpotlight({ onDismiss }: FirstVisitSpotlightProps) {
           style={{ pointerEvents: 'none' }}
         />
       </svg>
-      {/* 提示文案：在镂空下方，引导点击头像 */}
+      {/* 提示文案：在镂空上方，引导点击头像 */}
       <div
         className="absolute z-[66] pointer-events-none text-center"
         style={{
-          top: AVATAR_OFFSET_TOP + AVATAR_SIZE + 12,
-          left: AVATAR_OFFSET_LEFT,
+          bottom: AVATAR_OFFSET_BOTTOM + AVATAR_SIZE + 12,
+          left: '50%',
+          transform: 'translateX(-50%)',
           minWidth: 200,
         }}
       >

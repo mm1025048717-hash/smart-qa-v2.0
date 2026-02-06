@@ -207,7 +207,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [isMorphing, setIsMorphing] = useState(false);
 
-  // 完成引导（最后一步可带动效：蒙版缩到左上角变成小助手）
+  // 完成引导（最后一步可带动效：蒙版缩到右下角变成小助手）
   const handleComplete = useCallback(() => {
     const lastStep = currentStep >= steps.length - 1;
     if (lastStep && !isMorphing) {
