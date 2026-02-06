@@ -26,10 +26,10 @@ const QA_LIST = [
   },
   {
     q: '不同角色看到的引导一样吗？',
-    a: '不一样。CXO 极简 3 步；业务负责人多出看板与数字员工市场；一线业务侧重指标口径与知识库；数据开发为数据源 / 业务建模 / 指标管理。引导结束后会缩成右下角小助手，随时可点。',
+    a: '不一样。CXO 极简 3 步；业务负责人多出看板与数字员工市场；一线业务侧重指标口径与知识库；数据开发为数据源 / 业务建模 / 指标管理。引导结束后会缩成左上角小助手，随时可点。',
   },
   {
-    q: '右下角小助手能做什么？',
+    q: '左上角小助手能做什么？',
     a: '查看帮助文档（本页）、截图上报问题、转人工/提工单、重新体验引导。',
   },
   {
@@ -46,7 +46,7 @@ const QA_LIST = [
   },
   {
     q: '遇到问题怎么联系支持？',
-    a: '点右下角小助手，用「截图上报问题」或「转人工/提工单」提交，我们会尽快排查或安排专人跟进。',
+    a: '点左上角小助手，用「截图上报问题」或「转人工/提工单」提交，我们会尽快排查或安排专人跟进。',
   },
 ];
 
@@ -134,7 +134,7 @@ export function HelpDocPanel({ onClose }: HelpDocPanelProps) {
             <LifeBuoy className="w-4 h-4 text-[#007AFF] flex-shrink-0 mt-0.5" />
             <div className="text-[12px] text-[#3A3A3C] leading-relaxed">
               <span className="font-medium text-[#1D1D1F]">需要帮助？</span>
-              <span className="ml-1">点击右下角</span>
+              <span className="ml-1">点击左上角</span>
               <span className="inline-flex items-center gap-1 mx-1 text-[#007AFF]">
                 <MessageCircle className="w-3.5 h-3.5" />
                 小助手

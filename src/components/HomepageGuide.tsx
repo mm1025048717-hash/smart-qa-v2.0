@@ -1,6 +1,6 @@
 /**
  * 首页引导 - 契合亿问 Data Agent PRD，覆盖智能输入、数字员工、能力入口与追问交互
- * 点击右下角头像触发，聚光灯高亮 + 白色 GUIDE 卡片
+ * 点击左上角头像触发，聚光灯高亮 + 白色 GUIDE 卡片
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -123,7 +123,7 @@ export function HomepageGuide({
     }
   }, [step.target]);
 
-  // 仅在被强制展示时显示（由父组件通过 forceShow 控制，如点击右下角头像触发）
+  // 仅在被强制展示时显示（由父组件通过 forceShow 控制，如点击左上角头像触发）
   useEffect(() => {
     if (forceShow) {
       setVisible(true);

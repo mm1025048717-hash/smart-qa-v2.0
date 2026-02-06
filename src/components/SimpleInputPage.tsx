@@ -364,7 +364,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [showSpotlightTour, setShowSpotlightTour] = useState(false);
   // PRD F.3.1：引导结束（气泡消失）后 5 秒内小助手头像半透明驻留
   const [assistantDimmed, setAssistantDimmed] = useState(false);
-  // 亿问小助手帮助面板（口述稿「前往小助手」或点击右下角按钮打开）
+  // 亿问小助手帮助面板（口述稿「前往小助手」或点击左上角按钮打开）
   const [showHelperPanel, setShowHelperPanel] = useState(false);
   // 点击「探索数字员工」后展示的探索视图（类似 MiniMax 专家页，极简苹果风）
   const [showExploreView, setShowExploreView] = useState(false);
@@ -1813,7 +1813,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         </div>
       )}
 
-      {/* 右下角浮动引导助手 - PRD 4.4 页面感知 + 帮助中心兜底 */}
+      {/* 左上角浮动引导助手 - PRD 4.4 页面感知 + 帮助中心兜底 */}
       <FloatingGuideAssistant
         key={`guide-${selectedAgentId}`}
         agentName={selectedAgent.name}
