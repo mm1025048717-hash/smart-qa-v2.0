@@ -17,6 +17,9 @@ interface ChatInputProps {
   // 停止输出相关
   isStreaming?: boolean;
   onStop?: () => void;
+  /** CXO 引导：在数据分析页内演示追问——先填入输入框再模拟按下发送，引导用户理解「在此输入并点发送」 */
+  demoFollowUp?: { phrase: string; delayMs: number };
+  onDemoComplete?: () => void;
 }
 
 export const ChatInput = ({ 
@@ -28,6 +31,8 @@ export const ChatInput = ({
   onAgentChange,
   isStreaming = false,
   onStop,
+  demoFollowUp,
+  onDemoComplete,
 }: ChatInputProps) => {
   const [message, setMessage] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -61,6 +66,36 @@ export const ChatInput = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // CXO 引导：先打字出现在对话框，再发送——主要展示过程
+  useEffect(() => {
+    if (!demoFollowUp?.phrase || disabled) return;
+    const phrase = demoFollowUp.phrase;
+    let typingId: ReturnType<typeof setInterval> | undefined;
+    let sendTimeout: ReturnType<typeof setTimeout> | undefined;
+    const startTimeout = setTimeout(() => {
+      inputRef.current?.focus();
+      let idx = 0;
+      typingId = setInterval(() => {
+        idx += 1;
+        setMessage(phrase.slice(0, idx));
+        if (idx >= phrase.length) {
+          if (typingId != null) clearInterval(typingId);
+          sendTimeout = setTimeout(() => {
+            if (phrase.trim()) {
+              onSend(phrase.trim());
+              setMessage('');
+            }
+            onDemoComplete?.();
+          }, 600);
+        }
+      }, 80);
+    }, demoFollowUp.delayMs);
+    return () => {
+      clearTimeout(startTimeout);
+      if (typingId != null) clearInterval(typingId);
+      if (sendTimeout != null) clearTimeout(sendTimeout);
+    };
+  }, [demoFollowUp?.phrase, demoFollowUp?.delayMs, disabled]); // 仅依赖 demo 配置，避免重复执行
 
   const handleSubmit = () => {
     if (message.trim() && !disabled) {
@@ -348,19 +383,21 @@ export const ChatInput = ({
             )}
           </AnimatePresence>
 
-          {/* 发送按钮 */}
-          <button
-            onClick={handleSubmit}
-            disabled={!message.trim() || disabled}
-            className={clsx(
-              'flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200',
-              message.trim() && !disabled
-                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 hover:bg-primary-600 hover:scale-105 active:scale-95'
-                : 'bg-[#F5F9FF] text-[#86909C] cursor-not-allowed'
-            )}
-          >
-            {message.trim() ? <Send className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </button>
+          {/* 发送按钮 - 追问引导时聚光灯高亮 */}
+          <div className={clsx('relative rounded-xl transition-all duration-300', demoFollowUp && 'ring-4 ring-[#007AFF] ring-offset-2 ring-offset-white rounded-xl animate-pulse')}>
+            <button
+              onClick={handleSubmit}
+              disabled={!message.trim() || disabled}
+              className={clsx(
+                'flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200',
+                message.trim() && !disabled
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 hover:bg-primary-600 hover:scale-105 active:scale-95'
+                  : 'bg-[#F5F9FF] text-[#86909C] cursor-not-allowed'
+              )}
+            >
+              {message.trim() ? <Send className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </div>
 

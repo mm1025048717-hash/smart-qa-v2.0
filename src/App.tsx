@@ -19,6 +19,9 @@ import DashboardList from './pages/DashboardList';
 import { VoiceChatPage } from './pages/VoiceChatPage';
 import KPICardShowcase from './pages/KPICardShowcase';
 import PRDPage from './pages/PRDPage';
+import DataSourceConfigPage from './pages/DataSourceConfigPage';
+import ModelingConfigPage from './pages/ModelingConfigPage';
+import IndicatorsConfigPage from './pages/IndicatorsConfigPage';
 import { 
   createUserMessage,
   generateNarrativeResponse,
@@ -54,6 +57,8 @@ interface ConversationContext {
 function App() {
   // 所有 hooks 必须在任何条件 return 之前声明
   const [messages, setMessages] = useState<Message[]>([]);
+  /** CXO 引导首问后，在对话区内展示追问暗示并自动发送一次追问 */
+  const [pendingTourFollowUp, setPendingTourFollowUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSearching, setIsSearching] = useState(false); // 是否正在联网搜索
@@ -66,7 +71,8 @@ function App() {
   // 业务场景相关状态
   const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false);
   const [, setActiveScenario] = useState<BusinessScenario | null>(null);
-  const [currentPage, setCurrentPage] = useState<'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase' | 'prd'>(() => {
+  type PageType = 'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase' | 'prd' | 'datasource' | 'modeling' | 'indicators';
+  const [currentPage, setCurrentPage] = useState<PageType>(() => {
     // 初始化时检查URL参数
     const params = new URLSearchParams(window.location.search);
     const page = params.get('page');
@@ -83,6 +89,9 @@ function App() {
     }
     if (page === 'kpi-showcase') return 'kpi-showcase';
     if (page === 'prd') return 'prd';
+    if (page === 'datasource') return 'datasource';
+    if (page === 'modeling') return 'modeling';
+    if (page === 'indicators') return 'indicators';
     return 'main';
   });
 
@@ -94,7 +103,7 @@ function App() {
       const dashboardId = params.get('id');
       const addAction = params.get('add');
       
-      let newPage: 'main' | 'mobile' | 'gesture' | 'attribution' | 'dashboard' | 'dashboard-list' | 'voice-chat' | 'kpi-showcase' | 'prd' = 'main';
+      let newPage: PageType = 'main';
       
       if (page === 'mobile') newPage = 'mobile';
       else if (page === 'gesture') newPage = 'gesture';
@@ -105,6 +114,9 @@ function App() {
       } else if (page === 'voice-chat') newPage = 'voice-chat';
       else if (page === 'kpi-showcase') newPage = 'kpi-showcase';
       else if (page === 'prd') newPage = 'prd';
+      else if (page === 'datasource') newPage = 'datasource';
+      else if (page === 'modeling') newPage = 'modeling';
+      else if (page === 'indicators') newPage = 'indicators';
       
       setCurrentPage(prevPage => {
         if (prevPage !== newPage) {
@@ -2149,6 +2161,11 @@ function App() {
     return <PRDPage />;
   }
 
+  // 路由：数据开发配置页（PRD F.2.4 Lazy 真实进入配置）
+  if (currentPage === 'datasource') return <DataSourceConfigPage />;
+  if (currentPage === 'modeling') return <ModelingConfigPage />;
+  if (currentPage === 'indicators') return <IndicatorsConfigPage />;
+
   // 主页面渲染 - 根据是否有消息决定显示简约输入界面还是问答界面
   return (
     <AnimatePresence mode="wait">
@@ -2164,9 +2181,9 @@ function App() {
         >
           <SimpleInputPage 
             onQuestionSubmit={(question, options) => {
+              if (options?.fromTourDemo) setPendingTourFollowUp(true);
               if (options?.agentId && options.agentId !== currentAgentId) {
                 handleAgentChange(options.agentId).then(() => {
-                  // 切换完成后发送消息
                   setTimeout(() => handleSend(question, options?.enableWebSearch), 300);
                 });
               } else {
@@ -2176,6 +2193,10 @@ function App() {
             agent={currentAgent}
             onAgentChange={handleAgentChange}
             currentAgentId={currentAgentId}
+            onNavigateToConfig={(page) => {
+              window.history.pushState({}, '', `?page=${page}`);
+              setCurrentPage(page);
+            }}
           />
           {/* 浮动引导助手已移至 SimpleInputPage 内部，支持角色选择后自动引导 */}
         </motion.div>
@@ -2322,7 +2343,14 @@ function App() {
                   </div>
                 </div>
 
-                {/* 输入区域 - 固定在底部 */}
+                {/* 输入区域 - 固定在底部；CXO 引导追问演示暗示 */}
+                {pendingTourFollowUp && (
+                  <div className="flex-shrink-0 px-6 pt-3 pb-1 bg-gradient-to-b from-transparent to-white/80">
+                    <p className="text-[13px] text-[#1664FF] text-center">
+                      <strong>已引导您进入数据分析页面。</strong>在此可进行追问：稍后将自动填入示例追问并按下发送，您也可直接输入其他问题。
+                    </p>
+                  </div>
+                )}
                 <div className="flex-shrink-0 px-6 py-4 bg-white border-t border-[#E8F0FF]">
                   <ChatInput 
                     onSend={handleSend} 
@@ -2333,6 +2361,8 @@ function App() {
                     onAgentChange={handleAgentChange}
                     isStreaming={isStreaming}
                     onStop={handleStopStreaming}
+                    demoFollowUp={pendingTourFollowUp ? { phrase: '为什么下降了？', delayMs: 2500 } : undefined}
+                    onDemoComplete={() => setPendingTourFollowUp(false)}
                   />
                 </div>
               </div>

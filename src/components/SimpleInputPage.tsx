@@ -3,7 +3,7 @@
  * 完全独立的界面，包含输入框、切换数字员工、联网选择、常用场景等
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AgentProfile } from '../types';
 import { ALL_AGENTS as AGENTS } from '../services/agents/index';
@@ -32,12 +32,16 @@ import { MeetingNarrativeBubble, type NarrativeNavigateTarget } from './MeetingN
 import { OnboardingTour, hasCompletedOnboarding, resetOnboardingTour } from './OnboardingTour';
 
 const CUSTOM_AGENTS_KEY = 'yiwen_custom_agents_v1';
+const FIRST_VISIT_KEY = 'yiwen_first_visit';
+const EXPLORE_GUIDE_SEEN_KEY = 'yiwen_explore_guide_seen';
 
 interface SimpleInputPageProps {
-  onQuestionSubmit: (question: string, options?: { agentId?: string; enableWebSearch?: boolean }) => void;
+  onQuestionSubmit: (question: string, options?: { agentId?: string; enableWebSearch?: boolean; fromTourDemo?: boolean }) => void;
   agent: AgentProfile;
   onAgentChange?: (agentId: string) => void | Promise<void>;
   currentAgentId?: string;
+  /** 跳转到数据开发配置页（数据源/业务建模/指标管理） */
+  onNavigateToConfig?: (page: 'datasource' | 'modeling' | 'indicators') => void;
 }
 
 const RECENT_QUERIES_KEY = 'yiwen_recent_queries_v1';
@@ -56,11 +60,12 @@ interface RoleOption {
   recommendedAgents: RoleAgentRecommendation[];
 }
 
+// PRD F.1.2：四类角色文案对齐（CXO/业务负责人/一线业务/数据开发）+ 保留分析师/财务/新手
 const ROLE_OPTIONS: RoleOption[] = [
   {
     id: 'exec',
-    label: '管理层',
-    description: '关注全局指标、趋势与关键异常',
+    label: 'CXO / 高管',
+    description: '我关注经营结论，需要辅助决策',
     recommendedAgents: [
       { agentId: 'alisa', reason: '一句话快速获取核心KPI', priority: 1 },
       { agentId: 'metrics-pro', reason: '构建清晰的指标体系', priority: 2 },
@@ -68,6 +73,45 @@ const ROLE_OPTIONS: RoleOption[] = [
       { agentId: 'report-lisa', reason: '定期报表自动生成', priority: 4 },
       { agentId: 'attributor', reason: '关键异常快速归因', priority: 5 },
       { agentId: 'predictor', reason: '预测未来业务走向', priority: 6 },
+    ],
+  },
+  {
+    id: 'business',
+    label: '业务负责人',
+    description: '我关注团队业绩，需要管理报表',
+    recommendedAgents: [
+      { agentId: 'growth-hacker', reason: '发现增长机会与转化漏斗', priority: 1 },
+      { agentId: 'alisa', reason: '快速查看业务关键数据', priority: 2 },
+      { agentId: 'viz-master', reason: '业务数据可视化呈现', priority: 3 },
+      { agentId: 'operation-pro', reason: '活动效果与用户行为洞察', priority: 4 },
+      { agentId: 'report-lisa', reason: '业务周报月报一键生成', priority: 5 },
+      { agentId: 'predictor', reason: '预测销售趋势辅助决策', priority: 6 },
+    ],
+  },
+  {
+    id: 'ops',
+    label: '一线业务',
+    description: '我从事实操工作，需要查询数据',
+    recommendedAgents: [
+      { agentId: 'operation-pro', reason: '运营数据分析专家', priority: 1 },
+      { agentId: 'quality-guard', reason: '数据异常实时预警', priority: 2 },
+      { agentId: 'attributor', reason: '异常指标快速归因', priority: 3 },
+      { agentId: 'growth-hacker', reason: '用户增长与转化分析', priority: 4 },
+      { agentId: 'alisa', reason: '日常数据快速查询', priority: 5 },
+      { agentId: 'anxiety-analyst', reason: '风险预警提前发现', priority: 6 },
+    ],
+  },
+  {
+    id: 'developer',
+    label: '数据开发',
+    description: '我负责系统搭建，需要接入数据',
+    recommendedAgents: [
+      { agentId: 'quality-guard', reason: '数据质量监控与异常检测', priority: 1 },
+      { agentId: 'alisa', reason: '精准查询与数据接入', priority: 2 },
+      { agentId: 'metrics-pro', reason: '指标与口径管理', priority: 3 },
+      { agentId: 'data-detective', reason: '数据线索追踪', priority: 4 },
+      { agentId: 'viz-master', reason: '数据可视化', priority: 5 },
+      { agentId: 'report-lisa', reason: '报表与审计', priority: 6 },
     ],
   },
   {
@@ -81,32 +125,6 @@ const ROLE_OPTIONS: RoleOption[] = [
       { agentId: 'quality-guard', reason: '数据质量监控与异常检测', priority: 4 },
       { agentId: 'viz-master', reason: '专业图表让洞察更直观', priority: 5 },
       { agentId: 'data-detective', reason: '抽丝剥茧追踪数据线索', priority: 6 },
-    ],
-  },
-  {
-    id: 'business',
-    label: '业务负责人',
-    description: '看业务表现、对比与增长机会',
-    recommendedAgents: [
-      { agentId: 'growth-hacker', reason: '发现增长机会与转化漏斗', priority: 1 },
-      { agentId: 'alisa', reason: '快速查看业务关键数据', priority: 2 },
-      { agentId: 'viz-master', reason: '业务数据可视化呈现', priority: 3 },
-      { agentId: 'operation-pro', reason: '活动效果与用户行为洞察', priority: 4 },
-      { agentId: 'report-lisa', reason: '业务周报月报一键生成', priority: 5 },
-      { agentId: 'predictor', reason: '预测销售趋势辅助决策', priority: 6 },
-    ],
-  },
-  {
-    id: 'ops',
-    label: '运营',
-    description: '盯运营指标、异常发现与排查',
-    recommendedAgents: [
-      { agentId: 'operation-pro', reason: '运营数据分析专家', priority: 1 },
-      { agentId: 'quality-guard', reason: '数据异常实时预警', priority: 2 },
-      { agentId: 'attributor', reason: '异常指标快速归因', priority: 3 },
-      { agentId: 'growth-hacker', reason: '用户增长与转化分析', priority: 4 },
-      { agentId: 'alisa', reason: '日常数据快速查询', priority: 5 },
-      { agentId: 'anxiety-analyst', reason: '风险预警提前发现', priority: 6 },
     ],
   },
   {
@@ -124,7 +142,7 @@ const ROLE_OPTIONS: RoleOption[] = [
   },
   {
     id: 'newbie',
-    label: '新手/快速上手',
+    label: '新手 / 快速上手',
     description: '一步步引导，快速完成分析任务',
     recommendedAgents: [
       { agentId: 'alisa', reason: '最简单易用，准确率最高', priority: 1 },
@@ -156,6 +174,9 @@ const MORE_CAPABILITY_ACTIONS = [
 
 type ScenarioTab =
   | 'digital_employees'
+  | 'indicators_knowledge'  // PRD 一线步骤2：知识库/指标 Tab
+  | 'dashboard'             // PRD 业务负责人步骤4：看板
+  | 'data_dev'              // PRD 数据开发路径：审计/数据源/建模/指标
   | 'sales_overview'
   | 'anomaly_diagnosis'
   | 'user_analysis'
@@ -165,6 +186,9 @@ type ScenarioTab =
 
 const SCENARIO_TABS: Array<{ id: ScenarioTab; label: string }> = [
   { id: 'digital_employees', label: '数字员工' },
+  { id: 'indicators_knowledge', label: '指标/知识库' },
+  { id: 'dashboard', label: '看板' },
+  { id: 'data_dev', label: '数据开发' },
   { id: 'sales_overview', label: '销售概览' },
   { id: 'anomaly_diagnosis', label: '异常诊断' },
   { id: 'user_analysis', label: '用户分析' },
@@ -173,8 +197,33 @@ const SCENARIO_TABS: Array<{ id: ScenarioTab; label: string }> = [
   { id: 'financial_report', label: '财务报表' },
 ];
 
+/** 按角色绑定：每个角色只显示与其相关的 Tab，不展示完整列表 */
+function getVisibleTabIdsForRole(roleId: string | undefined): ScenarioTab[] {
+  switch (roleId) {
+    case 'exec':
+      return ['digital_employees', 'dashboard'];
+    case 'business':
+      return ['digital_employees', 'indicators_knowledge', 'dashboard', 'sales_overview', 'anomaly_diagnosis', 'user_analysis', 'forecast_planning', 'operation_monitor', 'financial_report'];
+    case 'ops':
+      return ['digital_employees', 'indicators_knowledge', 'sales_overview', 'anomaly_diagnosis', 'operation_monitor'];
+    case 'developer':
+      return ['digital_employees', 'data_dev', 'indicators_knowledge'];
+    case 'finance':
+      return ['digital_employees', 'financial_report', 'dashboard', 'sales_overview', 'forecast_planning'];
+    case 'analyst':
+      return ['digital_employees', 'indicators_knowledge', 'dashboard', 'data_dev', 'sales_overview', 'anomaly_diagnosis', 'user_analysis', 'forecast_planning', 'operation_monitor', 'financial_report'];
+    case 'newbie':
+      return ['digital_employees', 'sales_overview', 'anomaly_diagnosis', 'user_analysis'];
+    default:
+      return ['digital_employees', 'indicators_knowledge', 'dashboard', 'sales_overview', 'anomaly_diagnosis', 'user_analysis'];
+  }
+}
+
 const SCENARIO_TAGLINE: Record<ScenarioTab, string> = {
   digital_employees: '围绕核心KPI、把趋势、结构、对比一次看清。',
+  indicators_knowledge: '指标口径说明与业务术语，新建术语统一管理',
+  dashboard: '核心指标看板，一目了然',
+  data_dev: '审计日志、数据源、业务建模、指标管理',
   sales_overview: '销售人员每天都在问的问题，一句话搞定',
   anomaly_diagnosis: '数据出了问题？快速定位原因、给出建议',
   user_analysis: '了解你的用户，发现增长机会',
@@ -193,7 +242,14 @@ interface BusinessQuestion {
 }
 
 const SCENARIO_DEMOS: Record<ScenarioTab, BusinessQuestion[]> = {
-  digital_employees: [], // 数字员工tab不使用问题卡片，而是显示员工列表
+  digital_employees: [],
+  indicators_knowledge: [], // 使用下方「指标/知识库」专用区块
+  dashboard: [
+    { id: 'db-1', title: '销售看板', description: '销售额、目标达成、同比环比', query: '给我一个销售看板', tag: '看板' },
+    { id: 'db-2', title: '运营看板', description: '核心运营指标一览', query: '生成运营监控看板', tag: '看板' },
+    { id: 'db-3', title: '财务看板', description: '收入、成本、利润概览', query: '财务概览看板', tag: '看板' },
+  ],
+  data_dev: [], // 使用下方「数据开发」四宫格
   sales_overview: [
     { id: 'so-1', title: '今天卖了多少？', description: '快速查看今日销售实时数据', query: '今天销售额是多少', tag: '日常查数' },
     { id: 'so-2', title: '哪个产品卖得最好？', description: '找出TOP畅销产品', query: 'TOP10畅销产品是哪些', tag: '排行榜' },
@@ -234,6 +290,9 @@ const SCENARIO_DEMOS: Record<ScenarioTab, BusinessQuestion[]> = {
 
 const SCENARIO_DEFAULT_QUERY: Record<ScenarioTab, string> = {
   digital_employees: '你能帮我做什么',
+  indicators_knowledge: '什么是 GMV',
+  dashboard: '销售看板关键指标',
+  data_dev: '数据源接入状态',
   sales_overview: '今年销售额是多少',
   anomaly_diagnosis: '为什么11月销售额下降了？',
   user_analysis: '日活还有月活数据',
@@ -274,7 +333,7 @@ function writeRecentQuery(query: string) {
   }
 }
 
-export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, currentAgentId }: SimpleInputPageProps) => {
+export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, currentAgentId, onNavigateToConfig }: SimpleInputPageProps) => {
   const [inputValue, setInputValue] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState(agent.id);
   const [enableWebSearch, setEnableWebSearch] = useState(false);
@@ -286,14 +345,32 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [activeScenarioTab, setActiveScenarioTab] = useState<ScenarioTab>('digital_employees');
   const [showMoreCapabilities, setShowMoreCapabilities] = useState(false);
   const [showMoreEmployees, setShowMoreEmployees] = useState(false);
+  const [showNewTermModal, setShowNewTermModal] = useState(false);
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [canScrollEmployeesLeft, setCanScrollEmployeesLeft] = useState(false);
   const [canScrollEmployeesRight, setCanScrollEmployeesRight] = useState(false);
-  // 每次页面刷新/加载都重新显示角色选择器（始终 true，选择后才变 false）
-  const [showRolePicker, setShowRolePicker] = useState(true);
+  // PRD F.1.1：首次访问先显示全屏欢迎，点击「开始探索」后再进角色选择
+  const [showWelcomeMask, setShowWelcomeMask] = useState(() =>
+    typeof window !== 'undefined' ? !localStorage.getItem(FIRST_VISIT_KEY) : false
+  );
+  // 首次访问时先不显示角色选择（等欢迎页点「开始探索」后再显示）；非首次直接显示
+  const [showRolePicker, setShowRolePicker] = useState(() =>
+    typeof window !== 'undefined' ? !!localStorage.getItem(FIRST_VISIT_KEY) : true
+  );
   const [userRole, setUserRole] = useState<typeof ROLE_OPTIONS[number] | null>(null);
+  // PRD F.1.2：角色选择器默认预选「一线业务」(业务执行)
+  const [rolePickerSelectedId, setRolePickerSelectedId] = useState<string>('ops');
+  // 按需触发数字员工引导：首次进入探索页时显示一次气泡
+  const [showExploreGuideBubble, setShowExploreGuideBubble] = useState(false);
+  const execDemoTriggeredRef = useRef(false);
+  /** CXO 追问演示：步骤 3「追问与交互」进入时仅触发一次，自动键入并发送追问（在首页时） */
+  const execFollowUpTriggeredRef = useRef(false);
+  /** 首问来自引导演示时传 fromTourDemo，便于在对话界面内做追问暗示与自动演示 */
+  const execTourFirstSubmitRef = useRef(false);
   // 点击浮动引导助手时显示聚光灯式新手引导（PRD 4.5）
   const [showSpotlightTour, setShowSpotlightTour] = useState(false);
+  // PRD F.3.1：引导结束（气泡消失）后 5 秒内小助手头像半透明驻留
+  const [assistantDimmed, setAssistantDimmed] = useState(false);
   // 亿问小助手帮助面板（口述稿「前往小助手」或点击右下角按钮打开）
   const [showHelperPanel, setShowHelperPanel] = useState(false);
   // 点击「探索数字员工」后展示的探索视图（类似 MiniMax 专家页，极简苹果风）
@@ -307,6 +384,8 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [triggerDemoSubmit, setTriggerDemoSubmit] = useState(false);
   /** 当前正在「演示高亮」的区域，用于短暂脉冲高亮 */
   const [demoHighlightSection, setDemoHighlightSection] = useState<'capability-actions' | 'employee-cards' | null>(null);
+  /** PRD F.2.4 Lazy：首次点击数据源/建模/指标卡片时触发的引导 */
+  const [lazyDevGuide, setLazyDevGuide] = useState<'datasource' | 'modeling' | 'indicators' | null>(null);
   const demoTypingIndexRef = useRef(0);
   const [customAgents, setCustomAgents] = useState<AgentProfile[]>(() => {
     try {
@@ -354,6 +433,35 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     return recommended[0]?.agent || AGENTS[0] || agent;
   };
 
+  // 按角色绑定的可见 Tab 列表
+  const visibleTabIds = useMemo(() => getVisibleTabIdsForRole(userRole?.id), [userRole?.id]);
+  const visibleScenarioTabs = useMemo(
+    () => SCENARIO_TABS.filter((t) => visibleTabIds.includes(t.id)),
+    [visibleTabIds]
+  );
+
+  // 角色或可见 Tab 变化时，若当前选中的 Tab 不在可见列表内，则切回第一个可见 Tab
+  useEffect(() => {
+    if (!visibleTabIds.includes(activeScenarioTab)) {
+      setActiveScenarioTab(visibleTabIds[0] ?? 'digital_employees');
+    }
+  }, [visibleTabIds, activeScenarioTab]);
+
+  // 打开角色选择器时同步默认预选（PRD：默认业务执行/一线）
+  useEffect(() => {
+    if (showRolePicker) {
+      setRolePickerSelectedId(userRole?.id ?? 'ops');
+    }
+  }, [showRolePicker]); // eslint-disable-line react-hooks/exhaustive-deps -- only when opening picker
+
+  // 首次进入探索数字员工页时显示一次按需引导气泡
+  useEffect(() => {
+    if (!showExploreView) return;
+    if (typeof window !== 'undefined' && !localStorage.getItem(EXPLORE_GUIDE_SEEN_KEY)) {
+      setShowExploreGuideBubble(true);
+    }
+  }, [showExploreView]);
+
   useEffect(() => {
     try {
       if (customAgents.length) {
@@ -387,9 +495,12 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     if (inputValue.trim()) {
       writeRecentQuery(inputValue.trim());
       setRecentQueries(safeReadRecentQueries());
+      const isTourFirstDemo = userRole?.id === 'exec' && inputValue.trim() === '上周销售额是多少？' && execTourFirstSubmitRef.current;
+      if (isTourFirstDemo) execTourFirstSubmitRef.current = false;
       onQuestionSubmit(inputValue.trim(), {
         agentId: selectedAgentId !== agent.id ? selectedAgentId : undefined,
         enableWebSearch,
+        fromTourDemo: isTourFirstDemo,
       });
       setInputValue('');
     }
@@ -411,7 +522,10 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
       if (idx >= phrase.length) {
         clearInterval(id);
         setDemoTypingPhrase(null);
-        submitTimeout = setTimeout(() => setTriggerDemoSubmit(true), 350);
+        // CXO 引导：只填入文案，不自动发送，等用户点击发送后再跳转
+        if (phrase !== '上周销售额是多少？') {
+          submitTimeout = setTimeout(() => setTriggerDemoSubmit(true), 350);
+        }
       }
     }, 70);
     return () => {
@@ -421,15 +535,18 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     };
   }, [demoTypingPhrase]);
 
-  /** 打字完成后触发一次提交（演示完整流程） */
+  /** 打字完成后触发一次提交（演示完整流程）；CXO 首问时传 fromTourDemo 以便在对话区内做追问暗示 */
   useEffect(() => {
     if (!triggerDemoSubmit) return;
     if (inputValue.trim()) {
       writeRecentQuery(inputValue.trim());
       setRecentQueries(safeReadRecentQueries());
+      const fromTourDemo = userRole?.id === 'exec' && execTourFirstSubmitRef.current;
+      if (fromTourDemo) execTourFirstSubmitRef.current = false;
       onQuestionSubmit(inputValue.trim(), {
         agentId: selectedAgentId !== agent.id ? selectedAgentId : undefined,
         enableWebSearch,
+        fromTourDemo,
       });
       setInputValue('');
     }
@@ -485,6 +602,14 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     }, 800);
     return () => clearTimeout(timer);
   }, [showRolePicker]);
+
+  // 每次打开聚光灯引导（含「重新体验引导」）时重置 CXO 问答/追问演示标记，保证完整自动演示可再次执行
+  useEffect(() => {
+    if (showSpotlightTour) {
+      execDemoTriggeredRef.current = false;
+      execFollowUpTriggeredRef.current = false;
+    }
+  }, [showSpotlightTour]);
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
@@ -691,13 +816,37 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
       <main className="flex-1 h-screen overflow-y-auto flex justify-center">
       <div className="min-h-full w-full max-w-[min(100%,72rem)] flex flex-col pt-8 sm:pt-12 px-6 sm:px-10 lg:px-14 pb-16">
         {showExploreView ? (
-          /* 员工市场 - MiniMax 式布局，极简苹果风，无图标无阴影 */
+          /* 员工市场 - MiniMax 式布局；PRD 按需触发数字员工引导气泡 */
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.25 }}
             className="w-full max-w-4xl mx-auto"
           >
+            <AnimatePresence>
+              {showExploreGuideBubble && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="mb-6 p-4 rounded-2xl border border-[#007AFF]/20 bg-[#F0F7FF] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                >
+                  <p className="text-[13px] text-[#1D1D1F] leading-relaxed">
+                    雇佣更专业的 AI 员工。比如 <strong>CFO Agent</strong> 擅长财务分析，<strong>供应链 Agent</strong> 擅长库存管理。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') localStorage.setItem(EXPLORE_GUIDE_SEEN_KEY, '1');
+                      setShowExploreGuideBubble(false);
+                    }}
+                    className="flex-shrink-0 px-4 py-2 text-[13px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-colors"
+                  >
+                    知道了
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div className="flex items-center justify-between gap-4 mb-6">
               <button
                 type="button"
@@ -1047,10 +1196,11 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
               </div>
             </div>
             
-            {/* 发送按钮 - 右下角，顶级苹果设计 */}
+            {/* 发送按钮 - 右下角，引导 CXO 点击此处发送 */}
             <div className="absolute right-7 bottom-5 flex items-center gap-2">
               <button
                 type="submit"
+                data-tour="send-button"
                 disabled={!inputValue.trim()}
                 className={`
                   w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200
@@ -1126,33 +1276,32 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             className={`mt-6 rounded-2xl transition-all duration-300 ${demoHighlightSection === 'employee-cards' ? 'ring-2 ring-[#007AFF] ring-offset-2 bg-[#F0F7FF]/50' : ''}`}
             ref={employeesSectionRef}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <h3 className="text-[14px] text-[#86868B]">
-                  {activeScenarioTab === 'digital_employees' 
-                    ? (userRole ? `为${userRole.label}推荐的数字员工` : '数字员工') 
-                    : '常见问题'}
-                </h3>
-                <div data-tour="scenario-tabs" className="flex p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]">
-                  {SCENARIO_TABS.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveScenarioTab(t.id);
-                        setShowMoreEmployees(false);
-                      }}
-                      className={`px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all ${
-                        activeScenarioTab === t.id ? 'bg-white text-[#1D1D1F] shadow-sm' : 'text-[#86868B] hover:text-[#1D1D1F]'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[14px] text-[#86868B] whitespace-nowrap shrink-0 min-w-0 overflow-hidden text-ellipsis">
+                {activeScenarioTab === 'digital_employees' 
+                  ? (userRole ? `为${userRole.label}推荐的数字员工` : '数字员工') 
+                  : '常见问题'}
+              </h3>
+                <div data-tour="scenario-tabs" className="flex flex-nowrap overflow-x-auto scrollbar-hidden p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] min-w-0">
+                {visibleScenarioTabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    data-tour={t.id === 'dashboard' ? 'dashboard-tab' : t.id === 'indicators_knowledge' ? 'knowledge-indicators-tab' : t.id === 'data_dev' ? 'data-dev-tab' : undefined}
+                    onClick={() => {
+                      setActiveScenarioTab(t.id);
+                      setShowMoreEmployees(false);
+                    }}
+                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all ${
+                      activeScenarioTab === t.id ? 'bg-white text-[#1D1D1F] shadow-sm' : 'text-[#86868B] hover:text-[#1D1D1F]'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => scrollEmployees('left')}
@@ -1194,7 +1343,70 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             </div>
 
             <div ref={employeesScrollRef} className="mt-3 flex gap-3 overflow-x-auto scrollbar-hidden pb-2">
-              {activeScenarioTab === 'digital_employees' ? (
+              {activeScenarioTab === 'indicators_knowledge' ? (
+                /* PRD 一线步骤2：指标/知识库 Tab、口径说明、新建术语 */
+                <div data-tour="knowledge-indicators" className="min-w-full rounded-2xl border border-[#E5E5EA] bg-white p-5">
+                  <h4 className="text-[13px] font-semibold text-[#1D1D1F]">指标口径说明</h4>
+                  <p className="mt-2 text-[12px] text-[#86868B] leading-relaxed">
+                    GMV：商品交易总额，含下单未支付。DAU：日活跃用户数。MAU：月活跃用户数。转化率：目标行为完成人数 / 触达人数。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewTermModal(true)}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    新建术语
+                  </button>
+                </div>
+              ) : activeScenarioTab === 'data_dev' ? (
+                /* PRD F.2.4 数据开发路径：审计日志（主引导）；数据源/建模/指标 Lazy（首次点击卡片触发） */
+                <div className="min-w-full grid grid-cols-2 gap-3 relative">
+                  <div data-tour="dev-audit" className="rounded-2xl border border-[#E5E5EA] bg-white p-4">
+                    <h4 className="text-[12px] font-semibold text-[#1D1D1F]">审计日志</h4>
+                    <p className="mt-1 text-[11px] text-[#86868B]">查询与变更记录，支持合规审计</p>
+                  </div>
+                  <button
+                    type="button"
+                    data-tour="dev-datasource"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLazyDevGuide('datasource');
+                    }}
+                    className="rounded-2xl border border-[#E5E5EA] bg-white p-4 text-left hover:border-[#007AFF]/30 transition-colors"
+                  >
+                    <h4 className="text-[12px] font-semibold text-[#1D1D1F]">数据源</h4>
+                    <p className="mt-1 text-[11px] text-[#86868B]">接入与管理数据源配置</p>
+                  </button>
+                  <button
+                    type="button"
+                    data-tour="dev-modeling"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLazyDevGuide('modeling');
+                    }}
+                    className="rounded-2xl border border-[#E5E5EA] bg-white p-4 text-left hover:border-[#007AFF]/30 transition-colors"
+                  >
+                    <h4 className="text-[12px] font-semibold text-[#1D1D1F]">业务建模</h4>
+                    <p className="mt-1 text-[11px] text-[#86868B]">维度、主题与模型定义</p>
+                  </button>
+                  <button
+                    type="button"
+                    data-tour="dev-indicators"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLazyDevGuide('indicators');
+                    }}
+                    className="rounded-2xl border border-[#E5E5EA] bg-white p-4 text-left hover:border-[#007AFF]/30 transition-colors"
+                  >
+                    <h4 className="text-[12px] font-semibold text-[#1D1D1F]">指标管理</h4>
+                    <p className="mt-1 text-[11px] text-[#86868B]">指标定义、口径与计算逻辑</p>
+                  </button>
+                </div>
+              ) : activeScenarioTab === 'digital_employees' ? (
                 // 数字员工卡片 - 根据用户角色推荐
                 (() => {
                   const recommendedList = getRecommendedAgentsForRole(userRole);
@@ -1251,7 +1463,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                       
                       {/* 简短描述 */}
                       {agentItem.description && (
-                        <p className="mt-2 text-[11px] text-[#86868B] leading-relaxed line-clamp-2">
+                        <p className="mt-2 text-[11px] text-[#86868B] leading-relaxed line-clamp-1 overflow-hidden text-ellipsis">
                           {agentItem.description}
                         </p>
                       )}
@@ -1277,7 +1489,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                       <div className="text-[13px] font-semibold text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
                         {question.title}
                       </div>
-                      <div className="text-[11px] text-[#86868B] mt-1.5 leading-relaxed line-clamp-2">
+                      <div className="text-[11px] text-[#86868B] mt-1.5 leading-relaxed line-clamp-1 overflow-hidden text-ellipsis">
                         {question.description}
                       </div>
                       </div>
@@ -1291,6 +1503,56 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         )}
       </div>
       </main>
+
+      {/* 新建术语弹窗（PRD 一线步骤2） */}
+      <AnimatePresence>
+        {showNewTermModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 z-[62] flex items-center justify-center p-4"
+            onClick={() => setShowNewTermModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-2xl bg-white border border-[#E5E5EA] shadow-xl p-6"
+            >
+              <h3 className="text-[17px] font-semibold text-[#1D1D1F]">新建术语</h3>
+              <p className="mt-1 text-[13px] text-[#86868B]">添加业务黑话或指标定义，便于团队统一理解</p>
+              <input
+                type="text"
+                placeholder="术语名称（如 GMV、DAU）"
+                className="mt-4 w-full px-3 py-2.5 rounded-xl border border-[#E5E5EA] text-[13px] placeholder:text-[#86868B]"
+              />
+              <textarea
+                placeholder="口径说明（选填）"
+                rows={3}
+                className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[#E5E5EA] text-[13px] placeholder:text-[#86868B] resize-none"
+              />
+              <div className="mt-6 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowNewTermModal(false)}
+                  className="px-4 py-2.5 text-[13px] text-[#86868B] hover:bg-[#F5F5F7] rounded-xl"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewTermModal(false)}
+                  className="px-4 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] rounded-xl"
+                >
+                  保存
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 帮助文档面板（真实文档，非智能引导） */}
       <AnimatePresence>
@@ -1360,7 +1622,62 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         )}
       </AnimatePresence>
 
-      {/* 进入首页先选角色 */}
+      {/* PRD F.1.1：首次访问全屏欢迎蒙版（Logo + 欢迎语 + 开始探索） */}
+      <AnimatePresence>
+        {showWelcomeMask && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[65] flex items-center justify-center p-4"
+            style={{ background: 'linear-gradient(135deg, rgba(0,122,255,0.08) 0%, rgba(88,86,214,0.06) 100%)' }}
+          >
+            <div className="absolute inset-0 backdrop-blur-md bg-white/70" aria-hidden />
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="relative text-center max-w-md"
+            >
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-2xl text-white font-bold shadow-lg">
+                亿
+              </div>
+              <h1 className="mt-6 text-2xl sm:text-3xl font-semibold text-[#1D1D1F] tracking-tight">
+                欢迎来到亿问 Data Agent
+              </h1>
+              <p className="mt-2 text-[15px] text-[#86868B]">
+                您的企业级数据大脑
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') localStorage.setItem(FIRST_VISIT_KEY, '1');
+                    setShowWelcomeMask(false);
+                    setShowRolePicker(true);
+                  }}
+                  className="px-8 py-3 text-[15px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-colors"
+                >
+                  开始探索
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') localStorage.setItem(FIRST_VISIT_KEY, '1');
+                    setShowWelcomeMask(false);
+                    setShowRolePicker(true);
+                  }}
+                  className="px-6 py-2.5 text-[14px] font-medium text-[#007AFF] hover:bg-[#F0F7FF] rounded-xl transition-colors"
+                >
+                  这是什么？
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 进入首页先选角色（PRD F.1.2：默认预选一线业务，关闭时未选则用默认） */}
       <AnimatePresence>
         {showRolePicker && (
           <motion.div
@@ -1377,7 +1694,15 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             >
               <button
                 type="button"
-                onClick={() => setShowRolePicker(false)}
+                onClick={() => {
+                  const defaultRole = ROLE_OPTIONS.find((r) => r.id === 'ops');
+                  if (defaultRole && !userRole) {
+                    setUserRole(defaultRole);
+                    setSelectedAgentId(pickRecommendedAgent(defaultRole).id);
+                    resetOnboardingTour();
+                  }
+                  setShowRolePicker(false);
+                }}
                 className="absolute top-5 right-5 sm:top-6 sm:right-6 w-9 h-9 rounded-full flex items-center justify-center text-[#86868B] hover:bg-[#F2F2F7] hover:text-[#1D1D1F] transition-colors"
                 aria-label="关闭"
               >
@@ -1388,30 +1713,38 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                   先选择你的角色
                 </h3>
                 <p className="mt-2 text-sm text-[#86868B]">
-                  我们会基于角色为你推荐合适的数字员工
+                  我们会基于角色为你推荐合适的数字员工（默认一线业务）
                 </p>
               </div>
 
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {ROLE_OPTIONS.map((role) => {
                   const recommended = pickRecommendedAgent(role);
+                  const isSelected = rolePickerSelectedId === role.id;
+                  const isDefault = role.id === 'ops';
                   return (
                     <button
                       key={role.id}
                       type="button"
                       onClick={() => {
-                        // 1. 设置用户角色
+                        setRolePickerSelectedId(role.id);
                         setUserRole(role);
-                        // 2. 自动选择推荐的数字员工（只更新本地状态，保留在首页不跳转）
                         setSelectedAgentId(recommended.id);
-                        // 3. 重置引导完成标记，使本次「选择角色后」能自动弹出分角色引导（PRD 4.2）
                         resetOnboardingTour();
-                        // 4. 关闭角色选择弹窗 -> 约 800ms 后 effect 会触发 setShowSpotlightTour(true)
                         setShowRolePicker(false);
                       }}
-                      className="rounded-2xl border border-[#E5E5EA] bg-white p-4 text-left hover:border-[#007AFF]/30 hover:bg-[#F9F9FB] transition-all"
+                      className={`rounded-2xl border p-4 text-left transition-all ${
+                        isSelected
+                          ? 'border-[#007AFF] bg-[#F0F7FF] ring-2 ring-[#007AFF]/20'
+                          : 'border-[#E5E5EA] bg-white hover:border-[#007AFF]/30 hover:bg-[#F9F9FB]'
+                      }`}
                     >
-                      <div className="text-[15px] font-semibold text-[#1D1D1F]">{role.label}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-semibold text-[#1D1D1F]">{role.label}</span>
+                        {isDefault && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8F4FF] text-[#007AFF]">推荐</span>
+                        )}
+                      </div>
                       <div className="mt-1 text-[12px] text-[#86868B]">{role.description}</div>
                       <div className="mt-3 flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full overflow-hidden border border-[#E5E5EA] bg-[#F5F5F7] flex-shrink-0">
@@ -1455,11 +1788,94 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
       {showSpotlightTour && (
         <OnboardingTour
           forceShow
-          onComplete={() => setShowSpotlightTour(false)}
+          userRoleId={userRole?.id}
+          onComplete={() => {
+            setShowSpotlightTour(false);
+            setAssistantDimmed(true);
+            setTimeout(() => setAssistantDimmed(false), 5000);
+          }}
+          onStepEnter={(stepId) => {
+            // CXO 步骤 1：只自动填入「上周销售额是多少？」，等用户点击发送后再跳转，不自动跳转
+            if (userRole?.id === 'exec' && stepId === 'input-area' && !execDemoTriggeredRef.current) {
+              execDemoTriggeredRef.current = true;
+              execTourFirstSubmitRef.current = true;
+              setDemoTypingPhrase('上周销售额是多少？');
+            }
+            // 步骤 2「联网搜索」：自动选中联网搜索并打开下拉；若首问尚未发送则仅填入文案，由用户点击发送
+            if ((userRole?.id === 'exec' || userRole?.id === 'business') && stepId === 'deep-mode') {
+              setEnableWebSearch(true);
+              setShowExploreView(false);
+              document.getElementById('yiwen-agent-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              setTimeout(() => setShowWebSearchDropdown(true), 700);
+              if (userRole?.id === 'exec' && !execDemoTriggeredRef.current) {
+                execDemoTriggeredRef.current = true;
+                execTourFirstSubmitRef.current = true;
+                setTimeout(() => setDemoTypingPhrase('上周销售额是多少？'), 800);
+              }
+            }
+            // 追问引导仅在进入数据分析界面后进行，不在欢迎页触发追问
+            if (userRole?.id === 'ops' && stepId === 'knowledge-indicators') setActiveScenarioTab('indicators_knowledge');
+            if (userRole?.id === 'business' && stepId === 'dashboard-tab') setActiveScenarioTab('dashboard');
+            if (userRole?.id === 'developer' && stepId === 'dev-audit') setActiveScenarioTab('data_dev');
+          }}
         />
       )}
 
-      {/* 右下角浮动引导助手 - 仅按钮，点击触发聚光灯引导，无展开面板 */}
+      {/* PRD F.2.4 Lazy 引导：全屏蒙层，超出「常见问题」范围，与主引导一致的聚焦感 */}
+      {lazyDevGuide && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55"
+          onClick={() => setLazyDevGuide(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lazy-guide-title"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-[#E5E5EA] p-6 max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 id="lazy-guide-title" className="text-[17px] font-semibold text-[#1D1D1F]">
+              {lazyDevGuide === 'datasource' && '数据源'}
+              {lazyDevGuide === 'modeling' && '业务建模'}
+              {lazyDevGuide === 'indicators' && '指标管理'}
+            </h4>
+            <p className="mt-3 text-[14px] text-[#3A3A3C] leading-relaxed">
+              {lazyDevGuide === 'datasource' && '第一步：建立连接。点击「新建连接」接入 Doris/MySQL，支持 SSH 隧道。'}
+              {lazyDevGuide === 'modeling' && '模型列表管理所有向 Agent 暴露的表结构。进入详情可为字段配置语义类型与同义词，开启动态 SQL 允许 AI 自由组合字段。'}
+              {lazyDevGuide === 'indicators' && '口径统一。在这里定义「毛利」「客单价」等计算公式，AI 就不会乱算。'}
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (lazyDevGuide === 'datasource') localStorage.setItem('yiwen_dev_datasource_guide_shown', 'true');
+                  if (lazyDevGuide === 'modeling') localStorage.setItem('yiwen_dev_modeling_guide_shown', 'true');
+                  if (lazyDevGuide === 'indicators') localStorage.setItem('yiwen_dev_indicators_guide_shown', 'true');
+                  setLazyDevGuide(null);
+                }}
+                className="flex-1 py-3 rounded-xl border border-[#E5E5EA] text-[#3A3A3C] text-[14px] font-medium hover:bg-[#F2F2F7] transition-colors"
+              >
+                知道了
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (lazyDevGuide === 'datasource') localStorage.setItem('yiwen_dev_datasource_guide_shown', 'true');
+                  if (lazyDevGuide === 'modeling') localStorage.setItem('yiwen_dev_modeling_guide_shown', 'true');
+                  if (lazyDevGuide === 'indicators') localStorage.setItem('yiwen_dev_indicators_guide_shown', 'true');
+                  setLazyDevGuide(null);
+                  onNavigateToConfig?.(lazyDevGuide);
+                }}
+                className="flex-1 py-3 rounded-xl bg-[#007AFF] text-white text-[14px] font-medium hover:bg-[#0051D5] transition-colors"
+              >
+                去配置
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 右下角浮动引导助手 - PRD 4.4 页面感知 + 帮助中心兜底 */}
       <FloatingGuideAssistant
         key={`guide-${selectedAgentId}`}
         agentName={selectedAgent.name}
@@ -1471,6 +1887,8 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
           setShowHelpDoc(true);
         }}
         onTriggerGuide={() => setShowSpotlightTour(true)}
+        pageContext={showExploreView ? '探索数字员工' : '首页'}
+        dimmed={assistantDimmed}
       />
 
       {/* 会议口述稿气泡 - 开会时可打开，口述 PRD 设计思路与想法；点击「→ 前往XXX」可跳转首页对应功能 */}

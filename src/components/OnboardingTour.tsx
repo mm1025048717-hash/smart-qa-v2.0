@@ -1,10 +1,12 @@
 /**
- * 新手引导（游戏式聚光灯引导）- PRD 4.5
- * 共 8 步，高亮当前区域；下一步/上一步切换，跳过引导/X 直接关闭并存储完成状态。
+ * 新手引导（游戏式聚光灯）- PRD 4.2 分角色差异化引导
+ * 千人千面：管理层极简 3 步，业务负责人 4 步，一线 3 步（不同内容），其余角色适中步骤。
+ * 目标：在有限步骤内让用户快速会问、会看效果，不是鼓励跳过。
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { trackTourStart, trackTourComplete, trackTourSkip } from '../utils/tourTracking';
 
 interface TourStep {
   id: string;
@@ -16,32 +18,79 @@ interface TourStep {
   padding?: number;
 }
 
-// PRD 4.5 引导步骤（共8步）
-const TOUR_STEPS: TourStep[] = [
-  { id: 'welcome', target: '', title: '欢迎使用', description: '30 秒快速了解核心功能，帮助你高效分析数据。', position: 'center' },
-  { id: 'input-area', target: '[data-tour="input-area"]', title: '智能输入框', description: '这是你与 AI 对话的核心区域。直接输入你想分析的问题即可。', position: 'bottom', highlight: 'rect', padding: 12 },
-  { id: 'agent-selector', target: '[data-tour="agent-selector"]', title: '数字员工选择', description: '点击这里可以切换不同的 AI 助手，每位员工有不同专长。', position: 'bottom', highlight: 'rect', padding: 8 },
-  { id: 'capability-actions', target: '[data-tour="capability-actions"]', title: '快速能力入口', description: '不知道问什么？点击这些快捷按钮，快速进入指标查询、趋势分析等常见场景。', position: 'top', highlight: 'rect', padding: 8 },
-  { id: 'scenario-tabs', target: '[data-tour="scenario-tabs"]', title: '业务场景切换', description: '根据不同的业务场景（销售概览、异常诊断、用户分析等），系统会推荐最适合的数字员工和常见问题。', position: 'top', highlight: 'rect', padding: 8 },
-  { id: 'employee-cards', target: '[data-tour="employee-cards"]', title: '数字员工卡片', description: '这里展示推荐的数字员工。点击卡片可快速切换到该员工，获得针对性分析帮助。', position: 'top', highlight: 'rect', padding: 8 },
-  { id: 'sidebar', target: '[data-tour="sidebar"]', title: '任务记录与导航', description: '左侧边栏可查看历史任务记录、搜索之前的分析、探索更多数字员工，以及快速开始新任务。', position: 'right', highlight: 'rect', padding: 8 },
-  { id: 'complete', target: '', title: '准备就绪', description: '现在你已经了解了核心功能。开始输入你的第一个问题吧，如需帮助可随时点击右下角引导助手。', position: 'center' },
+// PRD F.2.1 CXO 极简路径：3 步，收尾时聚光灯打在发送按钮上（追问说明在数据分析界面内展示）
+const TOUR_STEPS_CXO: TourStep[] = [
+  { id: 'input-area', target: '[data-tour="input-area"]', title: '如何提问', description: '这是您的专属对话框，支持语音、文字输入。已为您填入「上周销售额是多少？」。', position: 'bottom', highlight: 'rect', padding: 12 },
+  { id: 'deep-mode', target: '[data-tour="deep-mode"]', title: '联网搜索', description: '发送前可在此选择「联网搜索」，获取包含内外部证据的深度分析。选好后点击发送进入数据分析界面。', position: 'bottom', highlight: 'rect', padding: 8 },
+  { id: 'send-button', target: '[data-tour="send-button"]', title: '点击发送', description: '点击右侧蓝色发送按钮发送，即可进入数据分析界面；在界面内可进行追问，例如「为什么下降了？」。', position: 'left', highlight: 'circle', padding: 12 },
 ];
 
+// PRD F.2.2 业务负责人路径：CXO 步骤 + 看板（步骤 4 自动导航到看板 Tab）
+const TOUR_STEPS_MANAGER: TourStep[] = [
+  { id: 'input-area', target: '[data-tour="input-area"]', title: '如何提问', description: '这是您的专属对话框，支持语音、文字输入。试试问一句：「上周销售额是多少？」输入后请点击右侧蓝色发送按钮发送。', position: 'bottom', highlight: 'rect', padding: 12 },
+  { id: 'deep-mode', target: '[data-tour="deep-mode"]', title: '联网搜索', description: '遇到复杂难题？开启「联网搜索」，获取深度分析。', position: 'bottom', highlight: 'rect', padding: 8 },
+  { id: 'capability-actions', target: '[data-tour="capability-actions"]', title: '能力与看板', description: '这里是您关注的指标与能力入口。指标查询、趋势分析、看板生成等，支持订阅推送到飞书。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'dashboard-tab', target: '[data-tour="dashboard-tab"]', title: '查看看板', description: '点击「看板」可查看核心指标看板，销售、运营、财务一目了然。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'complete-mgr', target: '[data-tour="helper-button"]', title: '准备就绪', description: '开始输入您的第一个问题吧。点「探索数字员工」可雇佣更专业的 AI 员工。如需帮助随时点这里的小助手。', position: 'left', highlight: 'rect', padding: 8 },
+];
+
+// PRD F.2.3 一线业务路径：全能问答、指标/知识库（口径+新建术语）、求助上报
+const TOUR_STEPS_FRONTLINE: TourStep[] = [
+  { id: 'input-area', target: '[data-tour="input-area"]', title: '全能问答 / 搜索', description: '不仅能查数，还能查黑话。试试输入「什么是 GMV？」或「今年销售额是多少」。', position: 'bottom', highlight: 'rect', padding: 12 },
+  { id: 'knowledge-indicators', target: '[data-tour="knowledge-indicators"]', title: '指标与口径', description: '这里可查看指标口径说明，确保和你的认知一致。点击「新建术语」可添加业务黑话、指标定义。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'complete-fl', target: '[data-tour="helper-button"]', title: '求助与上报', description: '遇到数据不对或系统报错？点这里的小助手，直接召唤技术支持，支持截图上传。', position: 'left', highlight: 'rect', padding: 8 },
+];
+
+// PRD F.2.4 数据开发路径：Global 仅审计日志；数据源/建模/指标为 Lazy（首次点击对应卡片触发）
+const TOUR_STEPS_DEVELOPER: TourStep[] = [
+  { id: 'dev-audit', target: '[data-tour="dev-audit"]', title: '审计日志', description: '时刻监控 AI 的回答准确性。这里是所有的问答记录和 SQL 执行日志。', position: 'top', highlight: 'rect', padding: 8 },
+];
+
+// 默认路径（新手/数据分析师/财务等）：适中步骤，教会会问、会点、会求助
+const TOUR_STEPS_DEFAULT: TourStep[] = [
+  { id: 'welcome', target: '', title: '欢迎使用', description: '用最少步骤带你了解核心：怎么问、问完怎么看、遇到困难找谁。', position: 'center' },
+  { id: 'input-area', target: '[data-tour="input-area"]', title: '如何提问', description: '在输入框直接输入你想分析的问题，例如「今年销售额是多少」「近 3 个月趋势」。', position: 'bottom', highlight: 'rect', padding: 12 },
+  { id: 'employee-cards', target: '[data-tour="employee-cards"]', title: '结果与数字员工', description: '问完后会得到图表与结论；这里也会推荐适合你的数字员工，点击可切换。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'complete-def', target: '[data-tour="helper-button"]', title: '准备就绪', description: '开始你的第一个问题吧。如需帮助随时点击这里的小助手。', position: 'left', highlight: 'rect', padding: 8 },
+];
+
+function getStepsForRole(roleId: string | undefined): TourStep[] {
+  if (roleId === 'exec') return TOUR_STEPS_CXO;
+  if (roleId === 'business') return TOUR_STEPS_MANAGER;
+  if (roleId === 'ops') return TOUR_STEPS_FRONTLINE;
+  if (roleId === 'developer') return TOUR_STEPS_DEVELOPER;
+  return TOUR_STEPS_DEFAULT;
+}
+
 const TOUR_STORAGE_KEY = 'yiwen_onboarding_completed_v1';
+const APP_VERSION_KEY = 'yiwen_app_version';
+const APP_VERSION = '2.0.0';
 
 export interface OnboardingTourProps {
   onComplete?: () => void;
   forceShow?: boolean;
+  /** 当前用户角色 id，用于 PRD 分角色差异化引导：exec=极简3步, business=4步, ops=一线3步 */
+  userRoleId?: string;
+  /** 进入某一步时回调（用于 CXO 步骤 1 自动键入演示等） */
+  onStepEnter?: (stepId: string, stepIndex: number) => void;
 }
 
-export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTourProps) => {
-  const steps = TOUR_STEPS;
+export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onStepEnter }: OnboardingTourProps) => {
+  const steps = useMemo(() => getStepsForRole(userRoleId), [userRoleId]);
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // PRD 6：版本更新时仅对新功能做增量引导，不重播全量——新版本清除完成标记
+  useEffect(() => {
+    const stored = localStorage.getItem(APP_VERSION_KEY);
+    if (stored !== APP_VERSION) {
+      localStorage.removeItem(TOUR_STORAGE_KEY);
+      localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
+    }
+  }, []);
 
   // 检查是否需要显示引导
   useEffect(() => {
@@ -56,6 +105,26 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
       return () => clearTimeout(timer);
     }
   }, [forceShow]);
+
+  // 埋点：引导开始
+  useEffect(() => {
+    if (isVisible && steps.length) {
+      trackTourStart(userRoleId, steps.length);
+    }
+  }, [isVisible]); // eslint-disable-line react-hooks/exhaustive-deps -- only on visible
+
+  // steps 变化时校正 currentStep，避免越界导致 step 为 undefined
+  useEffect(() => {
+    if (currentStep >= steps.length && steps.length > 0) {
+      setCurrentStep(steps.length - 1);
+    }
+  }, [steps.length, currentStep]);
+
+  // 进入某步时回调（CXO 步骤 1 自动键入等）
+  useEffect(() => {
+    if (!isVisible || !steps[currentStep]) return;
+    onStepEnter?.(steps[currentStep].id, currentStep);
+  }, [isVisible, currentStep, steps, onStepEnter]);
 
   // 更新目标元素位置
   const updateTargetPosition = useCallback(() => {
@@ -104,7 +173,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
           break;
         case 'Escape':
           e.preventDefault();
-          handleSkip();
+          handleSkipClick();
           break;
       }
     };
@@ -145,25 +214,36 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
       setIsMorphing(true);
       return;
     }
+    trackTourComplete(userRoleId, steps.length);
     localStorage.setItem(TOUR_STORAGE_KEY, 'true');
     setIsVisible(false);
     onComplete?.();
-  }, [currentStep, steps.length, isMorphing, onComplete]);
+  }, [currentStep, steps.length, isMorphing, onComplete, userRoleId]);
 
-  // 变形动画结束后真正关闭
+  const [showBubble, setShowBubble] = useState(false);
+
+  // 变形动画结束后先显示气泡（PRD F.3.1），5 秒后再关闭
   useEffect(() => {
     if (!isMorphing) return;
-    const t = setTimeout(() => {
+    const t1 = setTimeout(() => setShowBubble(true), 800);
+    return () => clearTimeout(t1);
+  }, [isMorphing]);
+
+  useEffect(() => {
+    if (!showBubble) return;
+    trackTourComplete(userRoleId, steps.length);
+    const t2 = setTimeout(() => {
       localStorage.setItem(TOUR_STORAGE_KEY, 'true');
       setIsVisible(false);
       onComplete?.();
-    }, 800);
-    return () => clearTimeout(t);
-  }, [isMorphing, onComplete]);
+    }, 5000);
+    return () => clearTimeout(t2);
+  }, [showBubble, onComplete, userRoleId, steps.length]);
 
   // 跳过引导：先弹出二次确认（PRD：挽留式跳过）
   const handleSkipClick = () => setShowSkipConfirm(true);
   const handleSkipConfirm = () => {
+    trackTourSkip(userRoleId, steps.length, currentStep + 1);
     localStorage.setItem(TOUR_STORAGE_KEY, 'true');
     setShowSkipConfirm(false);
     setIsVisible(false);
@@ -173,6 +253,8 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
   if (!isVisible) return null;
 
   const step = steps[currentStep];
+  if (!step) return null;
+
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === steps.length - 1;
   const isCenterStep = step.position === 'center';
@@ -192,28 +274,45 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
     const tooltipHeight = 200;
     const arrowOffset = 20;
     const margin = 24;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    // 垂直方向限制在视口内，避免引导框被裁切
+    const clampTop = (idealTop: number) =>
+      Math.max(margin, Math.min(vh - tooltipHeight - margin, idealTop));
+    const clampLeft = (idealLeft: number) =>
+      Math.max(margin, Math.min(vw - tooltipWidth - margin, idealLeft));
 
     switch (step.position) {
-      case 'top':
+      case 'top': {
+        const top = clampTop(targetRect.top - tooltipHeight - arrowOffset);
         return {
-          top: `${targetRect.top - tooltipHeight - arrowOffset}px`,
-          left: `${Math.max(margin, Math.min(window.innerWidth - tooltipWidth - margin, targetRect.left + targetRect.width / 2 - tooltipWidth / 2))}px`,
+          top: `${top}px`,
+          left: `${clampLeft(targetRect.left + targetRect.width / 2 - tooltipWidth / 2)}px`,
         };
-      case 'bottom':
+      }
+      case 'bottom': {
+        const top = clampTop(targetRect.bottom + arrowOffset);
         return {
-          top: `${targetRect.bottom + arrowOffset}px`,
-          left: `${Math.max(margin, Math.min(window.innerWidth - tooltipWidth - margin, targetRect.left + targetRect.width / 2 - tooltipWidth / 2))}px`,
+          top: `${top}px`,
+          left: `${clampLeft(targetRect.left + targetRect.width / 2 - tooltipWidth / 2)}px`,
         };
-      case 'left':
+      }
+      case 'left': {
+        const idealTop = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
+        const top = clampTop(idealTop);
+        const left = Math.max(margin, targetRect.left - tooltipWidth - arrowOffset);
         return {
-          top: `${Math.max(margin, targetRect.top + targetRect.height / 2 - tooltipHeight / 2)}px`,
-          left: `${targetRect.left - tooltipWidth - arrowOffset}px`,
+          top: `${top}px`,
+          left: `${left}px`,
         };
-      case 'right':
+      }
+      case 'right': {
+        const top = clampTop(targetRect.top + targetRect.height / 2 - tooltipHeight / 2);
         return {
-          top: `${Math.max(margin, targetRect.top + targetRect.height / 2 - tooltipHeight / 2)}px`,
-          left: `${targetRect.right + arrowOffset}px`,
+          top: `${top}px`,
+          left: `${Math.min(vw - tooltipWidth - margin, targetRect.right + arrowOffset)}px`,
         };
+      }
       default:
         return {
           top: '50%',
@@ -223,10 +322,20 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
     }
   };
 
-  // 生成遮罩路径（高亮区域透明）
+  // 生成遮罩路径（高亮区域透明）；支持 rect 与 circle（聚光灯打在圆形按钮上）
   const getMaskPath = () => {
     if (!targetRect || isCenterStep) {
       return '';
+    }
+
+    const outer = `M 0 0 L ${window.innerWidth} 0 L ${window.innerWidth} ${window.innerHeight} L 0 ${window.innerHeight} Z`;
+
+    if (step.highlight === 'circle') {
+      const cx = targetRect.left + targetRect.width / 2;
+      const cy = targetRect.top + targetRect.height / 2;
+      const radius = Math.max(targetRect.width, targetRect.height) / 2 + padding;
+      const circle = `M ${cx + radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx - radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx + radius} ${cy} Z`;
+      return `${outer} ${circle}`;
     }
 
     const x = targetRect.left - padding;
@@ -234,15 +343,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
     const w = targetRect.width + padding * 2;
     const h = targetRect.height + padding * 2;
     const r = 16; // 圆角半径
-
-    // SVG 路径：外部矩形 + 内部圆角矩形（镂空）
-    return `
-      M 0 0 
-      L ${window.innerWidth} 0 
-      L ${window.innerWidth} ${window.innerHeight} 
-      L 0 ${window.innerHeight} 
-      Z 
-      M ${x + r} ${y}
+    return `${outer} M ${x + r} ${y}
       L ${x + w - r} ${y}
       Q ${x + w} ${y} ${x + w} ${y + r}
       L ${x + w} ${y + h - r}
@@ -251,36 +352,18 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
       Q ${x} ${y + h} ${x} ${y + h - r}
       L ${x} ${y + r}
       Q ${x} ${y} ${x + r} ${y}
-      Z
-    `;
+      Z`;
   };
-
-  // 获取箭头方向
-  const getArrowDirection = () => {
-    switch (step.position) {
-      case 'top':
-        return 'down';
-      case 'bottom':
-        return 'up';
-      case 'left':
-        return 'right';
-      case 'right':
-        return 'left';
-      default:
-        return null;
-    }
-  };
-
-  const arrowDirection = getArrowDirection();
 
   return (
     <AnimatePresence>
       <motion.div
+        key="tour-overlay"
         ref={overlayRef}
         initial={false}
         animate={
           isMorphing
-            ? { opacity: 1, top: 'auto', left: 'auto', right: 24, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgb(29, 29, 31)' }
+            ? { opacity: 0, top: 'auto', left: 'auto', right: 24, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: 'transparent' }
             : { opacity: 1, top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', borderRadius: 0, backgroundColor: 'transparent' }
         }
         exit={{ opacity: 0 }}
@@ -314,94 +397,42 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
           )}
         </svg>
 
-        {/* 高亮区域边框 - 极简：单线描边，无阴影 */}
+        {/* 高亮区域边框 - 发送按钮用圆形聚光灯 */}
         {targetRect && !isCenterStep && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="absolute pointer-events-none rounded-2xl border-2 border-[#007AFF]"
-            style={{
-              left: targetRect.left - padding,
-              top: targetRect.top - padding,
-              width: targetRect.width + padding * 2,
-              height: targetRect.height + padding * 2,
-            }}
+            className={step.highlight === 'circle' ? 'absolute pointer-events-none rounded-full border-2 border-[#007AFF]' : 'absolute pointer-events-none rounded-2xl border-2 border-[#007AFF]'}
+            style={
+              step.highlight === 'circle'
+                ? (() => {
+                    const size = Math.max(targetRect.width, targetRect.height) + padding * 2;
+                    return {
+                      left: targetRect.left + targetRect.width / 2 - size / 2,
+                      top: targetRect.top + targetRect.height / 2 - size / 2,
+                      width: size,
+                      height: size,
+                    };
+                  })()
+                : {
+                    left: targetRect.left - padding,
+                    top: targetRect.top - padding,
+                    width: targetRect.width + padding * 2,
+                    height: targetRect.height + padding * 2,
+                  }
+            }
           />
         )}
 
-        {/* 箭头指示器 - 极简，无缩放动画 */}
-        {targetRect && arrowDirection && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            className="absolute pointer-events-none z-10"
-            style={{
-              ...(() => {
-                const arrowSize = 24;
-                const offset = 8;
-                switch (arrowDirection) {
-                  case 'up':
-                    return {
-                      left: targetRect.left + targetRect.width / 2 - arrowSize / 2,
-                      top: targetRect.top - padding - arrowSize - offset,
-                    };
-                  case 'down':
-                    return {
-                      left: targetRect.left + targetRect.width / 2 - arrowSize / 2,
-                      top: targetRect.bottom + padding + offset,
-                    };
-                  case 'left':
-                    return {
-                      left: targetRect.left - padding - arrowSize - offset,
-                      top: targetRect.top + targetRect.height / 2 - arrowSize / 2,
-                    };
-                  case 'right':
-                    return {
-                      left: targetRect.right + padding + offset,
-                      top: targetRect.top + targetRect.height / 2 - arrowSize / 2,
-                    };
-                  default:
-                    return {};
-                }
-              })(),
-            }}
-          >
-            <div className="w-6 h-6 text-[#007AFF]">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className={`w-full h-full ${
-                  arrowDirection === 'up'
-                    ? 'rotate-[-90deg]'
-                    : arrowDirection === 'down'
-                    ? 'rotate-90'
-                    : arrowDirection === 'left'
-                    ? 'rotate-180'
-                    : ''
-                }`}
-              >
-                <path
-                  d="M5 12H19M19 12L12 5M19 12L12 19"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-          </motion.div>
-        )}
-
-        {/* 提示卡片 - 极简：白底 + 细边框，无阴影 */}
+        {/* 提示卡片 - 极简：白底 + 细边框；PRD 6 小屏重排：最大 95vw */}
         <motion.div
           key={currentStep}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -12 }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute w-[380px] bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden"
+          className="absolute w-[min(380px,95vw)] max-w-[95vw] bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden"
           style={getTooltipPosition()}
         >
           <div className="p-6">
@@ -456,7 +487,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
                 onClick={handleNext}
                 className="px-5 py-2.5 text-[13px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-colors active:opacity-90"
               >
-                {isLastStep ? '开始使用' : '下一步'}
+                {isLastStep ? '完成引导' : '下一步'}
               </button>
             </div>
           </div>
@@ -525,6 +556,24 @@ export const OnboardingTour = ({ onComplete, forceShow = false }: OnboardingTour
         </div>
         </div>
       </motion.div>
+
+      {/* PRD F.3.1：变形完成后头像弹出气泡，5 秒后自动消失 */}
+      <Fragment key="tour-bubble">
+        <AnimatePresence>
+          {showBubble && (
+            <motion.div
+              key="bubble"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.25 }}
+              className="fixed right-6 bottom-[88px] z-[102] max-w-[260px] px-4 py-3 rounded-2xl bg-white border border-[#E5E5EA] shadow-lg text-[13px] text-[#1D1D1F] leading-relaxed"
+            >
+              我会一直在这里！遇到困难点我，我是你的 24 小时技术顾问。
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Fragment>
     </AnimatePresence>
   );
 };
