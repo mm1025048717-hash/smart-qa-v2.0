@@ -44,7 +44,7 @@ import { shouldEnableWebSearch } from './services/webSearchDetector';
 import { parseRealtimeContent } from './utils/realtimeParser';
 import { loadUserMemory, learnFromQuery, generateMemoryPrompt, UserMemory } from './services/userMemory';
 import { usePresetResponse } from './hooks/usePresetResponse';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useCallback } from 'react';
 
 // 上下文管理
 interface ConversationContext {
@@ -57,8 +57,12 @@ interface ConversationContext {
 function App() {
   // 所有 hooks 必须在任何条件 return 之前声明
   const [messages, setMessages] = useState<Message[]>([]);
-  /** CXO 引导首问后，在对话区内展示追问暗示并自动发送一次追问 */
+  /** CXO 引导首问后，在对话区内展示追问暗示 */
   const [pendingTourFollowUp, setPendingTourFollowUp] = useState(false);
+  /** CXO 专属：进入数据分析页后聚光灯高亮追问区域，一次展示后关闭 */
+  const [showCxoFollowUpSpotlight, setShowCxoFollowUpSpotlight] = useState(false);
+  const chatInputAreaRef = useRef<HTMLDivElement>(null);
+  const [spotlightCutoutRect, setSpotlightCutoutRect] = useState<DOMRect | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSearching, setIsSearching] = useState(false); // 是否正在联网搜索
@@ -182,6 +186,48 @@ function App() {
       window.removeEventListener('open-add-to-dashboard', handleAddToDashboard as any);
     };
   }, []);
+
+  // CXO 专属：进入数据分析页且处于追问引导时，展示一次聚光灯高亮追问区域
+  const hasMessages = messages.length > 0;
+  // 无引导时补判：首条用户问「上周销售额是多少？」即视为需展示追问引导（不依赖是否从欢迎页引导进入）
+  const firstUserMessage = messages.find(m => m.role === 'user');
+  const firstQuery = typeof firstUserMessage?.content === 'string'
+    ? firstUserMessage.content.trim().replace(/[？?]\s*$/, '')
+    : '';
+  const isCxoFirstQuestion = firstQuery === '上周销售额是多少' || firstQuery === '上周销售额是多少？';
+  useEffect(() => {
+    if (messages.length === 2 && isCxoFirstQuestion && !pendingTourFollowUp) {
+      setPendingTourFollowUp(true);
+    }
+  }, [messages.length, isCxoFirstQuestion, pendingTourFollowUp]);
+  useEffect(() => {
+    if (hasMessages && pendingTourFollowUp) setShowCxoFollowUpSpotlight(true);
+  }, [hasMessages, pendingTourFollowUp]);
+  useEffect(() => {
+    if (!showCxoFollowUpSpotlight) return;
+    const t = setTimeout(() => setShowCxoFollowUpSpotlight(false), 5000);
+    return () => clearTimeout(t);
+  }, [showCxoFollowUpSpotlight]);
+
+  // 聚光灯镂空区对准实际对话框：测量 ref 的 getBoundingClientRect
+  const updateSpotlightRect = useCallback(() => {
+    if (!chatInputAreaRef.current) return;
+    setSpotlightCutoutRect(chatInputAreaRef.current.getBoundingClientRect());
+  }, []);
+  useLayoutEffect(() => {
+    if (!showCxoFollowUpSpotlight) {
+      setSpotlightCutoutRect(null);
+      return;
+    }
+    updateSpotlightRect();
+    const ro = new ResizeObserver(updateSpotlightRect);
+    if (chatInputAreaRef.current) ro.observe(chatInputAreaRef.current);
+    window.addEventListener('scroll', updateSpotlightRect, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('scroll', updateSpotlightRect, true);
+    };
+  }, [showCxoFollowUpSpotlight, updateSpotlightRect]);
   
   // 预设响应系统 - 完全贴合《智能问答系统显示规则》
   const presetResponse = usePresetResponse();
@@ -381,6 +427,10 @@ function App() {
   // 处理发送消息
   const handleSend = async (query: string, forceWebSearch?: boolean, skipPresetResponse?: boolean, questionId?: string) => {
     if (!query.trim() || isLoading) return;
+
+    // 用户按下发送后结束追问引导状态，并关闭聚光灯
+    setPendingTourFollowUp(false);
+    setShowCxoFollowUpSpotlight(false);
 
     // 先添加用户消息
     const userMessage = createUserMessage(query, currentAgentId);
@@ -871,7 +921,15 @@ function App() {
       const presetMessage = presetResponse.getPresetResponse(query, assistantMessageId);
       
       if (presetMessage) {
-        // 添加 agentId
+        // CXO/所有角色：预设回复也追加追问引导（action-buttons），便于在数据分析页内直接点追问
+        const content = Array.isArray(presetMessage.content) ? presetMessage.content : [];
+        const hasActionButtons = content.some((b: ContentBlock) => b.type === 'action-buttons');
+        if (!hasActionButtons && intentResult?.followUpQuestions?.length) {
+          presetMessage.content = [
+            ...content,
+            { id: `block_${Date.now()}_followup`, type: 'action-buttons' as const, data: intentResult.followUpQuestions },
+          ];
+        }
         presetMessage.agentId = currentAgentId;
         setMessages((prev) => [...prev, presetMessage]);
         updateContext(query);
@@ -887,8 +945,15 @@ function App() {
       console.log('📋 匹配到测试用例，使用预设响应（固定回复，不调用大模型）', { query, questionId, intentType: intentResult.type });
       await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
       // 传递问题ID以确保每个问题都有独特的回复
-      const narrativePresetResponse = generateNarrativeResponse(query, questionId);
-      const systemMessage = createSystemMessage(narrativePresetResponse, currentAgentId);
+      let narrativeBlocks = generateNarrativeResponse(query, questionId);
+      const hasPresetActions = narrativeBlocks.some((b: ContentBlock) => b.type === 'action-buttons');
+      if (!hasPresetActions && intentResult?.followUpQuestions?.length) {
+        narrativeBlocks = [
+          ...narrativeBlocks,
+          { id: `block_${Date.now()}_followup`, type: 'action-buttons' as const, data: intentResult.followUpQuestions },
+        ];
+      }
+      const systemMessage = createSystemMessage(narrativeBlocks, currentAgentId);
       setMessages((prev) => [...prev, systemMessage]);
       updateContext(query);
       setIsLoading(false);
@@ -1667,41 +1732,47 @@ function App() {
           });
         }
       },
-      // onComplete - 流式输出完成时，确保所有思维链步骤都更新为 success
+      // onComplete - 流式输出完成时，确保所有思维链步骤都更新为 success，并追加追问引导按钮
       () => {
         setIsStreaming(false);
         setIsSearching(false);
         abortControllerRef.current = null;
         
-        // 流式输出完成时，更新所有思维链的 loading 状态为 success
+        // 流式输出完成时，更新所有思维链的 loading 状态为 success，并追加追问引导（若无则添加）
         setMessages((prev) => 
           prev.map(m => {
-            if (m.id === assistantMessageId) {
-              if (Array.isArray(m.content)) {
-                // 更新思维链状态
-                const updatedContent = m.content.map((block: any) => {
-                  if (block.type === 'thought-chain' && Array.isArray(block.data)) {
-                    // 将所有 loading 状态改为 success
-                    const updatedItems = block.data.map((item: any) => {
-                      if (item.status === 'loading') {
-                        return { ...item, status: 'success', blink: false };
-                      }
-                      return item;
-                    });
-                    return { ...block, data: updatedItems };
+            if (m.id !== assistantMessageId) return m;
+            if (!Array.isArray(m.content)) return { ...m, status: 'complete' as const };
+            const updatedContent = m.content.map((block: any) => {
+              if (block.type === 'thought-chain' && Array.isArray(block.data)) {
+                const updatedItems = block.data.map((item: any) => {
+                  if (item.status === 'loading') {
+                    return { ...item, status: 'success', blink: false };
                   }
-                  return block;
+                  return item;
                 });
-                
-                return {
-                  ...m,
-                  content: updatedContent,
-                  status: 'complete' as const,
-                };
+                return { ...block, data: updatedItems };
               }
-              return { ...m, status: 'complete' as const };
-            }
-            return m;
+              return block;
+            });
+            const hasActionButtons = updatedContent.some((b: any) => b.type === 'action-buttons');
+            const followUps = intentResult?.followUpQuestions;
+            const contentWithFollowUp =
+              !hasActionButtons && followUps && followUps.length > 0
+                ? [
+                    ...updatedContent,
+                    {
+                      id: `${assistantMessageId}_followup_${Date.now()}`,
+                      type: 'action-buttons' as const,
+                      data: followUps,
+                    },
+                  ]
+                : updatedContent;
+            return {
+              ...m,
+              content: contentWithFollowUp,
+              status: 'complete' as const,
+            };
           })
         );
         
@@ -2111,8 +2182,6 @@ function App() {
     }));
   };
 
-  const hasMessages = messages.length > 0;
-
   // 路由：移动端测试页面
   if (currentPage === 'mobile') {
     return <MobileTestPage />;
@@ -2343,29 +2412,61 @@ function App() {
                   </div>
                 </div>
 
-                {/* 输入区域 - 固定在底部；CXO 引导追问演示暗示 */}
+                {/* 输入区域 - 固定在底部；CXO 聚光灯用 ref 测量此块以对准镂空 */}
+                <div ref={chatInputAreaRef} className="flex-shrink-0">
                 {pendingTourFollowUp && (
-                  <div className="flex-shrink-0 px-6 pt-3 pb-1 bg-gradient-to-b from-transparent to-white/80">
-                    <p className="text-[13px] text-[#1664FF] text-center">
-                      <strong>已引导您进入数据分析页面。</strong>在此可进行追问：稍后将自动填入示例追问并按下发送，您也可直接输入其他问题。
+                  <div className="px-6 pt-2 pb-1 border-t border-[#E8F0FF]">
+                    <p className="text-[12px] text-[#86909C] text-center">
+                      点击下方词槽填入追问，或点击回复中的追问按钮
                     </p>
                   </div>
                 )}
-                <div className="flex-shrink-0 px-6 py-4 bg-white border-t border-[#E8F0FF]">
-                  <ChatInput 
+                  <div className="flex-shrink-0 px-6 py-4 bg-white border-t border-[#E8F0FF]">
+                    <ChatInput 
                     onSend={handleSend} 
                     disabled={isLoading}
-                    placeholder={`向 ${currentAgent.name} 提问...`}
+                    placeholder={pendingTourFollowUp ? '点击上方词槽或直接输入追问' : `向 ${currentAgent.name} 提问...`}
                     agents={AGENTS}
                     currentAgent={currentAgent}
                     onAgentChange={handleAgentChange}
                     isStreaming={isStreaming}
                     onStop={handleStopStreaming}
-                    demoFollowUp={pendingTourFollowUp ? { phrase: '为什么下降了？', delayMs: 2500 } : undefined}
-                    onDemoComplete={() => setPendingTourFollowUp(false)}
+                    demoFollowUp={undefined}
+                    onDemoComplete={() => {}}
+                    followUpScenario={pendingTourFollowUp}
                   />
+                  </div>
                 </div>
               </div>
+
+              {/* CXO 专属：追问区域聚光灯引导 - 镂空区按对话框 getBoundingClientRect 对准 */}
+              <AnimatePresence>
+                {showCxoFollowUpSpotlight && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="fixed inset-0 z-[55]"
+                    onClick={() => setShowCxoFollowUpSpotlight(false)}
+                    aria-hidden
+                  >
+                    {/* 镂空区用测量到的对话框 rect，四边各留一点余量避免卡边 */}
+                    {spotlightCutoutRect && (
+                      <div
+                        className="fixed pointer-events-none rounded-xl"
+                        style={{
+                          left: spotlightCutoutRect.left - 2,
+                          top: spotlightCutoutRect.top - 2,
+                          width: spotlightCutoutRect.width + 4,
+                          height: spotlightCutoutRect.height + 8,
+                          boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
+                        }}
+                      />
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* 右侧测试面板 */}
               <TestScenarioPanel

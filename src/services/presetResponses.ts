@@ -623,6 +623,14 @@ const fullAnalysisResponse: PresetResponse = {
 // ============================================
 
 export const RESPONSE_RULES: ResponseRule[] = [
+  // CXO 专属引导首问：上周销售额（与年度回复一致，便于在数据分析页展示追问按钮）
+  {
+    id: 'weekly-sales-cxo',
+    keywords: ['上周销售额是多少', '上周销售额'],
+    exactMatch: '上周销售额是多少？',
+    response: yearlyResponse,
+    ruleRef: 'CXO引导首问 → 年度销售额展示 + 追问引导'
+  },
   // KPI匹配规则 - 本月销售额（固定回复，不调用API）
   {
     id: 'monthly-sales',

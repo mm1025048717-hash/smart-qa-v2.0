@@ -315,9 +315,10 @@ function generateFollowUpQuestions(
 ): ActionButton[] {
   const baseQuestions: Record<IntentType, ActionButton[]> = {
     single_metric: [
-      { id: '1', label: '查看趋势变化', query: '查看近3个月趋势', icon: 'trend' },
-      { id: '2', label: '分地区查看', query: '各地区销售额对比', icon: 'map' },
-      { id: '3', label: '分渠道查看', query: '各渠道销售占比', icon: 'pie' },
+      { id: '1', label: '为什么下降了？', query: '为什么下降了？', icon: 'search' },
+      { id: '2', label: '查看趋势变化', query: '查看近3个月趋势', icon: 'trend' },
+      { id: '3', label: '分地区查看', query: '各地区销售额对比', icon: 'map' },
+      { id: '4', label: '分渠道查看', query: '各渠道销售占比', icon: 'pie' },
     ],
     multi_metric: [
       { id: '1', label: '分析关联性', query: '分析这些指标的关联', icon: 'search' },

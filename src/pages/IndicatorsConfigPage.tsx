@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { ArrowLeft, Plus, Calculator, Edit2, Trash2 } from 'lucide-react';
+import { DataPageSpotlight } from '../components/DataPageSpotlight';
 
 interface Metric {
   id: string;
@@ -108,8 +109,36 @@ export default function IndicatorsConfigPage() {
     }
   };
 
+  const storageKey = 'yiwen_spotlight_indicators_v2';
+  // 第一次进入时自动显示引导（由 DataPageSpotlight 内部处理）
+
   return (
     <div className="min-h-screen bg-[#F7F8FA]">
+      <DataPageSpotlight
+        storageKey={storageKey}
+        steps={[
+          {
+            target: '[data-tour="indicators-intro"]',
+            title: '指标管理',
+            description: '口径统一。在这里定义业务指标的计算公式，确保 AI 回答与业务标准一致，避免「乱算」问题。',
+          },
+          {
+            target: '[data-tour="indicators-new-metric"]',
+            title: '新建指标',
+            description: '点击此处添加新指标。填写名称、计算公式、口径说明与数据源表，让 AI 准确计算业务指标。',
+          },
+          {
+            target: '[data-tour="indicators-list"]',
+            title: '指标列表',
+            description: '已配置的指标会显示在这里。可以查看公式、口径说明，点击编辑或删除按钮进行管理。',
+          },
+          {
+            target: '[data-tour="indicators-first-card"]',
+            title: '指标详情',
+            description: '每个指标卡片显示名称、计算公式和口径说明。蓝色公式区域清晰展示计算逻辑，便于审计与协作。',
+          },
+        ]}
+      />
       <header className="bg-white border-b border-[#E5E7EB] px-6 py-4 sticky top-0 z-10">
         <div className="max-w-[1200px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -123,6 +152,7 @@ export default function IndicatorsConfigPage() {
             <h1 className="text-xl font-semibold text-[#1D1D1F]">指标管理</h1>
           </div>
           <button
+            data-tour="indicators-new-metric"
             onClick={() => {
               setEditingId(null);
               setForm({ name: '', shortName: '', formula: '', description: '', dataSource: 'sales_orders' });
@@ -137,14 +167,15 @@ export default function IndicatorsConfigPage() {
       </header>
 
       <main className="max-w-[1200px] mx-auto px-6 py-6">
-        <p className="text-[#86909C] text-sm mb-6">
+        <p className="text-[#86909C] text-sm mb-6" data-tour="indicators-intro">
           口径统一。在这里定义「毛利」「客单价」等计算公式，AI 就不会乱算。
         </p>
 
-        <div className="space-y-4">
-          {metrics.map((m) => (
+        <div className="space-y-4" data-tour="indicators-list">
+          {metrics.map((m, idx) => (
             <div
               key={m.id}
+              data-tour={idx === 0 ? 'indicators-first-card' : undefined}
               className="bg-white rounded-2xl border border-[#E5E7EB] p-5 flex items-start justify-between gap-4"
             >
               <div className="flex items-start gap-4 min-w-0 flex-1">
@@ -184,86 +215,98 @@ export default function IndicatorsConfigPage() {
 
         {/* 新建/编辑指标弹窗 */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setShowForm(false); setEditingId(null); }}>
-            <div
-              className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 border-b border-[#E5E7EB]">
-                <h2 className="text-lg font-semibold text-[#1D1D1F]">{editingId ? '编辑指标' : '新建指标'}</h2>
-                <p className="text-sm text-[#86909C] mt-1">定义名称与计算公式，保证 AI 口径一致</p>
-              </div>
-              <form onSubmit={handleSave} className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#4E5969] mb-1">指标名称</label>
+          <>
+            <DataPageSpotlight
+              storageKey="yiwen_spotlight_indicators_form_v2"
+              steps={[
+                { target: '[data-tour="metric-form-name"]', title: '指标名称', description: '填写指标名称和简称。名称如「毛利」「客单价」，简称可用于简化显示。' },
+                { target: '[data-tour="metric-form-formula"]', title: '计算公式', description: '核心字段！定义指标的计算逻辑，如「SUM(收入) - SUM(成本)」。AI 将严格按此公式计算。' },
+                { target: '[data-tour="metric-form-desc"]', title: '口径说明', description: '详细说明指标含义和计算规则，如「不含税费」「仅统计已完成订单」，便于团队理解和审计。' },
+                { target: '[data-tour="metric-form-source"]', title: '数据源表', description: '指定数据来源表，如 sales_orders。AI 将从该表查询数据进行计算。' },
+                { target: '[data-tour="metric-form-save"]', title: '保存指标', description: '填写完成后点击保存。新指标会立即生效，AI 后续查询将使用此口径。' },
+              ]}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setShowForm(false); setEditingId(null); }}>
+              <div
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6 border-b border-[#E5E7EB]">
+                  <h2 className="text-lg font-semibold text-[#1D1D1F]">{editingId ? '编辑指标' : '新建指标'}</h2>
+                  <p className="text-sm text-[#86909C] mt-1">定义名称与计算公式，保证 AI 口径一致</p>
+                </div>
+                <form onSubmit={handleSave} className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4" data-tour="metric-form-name">
+                    <div>
+                      <label className="block text-sm font-medium text-[#4E5969] mb-1">指标名称</label>
+                      <input
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        placeholder="如：毛利"
+                        className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#007AFF] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#4E5969] mb-1">简称</label>
+                      <input
+                        type="text"
+                        value={form.shortName}
+                        onChange={(e) => setForm((f) => ({ ...f, shortName: e.target.value }))}
+                        placeholder="可选"
+                        className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#007AFF] outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div data-tour="metric-form-formula">
+                    <label className="block text-sm font-medium text-[#4E5969] mb-1">计算公式</label>
                     <input
                       type="text"
-                      value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      placeholder="如：毛利"
+                      value={form.formula}
+                      onChange={(e) => setForm((f) => ({ ...f, formula: e.target.value }))}
+                      placeholder="如：SUM(收入) - SUM(成本)"
+                      className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl font-mono text-sm focus:ring-2 focus:ring-[#007AFF] outline-none"
+                    />
+                  </div>
+                  <div data-tour="metric-form-desc">
+                    <label className="block text-sm font-medium text-[#4E5969] mb-1">口径说明</label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="可选，便于团队理解"
+                      rows={2}
+                      className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#007AFF] outline-none resize-none"
+                    />
+                  </div>
+                  <div data-tour="metric-form-source">
+                    <label className="block text-sm font-medium text-[#4E5969] mb-1">数据源表</label>
+                    <input
+                      type="text"
+                      value={form.dataSource}
+                      onChange={(e) => setForm((f) => ({ ...f, dataSource: e.target.value }))}
+                      placeholder="如：sales_orders"
                       className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#007AFF] outline-none"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#4E5969] mb-1">简称</label>
-                    <input
-                      type="text"
-                      value={form.shortName}
-                      onChange={(e) => setForm((f) => ({ ...f, shortName: e.target.value }))}
-                      placeholder="可选"
-                      className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#007AFF] outline-none"
-                    />
+                  <div className="flex justify-end gap-3 pt-4" data-tour="metric-form-save">
+                    <button
+                      type="button"
+                      onClick={() => { setShowForm(false); setEditingId(null); }}
+                      className="px-4 py-2.5 text-[#4E5969] hover:bg-[#F2F3F5] rounded-xl text-sm"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2.5 bg-[#007AFF] text-white rounded-xl text-sm font-medium hover:bg-[#0051D5]"
+                    >
+                      {editingId ? '保存' : '新建'}
+                    </button>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#4E5969] mb-1">计算公式</label>
-                  <input
-                    type="text"
-                    value={form.formula}
-                    onChange={(e) => setForm((f) => ({ ...f, formula: e.target.value }))}
-                    placeholder="如：SUM(收入) - SUM(成本)"
-                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl font-mono text-sm focus:ring-2 focus:ring-[#007AFF] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#4E5969] mb-1">口径说明</label>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder="可选，便于团队理解"
-                    rows={2}
-                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#007AFF] outline-none resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#4E5969] mb-1">数据源表</label>
-                  <input
-                    type="text"
-                    value={form.dataSource}
-                    onChange={(e) => setForm((f) => ({ ...f, dataSource: e.target.value }))}
-                    placeholder="如：sales_orders"
-                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#007AFF] outline-none"
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => { setShowForm(false); setEditingId(null); }}
-                    className="px-4 py-2.5 text-[#4E5969] hover:bg-[#F2F3F5] rounded-xl text-sm"
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 bg-[#007AFF] text-white rounded-xl text-sm font-medium hover:bg-[#0051D5]"
-                  >
-                    {editingId ? '保存' : '新建'}
-                  </button>
-                </div>
               </form>
             </div>
           </div>
+          </>
         )}
       </main>
     </div>

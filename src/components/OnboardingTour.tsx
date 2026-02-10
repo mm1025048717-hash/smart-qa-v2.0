@@ -18,11 +18,11 @@ interface TourStep {
   padding?: number;
 }
 
-// PRD F.2.1 CXO 极简路径：3 步，收尾时聚光灯打在发送按钮上（追问说明在数据分析界面内展示）
+// PRD F.2.1 CXO 极简路径：3 步，全程聚光灯高亮当前步骤，收尾聚光灯打在发送按钮；进入数据分析后有追问引导
 const TOUR_STEPS_CXO: TourStep[] = [
   { id: 'input-area', target: '[data-tour="input-area"]', title: '如何提问', description: '这是您的专属对话框，支持语音、文字输入。已为您填入「上周销售额是多少？」。', position: 'bottom', highlight: 'rect', padding: 12 },
-  { id: 'deep-mode', target: '[data-tour="deep-mode"]', title: '联网搜索', description: '发送前可在此选择「联网搜索」，获取包含内外部证据的深度分析。选好后点击发送进入数据分析界面。', position: 'bottom', highlight: 'rect', padding: 8 },
-  { id: 'send-button', target: '[data-tour="send-button"]', title: '点击发送', description: '点击右侧蓝色发送按钮发送，即可进入数据分析界面；在界面内可进行追问，例如「为什么下降了？」。', position: 'left', highlight: 'circle', padding: 12 },
+  { id: 'deep-mode', target: '[data-tour="deep-mode"]', title: '联网搜索', description: '发送前可在此选择「联网搜索」，获取深度分析。选好后点击发送进入数据分析界面。', position: 'bottom', highlight: 'rect', padding: 8 },
+  { id: 'send-button', target: '[data-tour="send-button"]', title: '点击发送进入追问', description: '点击右侧蓝色发送按钮，进入数据分析页。回复下方会出现追问引导按钮（如「为什么下降了？」「各地区对比」），可一键追问。', position: 'left', highlight: 'circle', padding: 12 },
 ];
 
 // PRD F.2.2 业务负责人路径：CXO 步骤 + 看板（步骤 4 自动导航到看板 Tab）
@@ -41,9 +41,14 @@ const TOUR_STEPS_FRONTLINE: TourStep[] = [
   { id: 'complete-fl', target: '[data-tour="helper-button"]', title: '求助与上报', description: '遇到数据不对或系统报错？点这里的小助手，直接召唤技术支持，支持截图上传。', position: 'left', highlight: 'rect', padding: 8 },
 ];
 
-// PRD F.2.4 数据开发路径：Global 仅审计日志；数据源/建模/指标为 Lazy（首次点击对应卡片触发）
+// PRD F.2.4 数据开发路径：完整引导覆盖所有数据开发功能
 const TOUR_STEPS_DEVELOPER: TourStep[] = [
-  { id: 'dev-audit', target: '[data-tour="dev-audit"]', title: '审计日志', description: '时刻监控 AI 的回答准确性。这里是所有的问答记录和 SQL 执行日志。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'data-dev-tab', target: '[data-tour="data-dev-tab"]', title: '数据开发中心', description: '这是您的数据开发工作区。点击「数据开发」标签进入配置面板，管理数据源、业务建模与指标口径。', position: 'bottom', highlight: 'rect', padding: 8 },
+  { id: 'dev-audit', target: '[data-tour="dev-audit"]', title: '审计日志', description: '时刻监控 AI 的回答准确性。这里是所有的问答记录和 SQL 执行日志，支持合规审计与问题追溯。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'dev-datasource', target: '[data-tour="dev-datasource"]', title: '数据源管理', description: '第一步：建立连接。点击进入数据源管理页，接入 Doris / MySQL 等数据库，支持 SSH 隧道安全连接。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'dev-modeling', target: '[data-tour="dev-modeling"]', title: '业务建模', description: '第二步：定义模型。管理表结构、配置字段语义类型与同义词，开启动态 SQL 允许 AI 自由组合查询。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'dev-indicators', target: '[data-tour="dev-indicators"]', title: '指标管理', description: '第三步：统一口径。定义「毛利」「客单价」等计算公式，确保 AI 回答与业务标准一致。', position: 'top', highlight: 'rect', padding: 8 },
+  { id: 'complete-dev', target: '[data-tour="helper-button"]', title: '准备就绪', description: '数据开发配置完成后，Agent 即可基于真实数据回答查询。如需帮助随时点击小助手。', position: 'left', highlight: 'rect', padding: 8 },
 ];
 
 // 默认路径（新手/数据分析师/财务等）：适中步骤，教会会问、会点、会求助
@@ -68,14 +73,18 @@ const APP_VERSION = '2.0.0';
 
 export interface OnboardingTourProps {
   onComplete?: () => void;
+  /** 蒙层收缩到右下角动画结束时立即调用，用于触发悬浮球回归+打光动画 */
+  onMorphComplete?: () => void;
   forceShow?: boolean;
   /** 当前用户角色 id，用于 PRD 分角色差异化引导：exec=极简3步, business=4步, ops=一线3步 */
   userRoleId?: string;
   /** 进入某一步时回调（用于 CXO 步骤 1 自动键入演示等） */
   onStepEnter?: (stepId: string, stepIndex: number) => void;
+  /** 点击「点我打开 AI 问答」气泡时调用，用于打开小助手面板，保证气泡始终可点 */
+  onGuideBubbleClick?: () => void;
 }
 
-export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onStepEnter }: OnboardingTourProps) => {
+export const OnboardingTour = ({ onComplete, onMorphComplete, forceShow = false, userRoleId, onStepEnter, onGuideBubbleClick }: OnboardingTourProps) => {
   const steps = useMemo(() => getStepsForRole(userRoleId), [userRoleId]);
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -207,10 +216,11 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [isMorphing, setIsMorphing] = useState(false);
 
-  // 完成引导（最后一步可带动效：蒙版缩到右下角变成小助手）
+  // 完成引导（最后一步可带动效：蒙版缩到右下角变成小助手；CXO 不收缩，直接关闭以便用户点击发送）
   const handleComplete = useCallback(() => {
     const lastStep = currentStep >= steps.length - 1;
-    if (lastStep && !isMorphing) {
+    const isCxo = userRoleId === 'exec';
+    if (lastStep && !isMorphing && !isCxo) {
       setIsMorphing(true);
       return;
     }
@@ -221,6 +231,16 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
   }, [currentStep, steps.length, isMorphing, onComplete, userRoleId]);
 
   const [showBubble, setShowBubble] = useState(false);
+  const onMorphCompleteRef = useRef(onMorphComplete);
+  onMorphCompleteRef.current = onMorphComplete;
+
+  // 蒙层收缩动画约 0.5s，结束后仅一次通知父组件触发悬浮球回归+打光（只依赖 isMorphing，避免因 onMorphComplete 引用变化重复设定时器导致聚光灯重复）
+  const MORPH_DURATION_MS = 500;
+  useEffect(() => {
+    if (!isMorphing) return;
+    const t0 = setTimeout(() => onMorphCompleteRef.current?.(), MORPH_DURATION_MS);
+    return () => clearTimeout(t0);
+  }, [isMorphing]);
 
   // 变形动画结束后先显示气泡（PRD F.3.1），5 秒后再关闭
   useEffect(() => {
@@ -369,16 +389,14 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
         exit={{ opacity: 0 }}
         transition={{ duration: isMorphing ? 0.5 : 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="fixed z-[100] bg-transparent"
-        style={{ pointerEvents: 'auto' }}
-        onClick={(e) => e.stopPropagation()}
+        style={{ pointerEvents: 'none' }}
       >
-        {/* 遮罩层 - 使用 SVG 实现镂空效果；变形时隐藏 */}
+        {/* 聚光灯式引导：每步用 SVG 镂空高亮当前目标，暗区遮罩其余区域；变形时隐藏；镂空区可穿透点击 */}
         <div className={isMorphing ? 'opacity-0 pointer-events-none' : ''}>
-        {/* 遮罩层 - 使用 SVG 实现镂空效果 */}
         <svg
-          className="absolute inset-0 w-full h-full"
-          style={{ pointerEvents: 'none' }}
+          className="absolute inset-0 w-full h-full pointer-events-auto"
           aria-hidden
+          onClick={(e) => e.stopPropagation()}
         >
           {isCenterStep ? (
             <rect
@@ -425,14 +443,14 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
           />
         )}
 
-        {/* 提示卡片 - 极简：白底 + 细边框；PRD 6 小屏重排：最大 95vw */}
+        {/* 提示卡片 - 极简：白底 + 细边框；PRD 6 小屏重排：最大 95vw；需可点击 */}
         <motion.div
           key={currentStep}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -12 }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute w-[min(380px,95vw)] max-w-[95vw] bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden"
+          className="absolute w-[min(380px,95vw)] max-w-[95vw] bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden pointer-events-auto"
           style={getTooltipPosition()}
         >
           <div className="p-6">
@@ -496,7 +514,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
         {/* 关闭引导：先二次确认（PRD：挽留式跳过） */}
         <button
           onClick={handleSkipClick}
-          className="absolute top-6 right-6 w-9 h-9 rounded-full border border-white/30 text-white/90 hover:text-white hover:border-white/50 flex items-center justify-center transition-colors text-[20px] leading-none font-light"
+          className="absolute top-6 right-6 w-9 h-9 rounded-full border border-white/30 text-white/90 hover:text-white hover:border-white/50 flex items-center justify-center transition-colors text-[20px] leading-none font-light pointer-events-auto"
           aria-label="关闭引导"
         >
           ×
@@ -509,7 +527,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center z-[101] bg-black/30"
+              className="absolute inset-0 flex items-center justify-center z-[101] bg-black/30 pointer-events-auto"
               onClick={() => setShowSkipConfirm(false)}
             >
               <motion.div
@@ -517,7 +535,7 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl border border-[#E5E5EA] shadow-xl p-6 w-[320px]"
+                className="bg-white rounded-2xl border border-[#E5E5EA] shadow-xl p-6 w-[320px] pointer-events-auto"
               >
                 <p className="text-[15px] text-[#1D1D1F] font-medium">确定要放弃新手引导吗？</p>
                 <p className="mt-2 text-[13px] text-[#86868B]">可能会错过核心功能说明。</p>
@@ -557,20 +575,22 @@ export const OnboardingTour = ({ onComplete, forceShow = false, userRoleId, onSt
         </div>
       </motion.div>
 
-      {/* PRD F.3.1：变形完成后头像弹出气泡，5 秒后自动消失 */}
+      {/* PRD F.3.1：变形完成后头像旁气泡，可点击打开小助手（pointer-events-auto），5 秒后自动消失 */}
       <Fragment key="tour-bubble">
         <AnimatePresence>
           {showBubble && (
-            <motion.div
+            <motion.button
               key="bubble"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.25 }}
-              className="fixed right-6 bottom-[88px] z-[102] max-w-[260px] px-4 py-3 rounded-2xl bg-white border border-[#E5E5EA] shadow-lg text-[13px] text-[#1D1D1F] leading-relaxed"
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              onClick={() => onGuideBubbleClick?.()}
+              className="fixed right-[100px] bottom-[88px] z-[65] max-w-[260px] px-4 py-3 rounded-2xl bg-white border border-[#E5E5EA] shadow-lg text-[13px] text-[#1D1D1F] leading-relaxed text-left cursor-pointer hover:bg-[#F9F9FB] hover:border-[#007AFF]/30 active:scale-[0.98] transition-colors"
             >
-              我会一直在这里！遇到困难点我，我是你的 24 小时技术顾问。
-            </motion.div>
+              点我打开 AI 问答，随时提问、截图上报、知识库检索。
+            </motion.button>
           )}
         </AnimatePresence>
       </Fragment>

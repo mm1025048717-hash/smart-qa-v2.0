@@ -1,10 +1,21 @@
+import type { ComponentType } from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Send, Mic, Paperclip, ChevronDown } from 'lucide-react';
+import { Send, Mic, Paperclip, ChevronDown, Zap, BookOpen, FileText, Camera, HeadphonesIcon, Sparkles, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { AgentProfile } from '../types';
 import { VoiceInput } from './VoiceInput';
+import { ASSISTANT_FIXED_REPLIES, type FixedReplyItem, type FixedReplyIconId } from '../data/assistantFixedReplies';
+
+const FIXED_REPLY_ICONS: Record<FixedReplyIconId, ComponentType<{ className?: string }>> = {
+  zap: Zap,
+  book: BookOpen,
+  file: FileText,
+  camera: Camera,
+  headset: HeadphonesIcon,
+  sparkles: Sparkles,
+};
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -17,9 +28,15 @@ interface ChatInputProps {
   // 停止输出相关
   isStreaming?: boolean;
   onStop?: () => void;
-  /** CXO 引导：在数据分析页内演示追问——先填入输入框再模拟按下发送，引导用户理解「在此输入并点发送」 */
+  /** CXO 引导：在数据分析页内仅填入示例追问，不自动发送，引导用户自己点击发送或输入问题 */
   demoFollowUp?: { phrase: string; delayMs: number };
   onDemoComplete?: () => void;
+  /** CXO 追问场景：为 true 时显示「点击发送进行追问」等引导，鼓励主动输入（不自动填入） */
+  followUpScenario?: boolean;
+  /** 底部固定回复快捷按钮（深度检索、用户手册等），不传则不显示 */
+  fixedReplies?: FixedReplyItem[];
+  /** 点击固定回复中 action 类按钮时的回调 */
+  onFixedReplyAction?: (action: import('../data/assistantFixedReplies').FixedReplyActionId) => void;
 }
 
 export const ChatInput = ({ 
@@ -33,8 +50,12 @@ export const ChatInput = ({
   onStop,
   demoFollowUp,
   onDemoComplete,
+  followUpScenario = false,
+  fixedReplies,
+  onFixedReplyAction,
 }: ChatInputProps) => {
   const [message, setMessage] = useState('');
+  const [hasSentInFollowUpScenario, setHasSentInFollowUpScenario] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const [showAgentHint, setShowAgentHint] = useState(() => {
@@ -66,12 +87,12 @@ export const ChatInput = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // CXO 引导：先打字出现在对话框，再发送——主要展示过程
+  // CXO 引导：仅填入示例追问文案，不自动发送，引导用户点击发送或输入问题
   useEffect(() => {
     if (!demoFollowUp?.phrase || disabled) return;
     const phrase = demoFollowUp.phrase;
     let typingId: ReturnType<typeof setInterval> | undefined;
-    let sendTimeout: ReturnType<typeof setTimeout> | undefined;
+    let doneTimeout: ReturnType<typeof setTimeout> | undefined;
     const startTimeout = setTimeout(() => {
       inputRef.current?.focus();
       let idx = 0;
@@ -80,29 +101,32 @@ export const ChatInput = ({
         setMessage(phrase.slice(0, idx));
         if (idx >= phrase.length) {
           if (typingId != null) clearInterval(typingId);
-          sendTimeout = setTimeout(() => {
-            if (phrase.trim()) {
-              onSend(phrase.trim());
-              setMessage('');
-            }
-            onDemoComplete?.();
-          }, 600);
+          // 只填入输入框，不调用 onSend；引导用户自己点击发送
+          doneTimeout = setTimeout(() => onDemoComplete?.(), 300);
         }
       }, 80);
     }, demoFollowUp.delayMs);
     return () => {
       clearTimeout(startTimeout);
       if (typingId != null) clearInterval(typingId);
-      if (sendTimeout != null) clearTimeout(sendTimeout);
+      if (doneTimeout != null) clearTimeout(doneTimeout);
     };
   }, [demoFollowUp?.phrase, demoFollowUp?.delayMs, disabled]); // 仅依赖 demo 配置，避免重复执行
 
+  // 追问场景：进入时重置「未发送」状态，使按钮一直显示引导文案直到用户点击发送
+  useEffect(() => {
+    if (demoFollowUp || followUpScenario) setHasSentInFollowUpScenario(false);
+  }, [demoFollowUp, followUpScenario]);
+
   const handleSubmit = () => {
     if (message.trim() && !disabled) {
+      if (demoFollowUp || followUpScenario) setHasSentInFollowUpScenario(true);
       onSend(message.trim());
       setMessage('');
     }
   };
+
+  const showFollowUpGuidance = Boolean((demoFollowUp || followUpScenario) && !hasSentInFollowUpScenario);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -329,6 +353,29 @@ export const ChatInput = ({
         </div>
       )}
 
+      {/* 词槽填充式引导：追问场景下在输入框上方展示可点击词槽，箭头指向词槽 */}
+      {followUpScenario && !hasSentInFollowUpScenario && (
+        <div className="px-4 pt-2 pb-1">
+          <div className="flex items-center justify-center gap-1.5 text-[#007AFF] mb-1.5">
+            <ArrowDown className="w-4 h-4 flex-shrink-0" aria-hidden />
+            <span className="text-[12px] font-medium">点击下方词槽填入追问</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[12px] text-[#86909C]">追问词槽：</span>
+            {['为什么下降了？', '各地区对比', '查看趋势变化', '分渠道查看'].map((slot) => (
+            <button
+              key={slot}
+              type="button"
+              onClick={() => setMessage(slot)}
+              className="px-3 py-1.5 rounded-lg text-[13px] bg-[#F0F7FF] text-[#007AFF] border border-[#007AFF]/25 hover:bg-[#E0EFFF] hover:border-[#007AFF]/40 transition-colors"
+            >
+              {slot}
+            </button>
+          ))}
+          </div>
+        </div>
+      )}
+
       {/* 输入区域 */}
       <div className="relative flex items-end gap-2 px-4 py-3">
         {/* 左侧工具栏 - 只保留语音对话按钮 */}
@@ -383,20 +430,39 @@ export const ChatInput = ({
             )}
           </AnimatePresence>
 
-          {/* 发送按钮 - 追问引导时聚光灯高亮 */}
-          <div className={clsx('relative rounded-xl transition-all duration-300', demoFollowUp && 'ring-4 ring-[#007AFF] ring-offset-2 ring-offset-white rounded-xl animate-pulse')}>
-            <button
-              onClick={handleSubmit}
-              disabled={!message.trim() || disabled}
+          {/* 发送按钮 - 追问场景下有输入时按钮显示「点击发送进行追问」，不再重复气泡 */}
+          <div className="relative">
+            <div
               className={clsx(
-                'flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200',
-                message.trim() && !disabled
-                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 hover:bg-primary-600 hover:scale-105 active:scale-95'
-                  : 'bg-[#F5F9FF] text-[#86909C] cursor-not-allowed'
+                'relative transition-all duration-300',
+                showFollowUpGuidance && message.trim()
+                  ? 'rounded-full ring-4 ring-[#007AFF] ring-offset-2 ring-offset-white animate-pulse shadow-[0_0_0_2px_rgba(0,122,255,0.3)]'
+                  : 'rounded-full'
               )}
+              data-tour="send-button"
             >
-              {message.trim() ? <Send className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!message.trim() || disabled}
+                className={clsx(
+                  'flex items-center justify-center gap-1.5 transition-all duration-200',
+                  message.trim() && !disabled
+                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 hover:bg-primary-600 hover:scale-[1.02] active:scale-95 min-h-10'
+                    : 'bg-[#F5F9FF] text-[#86909C] cursor-not-allowed w-10 h-10 rounded-full',
+                  showFollowUpGuidance && message.trim()
+                    ? 'rounded-full px-4 py-2.5 min-w-[10rem] text-[13px] font-medium'
+                    : 'rounded-full w-10 h-10'
+                )}
+              >
+                {showFollowUpGuidance && message.trim() ? (
+                  <span className="whitespace-nowrap">点击发送进行追问</span>
+                ) : message.trim() ? (
+                  <Send className="w-5 h-5" />
+                ) : (
+                  <Mic className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -432,6 +498,42 @@ export const ChatInput = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 固定回复快捷按钮 */}
+      {(fixedReplies?.length ?? 0) > 0 && (
+        <div className="px-4 pt-2 flex flex-wrap items-center gap-1.5">
+          {fixedReplies!
+            .filter((item) => item.action !== 'guide' || onFixedReplyAction)
+            .map((item: FixedReplyItem) => {
+              const Icon = FIXED_REPLY_ICONS[item.icon];
+              const isGuide = item.action === 'guide';
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    if (item.type === 'fill' && item.phrase != null) {
+                      setMessage((s) => (s ? `${s} ` : '') + item.phrase);
+                      return;
+                    }
+                    if (item.type === 'action' && item.action != null) {
+                      onFixedReplyAction?.(item.action);
+                    }
+                  }}
+                  className={clsx(
+                    'flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[12px] transition-colors',
+                    isGuide
+                      ? 'border-[#007AFF]/40 bg-[#F0F7FF] text-[#007AFF] hover:bg-[#E6F0FF] font-medium'
+                      : 'border-[#E5E5EA] bg-white text-[#3A3A3C] hover:bg-[#F5F5F7]'
+                  )}
+                >
+                  <Icon className={clsx('w-3.5 h-3.5', !isGuide && 'text-[#007AFF]')} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+        </div>
+      )}
 
       {/* 底部提示 */}
       <div className="px-4 pb-2 flex items-center justify-between text-xs text-[#6B7280]">
