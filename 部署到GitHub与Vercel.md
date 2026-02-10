@@ -63,6 +63,7 @@ Vercel 会读取项目中的 `vercel.json`，通常无需改：
 点击 **Deploy**，等待构建完成。完成后会得到：
 
 - 生产地址：`https://你的项目名.vercel.app`
+- 当前线上地址：[https://smart-qa-v2-0-hguj-2al8e7uib-mm1025048717-hashs-projects.vercel.app/](https://smart-qa-v2-0-hguj-2al8e7uib-mm1025048717-hashs-projects.vercel.app/)
 - 每次推送到 GitHub 会自动触发新部署。
 
 ### 5. 验证
