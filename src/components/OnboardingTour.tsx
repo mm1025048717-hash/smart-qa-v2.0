@@ -25,37 +25,52 @@ const TOUR_STEPS_CXO: TourStep[] = [
   { id: 'send-button', target: '[data-tour="send-button"]', title: '点击发送进入追问', description: '点击右侧蓝色发送按钮，进入数据分析页。回复下方会出现追问引导按钮（如「为什么下降了？」「各地区对比」），可一键追问。', position: 'left', highlight: 'circle', padding: 12 },
 ];
 
-// PRD F.2.2 业务负责人路径：CXO 步骤 + 看板（步骤 4 自动导航到看板 Tab）
+// 基于探索数字员工的引导（聚光灯）：非 CXO 角色共用一步，高亮侧栏「探索数字员工」入口
+const TOUR_STEP_EXPLORE_EMPLOYEES: TourStep = {
+  id: 'explore-employees',
+  target: '[data-tour="explore-employees"]',
+  title: '探索数字员工',
+  description: '点击可进入数字员工市场，雇佣更专业的 AI 员工。如 CFO Agent 擅长财务分析，供应链 Agent 擅长库存管理。',
+  position: 'right',
+  highlight: 'rect',
+  padding: 8,
+};
+
+// PRD F.2.2 业务负责人路径：CXO 步骤 + 看板（步骤 4 自动导航到看板 Tab）+ 探索数字员工聚光灯
 const TOUR_STEPS_MANAGER: TourStep[] = [
   { id: 'input-area', target: '[data-tour="input-area"]', title: '如何提问', description: '这是您的专属对话框，支持语音、文字输入。试试问一句：「上周销售额是多少？」输入后请点击右侧蓝色发送按钮发送。', position: 'bottom', highlight: 'rect', padding: 12 },
   { id: 'deep-mode', target: '[data-tour="deep-mode"]', title: '联网搜索', description: '遇到复杂难题？开启「联网搜索」，获取深度分析。', position: 'bottom', highlight: 'rect', padding: 8 },
   { id: 'capability-actions', target: '[data-tour="capability-actions"]', title: '能力与看板', description: '这里是您关注的指标与能力入口。指标查询、趋势分析、看板生成等，支持订阅推送到飞书。', position: 'top', highlight: 'rect', padding: 8 },
   { id: 'dashboard-tab', target: '[data-tour="dashboard-tab"]', title: '查看看板', description: '点击「看板」可查看核心指标看板，销售、运营、财务一目了然。', position: 'top', highlight: 'rect', padding: 8 },
-  { id: 'complete-mgr', target: '[data-tour="helper-button"]', title: '准备就绪', description: '开始输入您的第一个问题吧。点「探索数字员工」可雇佣更专业的 AI 员工。如需帮助随时点这里的小助手。', position: 'left', highlight: 'rect', padding: 8 },
+  TOUR_STEP_EXPLORE_EMPLOYEES,
+  { id: 'complete-mgr', target: '[data-tour="helper-button"]', title: '准备就绪', description: '开始输入您的第一个问题吧。如需帮助随时点这里的小助手。', position: 'left', highlight: 'rect', padding: 8 },
 ];
 
-// PRD F.2.3 一线业务路径：全能问答、指标/知识库（口径+新建术语）、求助上报
+// PRD F.2.3 一线业务路径：全能问答、指标/知识库（口径+新建术语）、探索数字员工聚光灯、求助上报
 const TOUR_STEPS_FRONTLINE: TourStep[] = [
   { id: 'input-area', target: '[data-tour="input-area"]', title: '全能问答 / 搜索', description: '不仅能查数，还能查黑话。试试输入「什么是 GMV？」或「今年销售额是多少」。', position: 'bottom', highlight: 'rect', padding: 12 },
   { id: 'knowledge-indicators', target: '[data-tour="knowledge-indicators"]', title: '指标与口径', description: '这里可查看指标口径说明，确保和你的认知一致。点击「新建术语」可添加业务黑话、指标定义。', position: 'top', highlight: 'rect', padding: 8 },
+  TOUR_STEP_EXPLORE_EMPLOYEES,
   { id: 'complete-fl', target: '[data-tour="helper-button"]', title: '求助与上报', description: '遇到数据不对或系统报错？点这里的小助手，直接召唤技术支持，支持截图上传。', position: 'left', highlight: 'rect', padding: 8 },
 ];
 
-// PRD F.2.4 数据开发路径：完整引导覆盖所有数据开发功能
+// PRD F.2.4 数据开发路径：完整引导覆盖所有数据开发功能 + 探索数字员工聚光灯
 const TOUR_STEPS_DEVELOPER: TourStep[] = [
   { id: 'data-dev-tab', target: '[data-tour="data-dev-tab"]', title: '数据开发中心', description: '这是您的数据开发工作区。点击「数据开发」标签进入配置面板，管理数据源、业务建模与指标口径。', position: 'bottom', highlight: 'rect', padding: 8 },
   { id: 'dev-audit', target: '[data-tour="dev-audit"]', title: '审计日志', description: '时刻监控 AI 的回答准确性。这里是所有的问答记录和 SQL 执行日志，支持合规审计与问题追溯。', position: 'top', highlight: 'rect', padding: 8 },
   { id: 'dev-datasource', target: '[data-tour="dev-datasource"]', title: '数据源管理', description: '第一步：建立连接。点击进入数据源管理页，接入 Doris / MySQL 等数据库，支持 SSH 隧道安全连接。', position: 'top', highlight: 'rect', padding: 8 },
   { id: 'dev-modeling', target: '[data-tour="dev-modeling"]', title: '业务建模', description: '第二步：定义模型。管理表结构、配置字段语义类型与同义词，开启动态 SQL 允许 AI 自由组合查询。', position: 'top', highlight: 'rect', padding: 8 },
   { id: 'dev-indicators', target: '[data-tour="dev-indicators"]', title: '指标管理', description: '第三步：统一口径。定义「毛利」「客单价」等计算公式，确保 AI 回答与业务标准一致。', position: 'top', highlight: 'rect', padding: 8 },
+  TOUR_STEP_EXPLORE_EMPLOYEES,
   { id: 'complete-dev', target: '[data-tour="helper-button"]', title: '准备就绪', description: '数据开发配置完成后，Agent 即可基于真实数据回答查询。如需帮助随时点击小助手。', position: 'left', highlight: 'rect', padding: 8 },
 ];
 
-// 默认路径（新手/数据分析师/财务等）：适中步骤，教会会问、会点、会求助
+// 默认路径（新手/数据分析师/财务等）：适中步骤，教会会问、会点、会求助 + 探索数字员工聚光灯
 const TOUR_STEPS_DEFAULT: TourStep[] = [
   { id: 'welcome', target: '', title: '欢迎使用', description: '用最少步骤带你了解核心：怎么问、问完怎么看、遇到困难找谁。', position: 'center' },
   { id: 'input-area', target: '[data-tour="input-area"]', title: '如何提问', description: '在输入框直接输入你想分析的问题，例如「今年销售额是多少」「近 3 个月趋势」。', position: 'bottom', highlight: 'rect', padding: 12 },
   { id: 'employee-cards', target: '[data-tour="employee-cards"]', title: '结果与数字员工', description: '问完后会得到图表与结论；这里也会推荐适合你的数字员工，点击可切换。', position: 'top', highlight: 'rect', padding: 8 },
+  TOUR_STEP_EXPLORE_EMPLOYEES,
   { id: 'complete-def', target: '[data-tour="helper-button"]', title: '准备就绪', description: '开始你的第一个问题吧。如需帮助随时点击这里的小助手。', position: 'left', highlight: 'rect', padding: 8 },
 ];
 

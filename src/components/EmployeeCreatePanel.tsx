@@ -1,10 +1,21 @@
 /**
  * 员工创建面板 - 双栏布局：左侧引导输入，右侧配置表单
- * 极简苹果风，无图标无阴影
+ * 极简苹果风，无图标无阴影；首次打开时聚光灯深入引导名称/描述/指令/创建
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { DataPageSpotlight } from './DataPageSpotlight';
+
+const CREATE_EMPLOYEE_SPOTLIGHT_KEY = 'yiwen_create_employee_spotlight_done';
+
+const CREATE_EMPLOYEE_SPOTLIGHT_STEPS = [
+  { target: '[data-tour="create-prompt"]', title: '自然语言描述', description: '在这里用一句话描述你需要的专家，例如「销售归因分析师」或「财务报表自动生成」。' },
+  { target: '[data-tour="create-name"]', title: '名称', description: '为数字员工起一个易识别的名称，如「销售归因分析师」。必填。' },
+  { target: '[data-tour="create-description"]', title: '描述', description: '简要说明这名专家的用途与能力，方便后续选用。必填。' },
+  { target: '[data-tour="create-instructions"]', title: '指令（可选）', description: '可补充更细的行为指令，如回答风格、优先使用的数据源等。' },
+  { target: '[data-tour="create-submit"]', title: '创建', description: '填好名称和描述后点击「创建」，即可在「我的专家」中使用你的数字员工。' },
+];
 
 export interface DraftEmployee {
   name: string;
@@ -27,8 +38,17 @@ export function EmployeeCreatePanel({ onClose, onCreate }: EmployeeCreatePanelPr
   const [instructions, setInstructions] = useState('');
   const [prompt, setPrompt] = useState('');
   const [configTab, setConfigTab] = useState<'preview' | 'config'>('config');
+  const [showCreateSpotlight, setShowCreateSpotlight] = useState(false);
 
   const canCreate = name.trim().length > 0 && description.trim().length > 0;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem(CREATE_EMPLOYEE_SPOTLIGHT_KEY) !== 'true') {
+      const t = setTimeout(() => setShowCreateSpotlight(true), 400);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   const handleCreate = () => {
     if (!canCreate) return;
@@ -47,6 +67,12 @@ export function EmployeeCreatePanel({ onClose, onCreate }: EmployeeCreatePanelPr
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-white flex flex-col"
     >
+      <DataPageSpotlight
+        storageKey={CREATE_EMPLOYEE_SPOTLIGHT_KEY}
+        steps={CREATE_EMPLOYEE_SPOTLIGHT_STEPS}
+        forceShow={showCreateSpotlight}
+        onComplete={() => setShowCreateSpotlight(false)}
+      />
       {/* 顶栏 */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E5EA] flex-shrink-0">
         <button
@@ -75,6 +101,7 @@ export function EmployeeCreatePanel({ onClose, onCreate }: EmployeeCreatePanelPr
             你想要做什么？
           </p>
           <textarea
+            data-tour="create-prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="告诉我你需要什么专家"
@@ -121,6 +148,7 @@ export function EmployeeCreatePanel({ onClose, onCreate }: EmployeeCreatePanelPr
               </button>
               <button
                 type="button"
+                data-tour="create-submit"
                 onClick={handleCreate}
                 disabled={!canCreate}
                 className="px-4 py-2 text-[13px] font-medium text-white bg-[#007AFF] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -152,6 +180,7 @@ export function EmployeeCreatePanel({ onClose, onCreate }: EmployeeCreatePanelPr
                     名称 <span className="text-[#007AFF]">*</span>
                   </label>
                   <input
+                    data-tour="create-name"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value.slice(0, NAME_MAX))}
@@ -165,6 +194,7 @@ export function EmployeeCreatePanel({ onClose, onCreate }: EmployeeCreatePanelPr
                     描述 <span className="text-[#007AFF]">*</span>
                   </label>
                   <textarea
+                    data-tour="create-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value.slice(0, DESC_MAX))}
                     placeholder="简单描述这个专家的用途"
@@ -177,6 +207,7 @@ export function EmployeeCreatePanel({ onClose, onCreate }: EmployeeCreatePanelPr
                     指令
                   </label>
                   <textarea
+                    data-tour="create-instructions"
                     value={instructions}
                     onChange={(e) => setInstructions(e.target.value.slice(0, INSTR_MAX))}
                     placeholder="提供关于该专家行为方式的详细指令（可选）"

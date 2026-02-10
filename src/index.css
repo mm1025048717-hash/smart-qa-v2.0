@@ -559,3 +559,16 @@
   transform: translateX(-50%);
   bottom: 4px;
 }
+
+/* 侧栏「探索数字员工」按钮：持续闪烁直到用户点击 */
+@keyframes sidebar-explore-flash {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.9);
+  }
+}
+.sidebar-explore-flash {
+  animation: sidebar-explore-flash 1.2s ease-in-out infinite;
+}

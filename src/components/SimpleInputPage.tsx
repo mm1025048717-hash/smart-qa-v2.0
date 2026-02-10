@@ -29,9 +29,16 @@ import { HelpDocPanel } from './HelpDocPanel';
 import { EmployeeCreatePanel, type DraftEmployee } from './EmployeeCreatePanel';
 import { FloatingGuideAssistant } from './FloatingGuideAssistant';
 import { OnboardingTour, hasCompletedOnboarding, resetOnboardingTour } from './OnboardingTour';
+import { DataPageSpotlight } from './DataPageSpotlight';
 
 const CUSTOM_AGENTS_KEY = 'yiwen_custom_agents_v1';
 const EXPLORE_GUIDE_SEEN_KEY = 'yiwen_explore_guide_seen';
+
+const EXPLORE_PAGE_SPOTLIGHT_STEPS = [
+  { target: '[data-tour="explore-tabs"]', title: '筛选与推荐', description: '「为你推荐」按角色推荐数字员工，「全部」浏览所有人，「我的专家」查看你创建的自定义员工。' },
+  { target: '[data-tour="explore-employee-cards"]', title: '数字员工卡片', description: '点击任意卡片即可选用该员工，开始对话。每个员工专注不同场景：财务、运营、归因分析等。' },
+  { target: '[data-tour="explore-create-btn"]', title: '创建专属员工', description: '点击「创建」可用自然语言描述需求，生成你的专属数据分析助手。' },
+];
 
 /** 聚光灯遮罩：圆心与半径由 motion 驱动，从中心大圆移到右下角并收缩到与智能助手小球一致后淡出 */
 const SPOTLIGHT_BALL_RADIUS = 28; // 与 FloatingGuideAssistant 的 w-14 (56px) 一致，半径 28px
@@ -397,8 +404,13 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
   const [showRoleCloseConfirm, setShowRoleCloseConfirm] = useState(false);
   // 角色选择「更多角色」折叠
   const [showOtherRolesExpanded, setShowOtherRolesExpanded] = useState(false);
-  // 按需触发数字员工引导：首次进入探索页时显示一次气泡
-  const [showExploreGuideBubble, setShowExploreGuideBubble] = useState(false);
+  // 按需触发数字员工引导：首次进入探索页时显示聚光灯多步引导（深入内部）
+  const [showExploreSpotlight, setShowExploreSpotlight] = useState(false);
+  /** 探索页蓝色边框：闪烁一次后保留，任意点击即消失 */
+  const [exploreBorderDismissed, setExploreBorderDismissed] = useState(false);
+  const [exploreBorderFlashDone, setExploreBorderFlashDone] = useState(false);
+  /** 侧栏「探索数字员工」按钮：持续闪烁，点击该按钮后消失 */
+  const [sidebarExploreFlashDismissed, setSidebarExploreFlashDismissed] = useState(false);
   const execDemoTriggeredRef = useRef(false);
   /** CXO 追问演示：步骤 3「追问与交互」进入时仅触发一次，自动键入并发送追问（在首页时） */
   const execFollowUpTriggeredRef = useRef(false);
@@ -510,13 +522,28 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
     }
   }, [showRolePicker]); // eslint-disable-line react-hooks/exhaustive-deps -- only when opening picker
 
-  // 首次进入探索数字员工页时显示一次按需引导气泡
+  // 首次进入探索数字员工页时显示聚光灯多步引导（深入内部）
   useEffect(() => {
     if (!showExploreView) return;
     if (typeof window !== 'undefined' && !localStorage.getItem(EXPLORE_GUIDE_SEEN_KEY)) {
-      setShowExploreGuideBubble(true);
+      setShowExploreSpotlight(true);
     }
   }, [showExploreView]);
+
+  // 进入探索页时重置蓝色边框状态（闪烁一次、点击消失）
+  useEffect(() => {
+    if (showExploreView) {
+      setExploreBorderDismissed(false);
+      setExploreBorderFlashDone(false);
+    }
+  }, [showExploreView]);
+
+  // 蓝色边框闪烁一次：约 0.5s 后由亮变暗
+  useEffect(() => {
+    if (!showExploreView || exploreBorderDismissed) return;
+    const t = setTimeout(() => setExploreBorderFlashDone(true), 500);
+    return () => clearTimeout(t);
+  }, [showExploreView, exploreBorderDismissed]);
 
   useEffect(() => {
     try {
@@ -840,12 +867,16 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
         <div className="px-4">
           <button
             type="button"
-            onClick={() => setShowExploreView(true)}
+            data-tour="explore-employees"
+            onClick={() => {
+              setShowExploreView(true);
+              setSidebarExploreFlashDismissed(true);
+            }}
             className={`w-full inline-flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-left ${
               showExploreView
                 ? 'bg-[#F0F7FF] border-[#007AFF]/30 text-[#007AFF]'
                 : 'bg-white border-[#E5E5EA] hover:border-[#007AFF]/30 hover:bg-[#F5F5F7] text-[#1D1D1F]'
-            }`}
+            } ${userRole?.id !== 'exec' && !sidebarExploreFlashDismissed ? 'sidebar-explore-flash ring-2 ring-[#007AFF]/40 ring-offset-2 ring-offset-[#F9F9FB]' : userRole?.id !== 'exec' ? 'ring-2 ring-[#007AFF]/30 shadow-[0_0_0_1px_rgba(0,122,255,0.15)]' : ''}`}
           >
             <span className="inline-flex items-center gap-2 text-[13px]">
               <Sparkles className="w-4 h-4 text-[#007AFF]" />
@@ -918,31 +949,16 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             animate={{ opacity: 1 }}
             transition={{ duration: 0.25 }}
             className="w-full max-w-4xl mx-auto"
+            onClick={() => setExploreBorderDismissed(true)}
           >
-            <AnimatePresence>
-              {showExploreGuideBubble && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="mb-6 p-4 rounded-2xl border border-[#007AFF]/20 bg-[#F0F7FF] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                >
-                  <p className="text-[13px] text-[#1D1D1F] leading-relaxed">
-                    雇佣更专业的 AI 员工。比如 <strong>CFO Agent</strong> 擅长财务分析，<strong>供应链 Agent</strong> 擅长库存管理。
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') localStorage.setItem(EXPLORE_GUIDE_SEEN_KEY, '1');
-                      setShowExploreGuideBubble(false);
-                    }}
-                    className="flex-shrink-0 px-4 py-2 text-[13px] font-medium text-white bg-[#007AFF] hover:bg-[#0051D5] rounded-xl transition-colors"
-                  >
-                    知道了
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {showExploreView && (
+              <DataPageSpotlight
+                storageKey={EXPLORE_GUIDE_SEEN_KEY}
+                steps={EXPLORE_PAGE_SPOTLIGHT_STEPS}
+                forceShow={showExploreSpotlight}
+                onComplete={() => setShowExploreSpotlight(false)}
+              />
+            )}
             <div className="flex items-center justify-between gap-4 mb-6">
               <button
                 type="button"
@@ -976,13 +992,19 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                 )}
                 <button
                   type="button"
+                  data-tour="explore-create-btn"
                   onClick={() => setShowCreateEmployee(true)}
-                  className="px-4 py-2 text-[13px] font-medium text-white bg-[#1D1D1F] hover:bg-[#000000] rounded-xl transition-colors"
+                  className={`px-4 py-2 text-[13px] font-medium text-white bg-[#1D1D1F] hover:bg-[#000000] rounded-xl transition-colors ${userRole?.id !== 'exec' && !exploreBorderDismissed ? 'ring-2 ring-[#007AFF]/40 ring-offset-2 ring-offset-white shadow-[0_0_0_1px_rgba(0,122,255,0.2)]' : ''}`}
                 >
                   创建
                 </button>
               </div>
             </div>
+            {userRole?.id !== 'exec' && (
+              <p className="mb-3 text-[11px] px-3 py-1.5 rounded-lg bg-[#F0F7FF] text-[#007AFF] border border-[#007AFF]/15 inline-block">
+                基于探索数字员工的引导
+              </p>
+            )}
             <p className="text-[12px] text-[#86868B] uppercase tracking-wider mb-1">
               探索数字员工
             </p>
@@ -992,8 +1014,8 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
             <p className="mt-2 text-[15px] text-[#86868B]">
               探索数据分析专家，用一句话获取指标、趋势与归因结论。
             </p>
-            <div className="mt-6 flex items-center gap-4 flex-wrap">
-              <div className="flex p-0.5 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]">
+            <div className={`mt-6 flex items-center gap-4 flex-wrap transition-[box-shadow] duration-300 ${userRole?.id !== 'exec' && !exploreBorderDismissed ? `p-2 -m-2 rounded-xl ring-2 ring-offset-2 ring-offset-transparent ${exploreBorderFlashDone ? 'ring-[#007AFF]/25' : 'ring-[#007AFF]'}` : ''}`}>
+              <div data-tour="explore-tabs" className="flex p-0.5 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA]">
                 <button
                   type="button"
                   onClick={() => setExploreTab('recommended')}
@@ -1033,7 +1055,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                 </p>
               )}
             </div>
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div data-tour="explore-employee-cards" className={`mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 transition-[box-shadow] duration-300 ${userRole?.id !== 'exec' && !exploreBorderDismissed ? `p-2 -m-2 rounded-xl ring-2 ring-offset-2 ring-offset-transparent ${exploreBorderFlashDone ? 'ring-[#007AFF]/20' : 'ring-[#007AFF]'}` : ''}`}>
               {(() => {
                 const list =
                   exploreTab === 'recommended'
@@ -1876,7 +1898,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="relative w-full max-w-4xl bg-white rounded-3xl border border-[#E5E5EA] shadow-[0_30px_80px_rgba(0,0,0,0.18)] p-6 sm:p-8"
+              className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-3xl border border-[#E5E5EA] shadow-[0_30px_80px_rgba(0,0,0,0.18)] overflow-hidden"
             >
               <button
                 type="button"
@@ -1887,26 +1909,30 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                     setShowRolePicker(false);
                   }
                 }}
-                className="absolute top-5 right-5 sm:top-6 sm:right-6 w-9 h-9 rounded-full flex items-center justify-center text-[#86868B] hover:bg-[#F2F2F7] hover:text-[#1D1D1F] transition-colors"
+                className="absolute top-5 right-5 sm:top-6 sm:right-6 z-10 w-9 h-9 rounded-full flex items-center justify-center text-[#86868B] hover:bg-[#F2F2F7] hover:text-[#1D1D1F] transition-colors"
                 aria-label="关闭"
               >
                 <X className="w-5 h-5" />
               </button>
-              <div className="text-center">
-                <h3 className="text-2xl sm:text-3xl font-semibold text-[#1D1D1F]">
-                  先选择你的角色
-                </h3>
-                <p className="mt-2 text-sm text-[#86868B]">
-                  我们会基于角色为你推荐合适的数字员工（默认一线业务）
-                </p>
+              <div className="flex-shrink-0 px-6 pt-6 sm:px-8 sm:pt-8 pb-2">
+                <div className="text-center">
+                  <h3 className="text-2xl sm:text-3xl font-semibold text-[#1D1D1F]">
+                    先选择你的角色
+                  </h3>
+                  <p className="mt-2 text-sm text-[#86868B]">
+                    我们会基于角色为你推荐合适的数字员工（默认一线业务）
+                  </p>
+                </div>
               </div>
-
-              {/* 四张主卡片（2x2） */}
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 sm:px-8 pb-6 sm:pb-8">
+              {/* 四张主卡片（2x2）；除 CXO 外均加「基于探索数字员工的引导」聚光灯 */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {ROLE_OPTIONS.filter((r) => MAIN_ROLE_IDS.includes(r.id as typeof MAIN_ROLE_IDS[number])).map((role) => {
                   const recommended = pickRecommendedAgent(role);
                   const isSelected = rolePickerSelectedId === role.id;
                   const isDefault = role.id === 'ops';
+                  const isCXO = role.id === 'exec';
+                  const showExploreSpotlight = !isCXO;
                   return (
                     <button
                       key={role.id}
@@ -1918,12 +1944,17 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                         resetOnboardingTour();
                         setShowRolePicker(false);
                       }}
-                      className={`rounded-2xl border p-4 text-left transition-all ${
+                      className={`rounded-2xl border p-4 text-left transition-all relative ${
                         isSelected
                           ? 'border-[#007AFF] bg-[#F0F7FF] ring-2 ring-[#007AFF]/20'
                           : 'border-[#E5E5EA] bg-white hover:border-[#007AFF]/30 hover:bg-[#F9F9FB]'
-                      }`}
+                      } ${showExploreSpotlight ? 'ring-2 ring-[#007AFF]/25 shadow-[0_0_0_1px_rgba(0,122,255,0.12)]' : ''}`}
                     >
+                      {showExploreSpotlight && (
+                        <span className="absolute top-3 right-3 text-[10px] px-2 py-0.5 rounded-full bg-[#F0F7FF] text-[#007AFF] border border-[#007AFF]/15">
+                          基于探索数字员工的引导
+                        </span>
+                      )}
                       <div className="flex items-center gap-2">
                         <span className="text-[15px] font-semibold text-[#1D1D1F]">{role.label}</span>
                         {isDefault && (
@@ -1977,6 +2008,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                         {ROLE_OPTIONS.filter((r) => OTHER_ROLE_IDS.includes(r.id as typeof OTHER_ROLE_IDS[number])).map((role) => {
                           const recommended = pickRecommendedAgent(role);
                           const isSelected = rolePickerSelectedId === role.id;
+                          const showExploreSpotlight = true; // 更多角色中均非 CXO，全部加聚光灯
                           return (
                             <button
                               key={role.id}
@@ -1988,12 +2020,17 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                                 resetOnboardingTour();
                                 setShowRolePicker(false);
                               }}
-                              className={`rounded-2xl border p-3 text-left transition-all ${
+                              className={`rounded-2xl border p-3 text-left transition-all relative ${
                                 isSelected
                                   ? 'border-[#007AFF] bg-[#F0F7FF] ring-2 ring-[#007AFF]/20'
                                   : 'border-[#E5E5EA] bg-white hover:border-[#007AFF]/30 hover:bg-[#F9F9FB]'
-                              }`}
+                              } ${showExploreSpotlight ? 'ring-2 ring-[#007AFF]/25 shadow-[0_0_0_1px_rgba(0,122,255,0.12)]' : ''}`}
                             >
+                              {showExploreSpotlight && (
+                                <span className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded-full bg-[#F0F7FF] text-[#007AFF] border border-[#007AFF]/15">
+                                  基于探索数字员工的引导
+                                </span>
+                              )}
                               <div className="text-[14px] font-semibold text-[#1D1D1F]">{role.label}</div>
                               <div className="mt-0.5 text-[11px] text-[#86868B]">{role.description}</div>
                               <div className="mt-2 text-[11px] text-[#86868B] truncate">
@@ -2006,6 +2043,7 @@ export const SimpleInputPage = ({ onQuestionSubmit, agent, onAgentChange, curren
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
               </div>
             </motion.div>
           </motion.div>
